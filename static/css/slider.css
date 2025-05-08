@@ -1,0 +1,117 @@
+.hero {
+    position: relative;
+}
+
+.slider {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 500px;
+    border-bottom-left-radius: 80px;
+    border-bottom-right-radius: 80px;
+    clip-path: ellipse(80% 100% at top);
+}
+
+.slide {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.slide.active {
+    opacity: 1;
+}
+
+.hero-text {
+    margin-top: -20px;
+    margin-left: 50px;
+    font-size: 33px;
+    position: left;
+    bottom: 20%;
+    left: 10%;
+    color: rgb(0, 0, 0);
+    z-index: 2;
+}
+
+.arrow {
+    height: 30px;
+    width: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 30px;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 15px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.arrow:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.arrow.left {
+    left: 20px;
+}
+
+.arrow.right {
+    right: 20px;
+}
+
+/* Індикатори слайдера */
+.slider-controls {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+
+.dot {
+    height: 12px;
+    width: 50px;
+    background-color: #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.dot.active {
+    background-color: #ffa500;
+}
+
+.hero-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1;
+}
+
+@media screen and (max-width: 768px) {
+    .slider {
+        height: 300px;
+    }
+
+    .hero-text h1 {
+        font-size: 24px;
+    }
+
+    .arrow {
+        padding: 10px;
+        font-size: 24px;
+    }
+
+    .dot {
+        width: 30px;
+    }
+}

@@ -5,7 +5,6 @@ error_reporting(E_ALL);
 
 session_start();
 
-// Демо дані для меню
 $menuItems = [
     'coffee' => [
         ['name' => 'Еспресо', 'price' => 50, 'description' => 'Сильний та ароматний еспресо', 'image' => '../static/images/categories/coffee_category.jpg'],
@@ -34,7 +33,6 @@ $menuItems = [
     ],
 ];
 
-// Категорія за замовчуванням — coffee
 $currentCategory = isset($_GET['category']) ? $_GET['category'] : 'coffee';
 
 ?>

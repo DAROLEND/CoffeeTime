@@ -92,7 +92,6 @@ nav ul li a.active::after {
 }
 
 
-/* 🔁 ОНОВЛЕННЯ для кружечка з лічильником */
 .cart-wrapper:hover .cart-count {
     background-color: rgb(0, 0, 0);
     color: rgb(255, 255, 255);
@@ -190,7 +189,6 @@ nav ul li a.active::after {
     font-size: 21px;
 }
 
-/* Сітки */
 .category-grid, .food-grid, .drink-grid, .dessert-grid {
     display: flex;
     flex-wrap: wrap;

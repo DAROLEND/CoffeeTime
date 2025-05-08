@@ -6,9 +6,8 @@ error_reporting(E_ALL);
 
 $page = 'reservation';
 include '../includes/header.php';
-include '../db/db.php'; // Підключення до БД
+include '../db/db.php';
 
-// Отримуємо зайняті місця з БД
 $result = mysqli_query($conn, "SELECT table_number FROM reservations WHERE location = 'indoor'");
 $bookedTables = [];
 while ($row = mysqli_fetch_assoc($result)) {

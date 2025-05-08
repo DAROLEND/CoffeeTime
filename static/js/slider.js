@@ -12,7 +12,6 @@ function showSlide(index) {
     slideIndex = index;
 }
 
-// Кнопки-стрілки для перемикання
 prev.addEventListener('click', () => {
     let newIndex = (slideIndex - 1 + slides.length) % slides.length;
     showSlide(newIndex);
@@ -23,17 +22,15 @@ next.addEventListener('click', () => {
     showSlide(newIndex);
 });
 
-// Індикатори (крапки)
 dots.forEach((dot, i) => {
     dot.addEventListener('click', () => showSlide(i));
 });
 
-// Автоматичне переключення кожні 5 секунд
 setInterval(() => {
     let newIndex = (slideIndex + 1) % slides.length;
     showSlide(newIndex);
 }, 5000);
 
-// Встановлюємо перший слайд активним
 showSlide(0);
+
 

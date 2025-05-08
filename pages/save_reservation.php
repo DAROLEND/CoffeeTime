@@ -1,9 +1,7 @@
 <?php
 session_start();
 include '../db/db.php';
-if (!$conn) {
-    die("Помилка підключення до бази даних: " . mysqli_connect_error());
-}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tables = explode(',', $_POST['selected_tables']);
 

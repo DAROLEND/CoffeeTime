@@ -1,54 +1,107 @@
-    .expand-grid {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 20px;
-        position: relative;
+/* slider_food.css */
+:root {
+    --grid-gap: 20px;
+    --scale-center: 1;
+    --scale-side: 0.85;
+    --scale-side-hover: 0.95;
+    --rotate-angle: 15deg;
+    --transition-time: 0.5s;
+    --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --perspective: 800px;
+  }
+  
+  /* Контейнер із перспективою для 3D-ефекту */
+  .expand-grid {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--grid-gap);
+    perspective: var(--perspective);
+    overflow: visible;
+  }
+  
+  /* Базові стилі карток */
+  .food-item,
+  .drink-item,
+  .dessert-item {
+    opacity: 0;
+    transform: translateY(20px) scale(var(--scale-side));
+    transform-origin: center center;
+    transition:
+      transform var(--transition-time) var(--transition-ease),
+      opacity var(--transition-time) var(--transition-ease);
+    will-change: transform, opacity;
+  }
+  
+  /* Центральна картка — завжди видима */
+  .food-item.center,
+  .drink-item.center,
+  .dessert-item.center {
+    opacity: 1;
+    transform: translateY(0) scale(var(--scale-center));
+    z-index: 3;
+  }
+  
+  /* Бокові картки із легким нахилом */
+  .food-item.side.left,
+  .drink-item.side.left,
+  .dessert-item.side.left {
+    opacity: 1;
+    transform: translateX(-50%) scale(var(--scale-side)) rotateY(var(--rotate-angle));
+    z-index: 2;
+  }
+  .food-item.side.right,
+  .drink-item.side.right,
+  .dessert-item.side.right {
+    opacity: 1;
+    transform: translateX(50%) scale(var(--scale-side)) rotateY(calc(-1 * var(--rotate-angle)));
+    z-index: 2;
+  }
+  
+  /* Hover-ефект розгортання бокових карток */
+  .expand-grid:hover .side {
+    transform: translateX(0) scale(var(--scale-side-hover)) rotateY(0);
+  }
+  
+  /* Анімація появи карток при завантаженні */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(var(--scale-side));
     }
-
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(var(--scale-center));
+    }
+  }
+  .food-item,
+  .drink-item,
+  .dessert-item {
+    animation: fadeInUp var(--transition-time) var(--transition-ease) forwards;
+  }
+  .food-item:nth-child(1),
+  .drink-item:nth-child(1),
+  .dessert-item:nth-child(1) { animation-delay: 0.1s; }
+  .food-item:nth-child(2),
+  .drink-item:nth-child(2),
+  .dessert-item:nth-child(2) { animation-delay: 0.2s; }
+  .food-item:nth-child(3),
+  .drink-item:nth-child(3),
+  .dessert-item:nth-child(3) { animation-delay: 0.3s; }
+  /* Додайте ще delay для більших сіток */
+  
+  /* Адаптив для мобільних */
+  @media (max-width: 768px) {
+    .expand-grid {
+      flex-direction: column;
+      perspective: none;
+    }
     .food-item,
     .drink-item,
     .dessert-item {
-        opacity: 0;
-        transform: scale(0.8);
-        transition: transform 0.5s ease, opacity 0.5s ease;
+      opacity: 1 !important;
+      transform: scale(1) !important;
+      animation: none !important;
     }
-
-    .food-item.center,
-    .drink-item.center,
-    .dessert-item.center {
-        opacity: 1;
-        transform: scale(1);
-        z-index: 3;
-    }
-
-    .food-item.side.left,
-    .drink-item.side.left,
-    .dessert-item.side.left {
-        transform: translateX(-50%) scale(0.8);
-    }
-
-    .food-item.side.right,
-    .drink-item.side.right,
-    .dessert-item.side.right {
-        transform: translateX(50%) scale(0.8);
-    }
-
-    .expand-grid:hover .side {
-        opacity: 1;
-        transform: translateX(0) scale(0.95);
-        z-index: 2;
-    }
-
-    @media screen and (max-width: 768px) {
-        .expand-grid {
-            flex-direction: column;
-        }
-
-        .food-item,
-        .drink-item,
-        .dessert-item {
-            opacity: 1 !important;
-            transform: scale(1) !important;
-        }
-    }
+  }
+  

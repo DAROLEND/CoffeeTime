@@ -1,0 +1,163 @@
+/* Основна секція */
+.checkout {
+    max-width: 800px;
+    margin: 50px auto;
+    background-color: white;
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Заголовки */
+.checkout h1 {
+    font-size: 36px;
+    margin-bottom: 30px;
+    color: #333;
+    text-align: center;
+}
+
+.checkout h2, .checkout h3 {
+    font-size: 24px;
+    margin-bottom: 15px;
+    color: #555;
+}
+
+/* Поля форми */
+.checkout label {
+    font-size: 18px;
+    color: #555;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.checkout input,
+.checkout select,
+.checkout textarea {
+    padding: 12px;
+    font-size: 16px;
+    width: 100%;
+    margin-bottom: 20px;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    box-sizing: border-box;
+}
+
+.checkout input:focus,
+.checkout select:focus,
+.checkout textarea:focus {
+    border-color: #ffa500;
+    outline: none;
+}
+
+/* Коментар */
+.checkout textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Перелік товарів */
+.checkout .cart-summary {
+    margin-bottom: 30px;
+}
+
+.checkout .cart-summary ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.checkout .cart-summary li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.checkout .cart-summary li img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-right: 15px;
+}
+
+.checkout .cart-summary .item-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.checkout .cart-summary .item-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.checkout .cart-summary li span {
+    font-size: 18px;
+}
+
+/* Кнопки */
+.checkout button {
+    background-color: #ffa500;
+    border: none;
+    padding: 15px;
+    font-size: 18px;
+    color: white;
+    cursor: pointer;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.checkout button:hover {
+    background-color: #000;
+    color: white;
+}
+
+/* Радіо для оплати */
+.payment-methods {
+    margin: 20px 0;
+}
+
+.payment-methods label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.payment-methods input[type="radio"] {
+    margin-right: 10px;
+}
+
+/* Stripe кнопка */
+#checkout-button {
+    background-color: #6772e5;
+    color: #fff;
+    border: none;
+    padding: 15px;
+    font-size: 18px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+}
+
+#checkout-button:hover {
+    background-color: #5469d4;
+}
+
+/* Повідомлення */
+.success-message {
+    color: green;
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+.error-message {
+    color: red;
+    font-size: 18px;
+    margin-bottom: 20px;
+}

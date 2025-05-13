@@ -1,116 +1,210 @@
-.hero {
-    position: relative;
-}
-
-.slider {
+:root {
+    /* Hero slider vars */
+    --slider-height: 400px;
+    --slider-radius: 80px;
+    --transition-speed: 0.6s;
+    --slider-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --arrow-bg: rgba(0, 0, 0, 0.6);
+    --arrow-hover-bg: rgba(0, 0, 0, 0.8);
+    --dot-size: 12px;
+    --dot-active-bg: #ffa500;
+  
+    /* Category slider vars */
+    --card-width: 300px;
+    --category-gap: 16px;
+  }
+  
+  /* ====== HERO SLIDER ====== */
+  .hero {
     position: relative;
     overflow: hidden;
+  }
+  
+  .hero .slider {
+    position: relative;
     width: 100%;
-    height: 500px;
-    border-bottom-left-radius: 80px;
-    border-bottom-right-radius: 80px;
-    clip-path: ellipse(80% 100% at top);
-}
-
-.slide {
+    height: var(--slider-height);
+    overflow: hidden;
+    border-bottom-left-radius: var(--slider-radius);
+    border-bottom-right-radius: var(--slider-radius);
+    clip-path: ellipse(80% 100% at 50% 0);
+  }
+  
+  .hero .slide {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background-size: cover;
     background-position: center;
     opacity: 0;
-    transition: opacity 0.5s ease-in-out;
-}
-
-.slide.active {
+    transform: scale(1.05);
+    transition:
+      opacity var(--transition-speed) var(--slider-ease),
+      transform var(--transition-speed) var(--slider-ease);
+  }
+  
+  .hero .slide.active {
     opacity: 1;
-}
-
-.hero-text {
-    margin-top: -20px;
-    margin-left: 50px;
-    font-size: 33px;
-    position: left;
-    bottom: 20%;
+    transform: scale(1);
+  }
+  
+  .hero .hero-text {
+    position: absolute;
+    bottom: 15%;
     left: 10%;
-    color: rgb(0, 0, 0);
-    z-index: 2;
-}
-
-.arrow {
-    height: 30px;
-    width: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    max-width: clamp(300px, 45%, 600px);
+    padding: 1.5rem 2rem;
+    color: #fff;
+    font-size: clamp(1.2rem, 4vw, 2.5rem);
+    line-height: 1.2;
+    opacity: 0;
+    transform: translateY(20px);
+    z-index: 1;
+    animation: fadeInUp var(--transition-speed) var(--slider-ease) forwards 0.5s;
+  }
+  
+  .hero .hero-text::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 90%; height: 100%;
+    background: linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.2) 60%, transparent);
+    filter: blur(20px);
+    border-radius: 0.5rem;
+    z-index: -1;
+  }
+  
+  .hero .hero-text h1 {
+    margin: 0;
+    background: linear-gradient(to right, #FFD54F, #ff8323);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.6));
+    letter-spacing: 1px;
+  }
+  
+  @keyframes fadeInUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .hero .arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 30px;
-    color: white;
-    background-color: rgba(0, 0, 0, 0.6);
-    padding: 15px;
+    width: 44px; height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+    background: var(--arrow-bg);
     border-radius: 50%;
     cursor: pointer;
+    transition: background 0.3s var(--slider-ease), transform 0.3s var(--slider-ease);
     z-index: 2;
-}
-
-.arrow:hover {
-    background-color: rgba(0, 0, 0, 0.8);
-}
-
-.arrow.left {
-    left: 20px;
-}
-
-.arrow.right {
-    right: 20px;
-}
-
-.slider-controls {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-}
-
-
-.dot {
-    height: 12px;
-    width: 50px;
-    background-color: #ddd;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.dot.active {
-    background-color: #ffa500;
-}
-
-.hero-bottom {
+  }
+  
+  .hero .arrow:hover {
+    background: var(--arrow-hover-bg);
+    transform: scale(1.1);
+  }
+  
+  .hero .arrow.left  { left: 1rem; }
+  .hero .arrow.right { right: 1rem; }
+  
+  .hero .slider-controls {
     position: absolute;
-    bottom: 0;
-    left: 0;
+    bottom: 1rem;
     width: 100%;
-    z-index: 1;
-}
-
-@media screen and (max-width: 768px) {
-    .slider {
-        height: 300px;
+    text-align: center;
+    z-index: 2;
+  }
+  
+  .hero .dot {
+    display: inline-block;
+    width: var(--dot-size);
+    height: var(--dot-size);
+    margin: 0 6px;
+    background: #ddd;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.3s var(--slider-ease), transform 0.3s var(--slider-ease);
+  }
+  
+  .hero .dot:hover {
+    transform: scale(1.2);
+  }
+  
+  .hero .dot.active {
+    background: var(--dot-active-bg);
+  }
+  
+  /* Hide hero controls on mobile */
+  @media (max-width: 768px) {
+    .hero .arrow,
+    .hero .slider-controls {
+      display: none;
     }
-
-    .hero-text h1 {
-        font-size: 24px;
+  }
+  
+  
+/* ===== CATEGORY SLIDER ===== */
+.category-slider {
+    position: relative;
+    margin: 2rem auto;
+    /* ширина = 3 картки + 2 проміжки (просто для центрування) */
+    width: calc( var(--card-width) * 3 + var(--category-gap) * 2 );
+    overflow: hidden;
+  }
+  
+  .category-slider .slider-track {
+    display: flex;
+    gap: var(--category-gap);
+    width: max-content;   /* щоб довжина відповідала кількості карток */
+    margin: 0 auto;       /* і щоб трек центровано лежав всередині контейнера */
+    transition: transform var(--transition-speed) var(--slider-ease);
+  }
+  
+  .category-slider .slide {
+    flex: 0 0 var(--card-width);
+  }
+  
+  .category-slider .item-card {
+    overflow: hidden;
+    border-radius: 12px;
+  }
+  
+  .category-slider .item-card img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  
+  /* ===== Стрілки ===== */
+  .category-slider .arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px; height: 32px;
+    background: var(--arrow-bg);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+    transition: background 0.3s var(--slider-ease);
+  }
+  .category-slider .arrow.left  { left: calc(50% - (var(--card-width)*1.5 + var(--category-gap)*1)); }
+  .category-slider .arrow.right { right: calc(50% - (var(--card-width)*1.5 + var(--category-gap)*1)); }
+    /* ці обчислення “вилізуть” стрілки трохи за межі блоку карток */
+  
+  /* адаптація для мобільних */
+  @media (max-width: 768px) {
+    .category-slider {
+      width: 100%;
     }
-
-    .arrow {
-        padding: 10px;
-        font-size: 24px;
-    }
-
-    .dot {
-        width: 30px;
-    }
-}
+  }

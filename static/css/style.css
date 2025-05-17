@@ -1,22 +1,14 @@
-/* static/css/style.css */
 
-/* ========== CSS VARIABLES ========== */
 :root {
-    /* Colors */
     --header-bg: rgba(151, 86, 39, 0.85);
     --accent: #ffa500;
     --text-light: #fff;
     --text-dark: #333;
     --bg: #f5f5f5;
-  
-    /* Transitions */
     --ease: 0.3s ease;
-  
-    /* Layout */
     --max-width: 1200px;
   }
   
-  /* ========== GLOBAL RESET & BASE ========== */
   * {
     box-sizing: border-box;
     margin: 0;
@@ -28,24 +20,20 @@
     margin: 0;
     padding: 0;
   
-    /* 1) Фоновий колір на випадок, якщо плитка не завантажилась */
     background-color: var(--bg);
   
-    /* 2) Тонкий топовий градієнт для легкого світлового ефекту */
     background-image:
+      linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.1),
+        rgba(255, 255, 255, 0.1)
+      ),
+        url('/static/images/main/white-brick.png');
   
-      /* 3) Ваш тайловий малюнок теплої білої цегли */
-      url('/static/images/main/white-brick.png');
-  
-    /* 4) Повторюємо цеглину по всій площі */
     background-repeat: repeat;
   
-    /* 5) Підганяємо розмір цеглин – підкоригуйте 100–200px на свій смак */
     background-size: 100px oox;
-  
-    /* 6) Фіксуємо градієнт, але цегла рухається при скролі */
     background-attachment: fixed, scroll;
-  
     color: var(--text-dark);
     line-height: 1.5;
   }
@@ -71,7 +59,6 @@
     justify-content: space-between;
   }
   
-  /* Logo */
   .logo img {
     height: 60px;
     transition: transform var(--ease);
@@ -142,13 +129,12 @@
   .cart-wrapper {
     position: relative;
     display: inline-block;
-    border-radius: 30%;          /* Ось це – додає круглу форму */
+    border-radius: 30%;       
     transition: background var(--ease), padding var(--ease);
   }
   .cart-wrapper:hover {
     padding: 5px;
     background-color: var(--accent);
-    /* Не обов’язково повторювати border-radius – він успадковується */
   }
   .cart-wrapper img {
     margin-top: 1px;
@@ -195,7 +181,6 @@
     color: var(--text-light);
   }
   
-  /* Mobile Menu */
   @media (max-width: 992px) {
     .menu-toggle {
       display: flex;
@@ -221,14 +206,12 @@
   }
   
   /* ========== MAIN CONTENT ========== */
-  /* Section Titles */
   h2 {
     text-align: center;
     margin: 40px 0 20px;
     font-size: 2.5rem;
   }
   
-  /* ========== GRID ITEMS ======== */
   .expand-grid {
     display: flex;
     gap: 20px;
@@ -252,7 +235,6 @@
     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   }
   
-  /* ========== RESPONSIVE ======== */
   @media (max-width: 768px) {
     .expand-grid {
       flex-direction: column;
@@ -278,15 +260,12 @@
     animation: fadeInUp 0.6s ease forwards;
   }
   
-  /* Ступінчасті затримки для появи */
   .expand-grid > *:nth-child(1) { animation-delay: 0.1s; }
   .expand-grid > *:nth-child(2) { animation-delay: 0.2s; }
   .expand-grid > *:nth-child(3) { animation-delay: 0.3s; }
   .expand-grid > *:nth-child(4) { animation-delay: 0.4s; }
   .expand-grid > *:nth-child(5) { animation-delay: 0.5s; }
-  /* Додайте ще, якщо більше карток */
   
-  /* Ключові кадри анімації */
   @keyframes fadeInUp {
     to {
       opacity: 1;
@@ -294,8 +273,7 @@
     }
   }
   
-  /* Коректний вигляд самих зображень */
-  .expand-grid img {
+ʼ  .expand-grid img {
     display: block;
     width: 100%;
     height: auto;

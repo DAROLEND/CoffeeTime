@@ -1,5 +1,4 @@
 :root {
-    /* Hero slider vars */
     --slider-height: 400px;
     --slider-radius: 80px;
     --transition-speed: 0.6s;
@@ -9,12 +8,10 @@
     --dot-size: 12px;
     --dot-active-bg: #ffa500;
   
-    /* Category slider vars */
     --card-width: 300px;
     --category-gap: 16px;
   }
   
-  /* ====== HERO SLIDER ====== */
   .hero {
     position: relative;
     overflow: hidden;
@@ -141,7 +138,6 @@
     background: var(--dot-active-bg);
   }
   
-  /* Hide hero controls on mobile */
   @media (max-width: 768px) {
     .hero .arrow,
     .hero .slider-controls {
@@ -150,11 +146,9 @@
   }
   
   
-/* ===== CATEGORY SLIDER ===== */
 .category-slider {
     position: relative;
     margin: 2rem auto;
-    /* ширина = 3 картки + 2 проміжки (просто для центрування) */
     width: calc( var(--card-width) * 3 + var(--category-gap) * 2 );
     overflow: hidden;
   }
@@ -162,8 +156,8 @@
   .category-slider .slider-track {
     display: flex;
     gap: var(--category-gap);
-    width: max-content;   /* щоб довжина відповідала кількості карток */
-    margin: 0 auto;       /* і щоб трек центровано лежав всередині контейнера */
+    width: max-content;
+    margin: 0 auto;
     transition: transform var(--transition-speed) var(--slider-ease);
   }
   
@@ -182,7 +176,6 @@
     height: auto;
   }
   
-  /* ===== Стрілки ===== */
   .category-slider .arrow {
     position: absolute;
     top: 50%;
@@ -200,9 +193,7 @@
   }
   .category-slider .arrow.left  { left: calc(50% - (var(--card-width)*1.5 + var(--category-gap)*1)); }
   .category-slider .arrow.right { right: calc(50% - (var(--card-width)*1.5 + var(--category-gap)*1)); }
-    /* ці обчислення “вилізуть” стрілки трохи за межі блоку карток */
   
-  /* адаптація для мобільних */
   @media (max-width: 768px) {
     .category-slider {
       width: 100%;

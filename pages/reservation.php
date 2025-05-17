@@ -2,7 +2,6 @@
 session_start();
 require_once '../db/db.php';
 
-// Якщо не залогінені – на логін
 if (!isset($_SESSION['user'])) {
   header('Location: ../forms/login.php');
   exit;

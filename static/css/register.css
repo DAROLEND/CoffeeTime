@@ -1,6 +1,3 @@
-/* register.css */
-
-/* 1. Кореневі змінні для швидкого налаштування */
 :root {
     --bg-light: #f9f9f9;
     --bg-white: #ffffff;
@@ -19,7 +16,6 @@
     --transition: 0.2s ease;
   }
   
-  /* 2. Скидання базових відступів/шрифтів */
   body {
     margin: 0;
     padding: 0;
@@ -27,9 +23,9 @@
     background-color: var(--bg-light);
     color: var(--text-dark);
   }
-  
-  /* 3. Контейнер форми */
+
   .auth-container {
+    width: 420px;
     max-width: 420px;
     margin: 3rem auto;
     padding: calc(var(--spacing) * 1.5);
@@ -38,14 +34,13 @@
     box-shadow: 0 6px 24px rgba(0,0,0,0.08);
   }
   
-  /* 4. Заголовок */
+
   .auth-container h1 {
     margin: 0 0 var(--spacing);
     font-size: 2rem;
     text-align: center;
   }
-  
-  /* 5. Повідомлення про помилку/успіх */
+
   .auth-message {
     padding: .75rem 1rem;
     border-radius: var(--border-radius);
@@ -63,7 +58,6 @@
     border: 1px solid var(--success-border);
   }
   
-  /* 6. Структура форми */
   .auth-form .form-group {
     margin-bottom: var(--spacing);
   }
@@ -90,8 +84,7 @@
     font-size: .8rem;
     color: var(--text-muted);
   }
-  
-  /* 7. Кнопка реєстрації */
+
   .btn.btn-primary {
     width: 100%;
     padding: .85rem;
@@ -108,15 +101,14 @@
   .btn.btn-primary:hover {
     background: var(--accent-dark);
   }
-  
-  /* 8. Підказка під полем пароля */
+
   .auth-form .password-hint {
     font-size: .8rem;
     color: var(--text-muted);
     margin-top: .25rem;
   }
   
-  /* 9. Нижній лінк “Вже маєте акаунт?” */
+
   .auth-footer {
     text-align: center;
     margin-top: calc(var(--spacing) * 1.5);
@@ -134,7 +126,6 @@
     text-decoration: underline;
   }
   
-  /* 10. Мобільна адаптація */
   @media (max-width: 480px) {
     .auth-container {
       margin: 2rem 1rem;

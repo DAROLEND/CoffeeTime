@@ -1,24 +1,22 @@
 <?php
-// pages/checkout.php
+// Для локального налагодження — відображати всі помилки
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 require_once __DIR__ . '/../db/db.php';
 
-// 1) Якщо корзина порожня — на головну
+// 1) Якщо кошик порожній — редірект на головну
 if (empty($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
     header('Location: ../pages/index.php');
     exit;
 }
 
-// 2) Якщо не авторизований — на логін
-if (empty($_SESSION['user']) || !is_array($_SESSION['user'])) {
-    header('Location: ../forms/login.php');
-    exit;
-}
-
-$user = $_SESSION['user'];
 $cart = $_SESSION['cart'];
+$user = $_SESSION['user'] ?? null;
 
-// 3) Завантажуємо дані про товари
+// 2) Завантажуємо товари з БД і рахуємо загальну суму
 $orderDetails = [];
 $total = 0.0;
 foreach ($cart as $ci) {
@@ -37,31 +35,29 @@ foreach ($cart as $ci) {
     $stmt->close();
 }
 
-// 4) Підготовка полів
-$firstName = $_POST['first_name'] ?? $user['client_name']        ?? '';
-$lastName  = $_POST['last_name']  ?? $user['client_surname']     ?? '';
-$phone     = $_POST['phone']      ?? $user['client_PhoneNumber'] ?? '';
+// 3) Підготовка полів: POST → профіль → порожньо
+$firstName = $_POST['first_name'] ?? ($user['client_name']        ?? '');
+$lastName  = $_POST['last_name']  ?? ($user['client_surname']     ?? '');
+$phone     = $_POST['phone']      ?? ($user['client_PhoneNumber'] ?? '');
 $readyTime = $_POST['ready_time'] ?? '';
 $comment   = $_POST['comment']    ?? '';
 $payment   = $_POST['payment']    ?? '';
 
 $successMessage = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // базова валідація
+    // 4) Базова валідація
     if (!$firstName || !$lastName || !$phone || !$readyTime || !$payment) {
         $successMessage = "❌ Будь ласка, заповніть усі обов’язкові поля.";
     } else {
-        // перевіряємо робочі години
-        // поточний день: 0 = неділя, 6 = субота
-        $day  = (int)date('w');
+        // 5) Перевірка часу готовності
+        $day = (int)date('w');
         list($h, $m) = explode(':', $readyTime);
         $minutes = $h * 60 + $m;
-        // встановлюємо мін/макс
         if ($day >= 1 && $day <= 5) {
             $min = 8 * 60;   $max = 20 * 60;
         } elseif ($day === 6) {
             $min = 10 * 60;  $max = 20 * 60;
-        } else { // неділя
+        } else {
             $min = 12 * 60;  $max = 20 * 60;
         }
         if ($minutes < $min || $minutes > $max) {
@@ -71,16 +67,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 . "Нд 12:00–20:00.\n"
                 . "Оберіть інший час.";
         } else {
-            // вставка в orders
-            $stmt = $conn->prepare("
-                INSERT INTO orders
-                  (user_id, total, delivery_address, phone, status,
-                   customer_name, customer_surname, comment, ready_time, payment_method)
-                VALUES (?, ?, '', ?, 'pending', ?, ?, ?, ?, ?)
-            ");
+            // 6) Вставка в orders: завжди передаємо user_id (0 для гостей)
+            $userIdParam = $user['client_id'] ?? 0;
+            $sql = "
+              INSERT INTO orders
+                (user_id, total, delivery_address, phone, status,
+                 customer_name, customer_surname, comment, ready_time, payment_method)
+              VALUES (?, ?, '', ?, 'pending', ?, ?, ?, ?, ?)
+            ";
+            $stmt = $conn->prepare($sql);
             $stmt->bind_param(
-                'idsssss',
-                $user['client_id'],
+                'idssssss',
+                $userIdParam,
                 $total,
                 $phone,
                 $firstName,
@@ -94,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $orderId = $stmt->insert_id;
                 $stmt->close();
 
-                // вставка в order_items
+                // 7) Додаємо позиції в order_items
                 foreach ($cart as $ci) {
                     $stmt2 = $conn->prepare("
                       INSERT INTO order_items (order_id, product_id, quantity, price)
@@ -111,7 +109,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt2->close();
                 }
 
-                // очищаємо корзину
                 unset($_SESSION['cart']);
                 $successMessage = "✅ Ваше замовлення успішно оформлено!";
             } else {

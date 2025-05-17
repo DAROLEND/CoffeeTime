@@ -1,22 +1,15 @@
-/* static/css/reservation.css */
-
-/* ====== CSS VARIABLES ====== */
 :root {
-    /* Colors */
     --header-bg: rgba(151, 86, 39, 0.85);
     --accent: #ffa500;
     --text-light: #fff;
     --text-dark: #333;
     --bg: #f5f5f5;
   
-    /* Transitions */
     --ease: 0.3s ease;
   
-    /* Layout */
     --max-width: 1200px;
   }
   
-  /* ====== GLOBAL RESET ====== */
   * {
     box-sizing: border-box;
     margin: 0;
@@ -29,7 +22,6 @@
     line-height: 1.5;
   }
   
-  /* ================= Container ================= */
   .reservation-container {
     max-width: var(--max-width);
     margin: 40px auto;
@@ -83,7 +75,6 @@
   }
   
   /* ========== Table Map ========== */
-  /* only active when .map is added */
   .reservation-container.map .table-grid {
     display: grid;
     gap: 15px;
@@ -91,22 +82,19 @@
     margin: 30px 0;
   }
   
-  /* Indoor layout: 5 columns */
   .reservation-container.map.indoor .table-grid {
     grid-template-columns: repeat(5, 80px);
   }
   
-  /* Terrace layout: 6 columns */
   .reservation-container.map.terrace .table-grid {
     grid-template-columns: repeat(6, 80px);
   }
   
-  /* Table cards */
   .table {
     width: 100%;
-    padding-top: 100%; /* square */
+    padding-top: 100%;
     position: relative;
-    background-color: #90ee90; /* available */
+    background-color: #90ee90;
     border-radius: 12px;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
@@ -124,7 +112,6 @@
     background-color: #66cc66;
   }
   
-  /* States */
   .table.booked {
     background-color: #ccc;
     color: #666;
@@ -141,7 +128,6 @@
     color: #fff;
   }
   
-  /* Selected info & button */
   .selected-info {
     margin-top: 15px;
     font-size: 1.1rem;
@@ -166,7 +152,6 @@
     background-color: #000;
   }
   
-  /* ========== RESPONSIVE ========== */
   @media (max-width: 600px) {
     .reservation-categories {
       gap: 15px;

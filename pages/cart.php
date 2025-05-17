@@ -1,9 +1,7 @@
 <?php
-// pages/cart.php
 session_start();
 require '../db/db.php';
 
-// Дозволені “категорії” — назви таблиць
 $allowedTables = [
     'coffee_items',
     'fast_food_items',
@@ -12,19 +10,16 @@ $allowedTables = [
     'dessert_items'
 ];
 
-// 0. Очистити корзину повністю
 if (isset($_GET['action']) && $_GET['action'] === 'clear') {
     unset($_SESSION['cart']);
     header('Location: cart.php');
     exit;
 }
 
-// 1. Ініціалізація корзини
 if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
 }
 
-// 2. Додати товар
 if (isset($_GET['action'], $_GET['category'], $_GET['id']) && $_GET['action'] === 'add') {
     $table = $_GET['category'];
     $id    = (int)$_GET['id'];
@@ -51,7 +46,6 @@ if (isset($_GET['action'], $_GET['category'], $_GET['id']) && $_GET['action'] ==
     exit;
 }
 
-// 3. Видалити товар
 if (isset($_GET['remove'])) {
     $idx = (int)$_GET['remove'];
     if (isset($_SESSION['cart'][$idx])) {
@@ -62,7 +56,6 @@ if (isset($_GET['remove'])) {
     exit;
 }
 
-// 4. Оновити кількість
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_quantity'])) {
     $idx = (int)($_POST['index'] ?? -1);
     if (isset($_SESSION['cart'][$idx])) {
@@ -73,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_quantity'])) {
     exit;
 }
 
-// 5. Підрахунок і збір деталей
 $total = 0;
 $items = [];
 $stmt  = null;

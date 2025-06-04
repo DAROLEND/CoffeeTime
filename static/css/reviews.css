@@ -1,0 +1,250 @@
+/* Відгук */
+.testimonial-item {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  max-height: 240px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.testimonial-author {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #ff6600;
+  margin-bottom: 0.5rem;
+  background-color: #fff3e8;
+  padding: 0.4rem 0.6rem;
+  border-left: 4px solid #ff6600;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.testimonial-item p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+/* Група карток */
+.expand-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+/* Форма відгуку */
+.leave-review {
+  background: #f4f4f4;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.leave-review h2 {
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  margin-top: 0rem;
+}
+
+.leave-review input,
+.leave-review textarea {
+  width: 100%;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+.leave-review button {
+  background: #ff9900;
+  border: none;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #000;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.leave-review button:hover {
+  background: #cc7a00;
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.form-group.flex-grow textarea {
+  resize: none;
+  max-height: 300px;
+  min-height: 120px;
+  overflow-y: auto;
+}
+
+.review-form input,
+.review-form textarea {
+  padding: 0.75rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+/* Зірки */
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+.stars span {
+  color: #ccc;
+  transition: color 0.2s;
+}
+
+.stars span.hover,
+.stars span.active {
+  color: #ffcc00;
+}
+
+.stars-static {
+  font-size: 1.1rem;
+  color: #ffcc00;
+  margin-top: 0.25rem;
+}
+
+/* Повна лінія рейтингу */
+.rating-full-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.rating-full-row label {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.form-group.flex-grow {
+  flex: 1.5;
+}
+
+/* Верхній блок керування */
+.top-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 1rem auto 2rem;
+  max-width: 1200px;
+  padding: 0 1rem;
+}
+
+/* Кнопка сортування */
+.sort-button {
+  background-color: #ff9900;
+  color: #000;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s;
+}
+
+.sort-button:hover {
+  background-color: #cc7a00;
+}
+
+/* Випадаючий список */
+.sort-dropdown {
+  display: none;
+  position: absolute;
+  margin-top: 0.5rem;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  z-index: 100;
+}
+
+.sort-dropdown a {
+  display: block;
+  padding: 0.75rem 1rem;
+  color: #333;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: background 0.2s;
+}
+
+.sort-dropdown a:hover {
+  background-color: #f5f5f5;
+}
+
+/* Кнопка Google Maps */
+.google-link {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.google-link a {
+  display: inline-block;
+  background-color: #4285f4;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+}
+
+.google-link a:hover {
+  background-color: #3367d6;
+}
+
+/* Адаптивність */
+@media (max-width: 600px) {
+  .top-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .google-link {
+    justify-content: center;
+  }
+}

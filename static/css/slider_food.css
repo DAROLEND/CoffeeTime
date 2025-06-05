@@ -40,7 +40,6 @@
   flex-shrink: 0;
 }
 
-/* Center item */
 .food-item.center,
 .drink-item.center,
 .dessert-item.center {
@@ -49,7 +48,6 @@
   z-index: 3;
 }
 
-/* Side items */
 .food-item.side.left,
 .drink-item.side.left,
 .dessert-item.side.left {

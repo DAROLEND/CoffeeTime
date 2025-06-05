@@ -289,7 +289,7 @@
   text-align: center;
   background: #fff;
   transition: transform 0.3s ease;
-  max-width: 300px;       /* Збільшено */
+  max-width: 300px;   
   width: 100%;
   flex: 1;
 }
@@ -299,18 +299,18 @@
 }
 
 .gift-item {
-  max-width: 360px;      /* Було 300px */
-  padding: 40px 30px;    /* Більше простору */
+  max-width: 360px;     
+  padding: 40px 30px;   
   border-radius: 20px;
 }
 .gift-item img {
-  width: 120px;          /* Було 100px */
+  width: 120px;         
   margin-bottom: 25px;
 }
 .gift-btn {
   display: block;
   width: 100%;
-  padding: 14px 20px;     /* Більше */
+  padding: 14px 20px;   
   margin-top: 20px;
   background: var(--accent);
   color: #000;

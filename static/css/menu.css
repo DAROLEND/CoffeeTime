@@ -75,7 +75,7 @@ main.menu h1 {
   flex-wrap: wrap;
   gap: 20px;
   justify-content: center;
-  align-items: stretch; /* ✅ вирівнює висоту */
+  align-items: stretch;
 }
 
 @keyframes fadeInUp {
@@ -108,7 +108,7 @@ main.menu h1 {
 
 .menu-item img {
   width: 100%;
-  height: 180px; /* ✅ однакова висота зображення */
+  height: 180px; 
   object-fit: contain;
   transition: transform var(--trans);
 }
@@ -124,7 +124,7 @@ main.menu h1 {
   font-size: 0.9rem;
   color: #666;
   margin: 0 10px;
-  height: 40px; /* ✅ обмеження висоти опису */
+  height: 40px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

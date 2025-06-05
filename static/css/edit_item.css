@@ -1,0 +1,42 @@
+form {
+  max-width: 600px;
+  margin: 2rem auto;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+label {
+  font-weight: bold;
+  display: block;
+  margin-top: 1rem;
+}
+
+input[type="text"],
+input[type="number"],
+textarea {
+  resize: none;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+
+.form-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.form-actions .btn {
+  width: 48%;
+  text-align: center;
+}
+
+img.preview {
+  margin-top: 1rem;
+  width: 80px;
+  border-radius: 6px;
+}

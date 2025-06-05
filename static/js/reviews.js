@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // ★ ЗІРКИ
+  // ЗІРКИ
   const stars = document.querySelectorAll("#starRating span");
   const ratingInput = document.getElementById("ratingInput");
 
@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // ▼ ВИПАДАЮЧЕ СОРТУВАННЯ
+  // ВИПАДАЮЧЕ СОРТУВАННЯ
   const sortWrapper = document.querySelector(".sort-wrapper");
   const sortButton = document.querySelector(".sort-button");
 

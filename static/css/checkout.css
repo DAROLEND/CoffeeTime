@@ -20,7 +20,7 @@
     color: #555;
 }
 
-ї.checkout label {
+.checkout label {
     font-size: 18px;
     color: #555;
     margin-bottom: 5px;
@@ -70,11 +70,23 @@
 }
 
 .checkout .cart-summary li img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
     border-radius: 10px;
     margin-right: 15px;
+    background-color: #fff;
+}
+
+/* Стиль для сертифікатів */
+.checkout .cart-summary li.giftcard {
+    background-color: #fff8e1;
+    border-left: 4px solid orange;
+    padding: 1rem;
+    border-radius: 12px;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
 }
 
 .checkout .cart-summary .item-info {

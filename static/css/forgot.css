@@ -1,10 +1,10 @@
- .auth-container {
+.auth-container {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: calc(100vh - 80px - 200px);
-    padding: 40px 20px;
-    background: linear-gradient(135deg, var(--bg), #e2d8c0);
+    min-height: calc(100vh - 76px - 120px);
+    padding: 48px 20px;
+    background: transparent;
   }
   
   .auth-card {

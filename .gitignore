@@ -1,0 +1,31 @@
+# ── Secrets — NEVER commit these ─────────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+
+# ── Generated / runtime directories ──────────────────────────────────────────
+logs/
+backups/
+uploads/thumbs/
+
+# ── Log files ─────────────────────────────────────────────────────────────────
+*.log
+
+# ── OS / editor junk ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── PHP dependencies (if Composer is used) ────────────────────────────────────
+# vendor/   ← uncomment this line if you commit vendor/ — better not to
+
+# ── Temporary / test files ────────────────────────────────────────────────────
+check_env.php
+migrate_passwords.php
+test.php
+info.php
+phpinfo.php

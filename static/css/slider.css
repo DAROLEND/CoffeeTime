@@ -1,226 +1,317 @@
+/* ===================================================
+   Coffee Time — Hero & Category Slider  v4
+=================================================== */
+
 :root {
-    --slider-height: 400px;
-    --slider-radius: 80px;
-    --transition-speed: 0.6s;
-    --slider-ease: cubic-bezier(0.4, 0, 0.2, 1);
-    --arrow-bg: rgba(0, 0, 0, 0.6);
-    --arrow-hover-bg: rgba(0, 0, 0, 0.8);
-    --dot-size: 12px;
-    --dot-active-bg: #ffa500;
-  
-    --card-width: 300px;
-    --category-gap: 16px;
-  }
-  
-  .hero {
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .hero .slider {
-    position: relative;
-    width: 100%;
-    height: var(--slider-height);
-    overflow: hidden;
-    border-bottom-left-radius: var(--slider-radius);
-    border-bottom-right-radius: var(--slider-radius);
-    clip-path: ellipse(80% 100% at 50% 0);
-  }
-  
-  .hero .slide {
-    position: absolute;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    opacity: 0;
-    transform: scale(1.05);
-    transition:
-      opacity var(--transition-speed) var(--slider-ease),
-      transform var(--transition-speed) var(--slider-ease);
-  }
-  
-  .hero .slide.active {
-    opacity: 1;
-    transform: scale(1);
-  }
-  
-  .hero .hero-text {
-    position: absolute;
-    bottom: 15%;
-    left: 10%;
-    max-width: clamp(300px, 45%, 600px);
-    padding: 1.5rem 2rem;
-    color: #fff;
-    font-size: clamp(1.2rem, 4vw, 2.5rem);
-    line-height: 1.2;
-    opacity: 0;
-    transform: translateY(20px);
-    z-index: 1;
-    animation: fadeInUp var(--transition-speed) var(--slider-ease) forwards 0.5s;
-  }
-  
-  .hero .hero-text::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0;
-    width: 90%; height: 100%;
-    background: linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.2) 60%, transparent);
-    filter: blur(20px);
-    border-radius: 0.5rem;
-    z-index: -1;
-  }
-  
-  .hero .hero-text h1 {
-    margin: 0;
-    background: linear-gradient(to right, #FFD54F, #ff8323);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.6));
-    letter-spacing: 1px;
-  }
-  
-  @keyframes fadeInUp {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .hero .arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 44px; height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: #fff;
-    background: var(--arrow-bg);
-    border-radius: 50%;
-    cursor: pointer;
-    transition: background 0.3s var(--slider-ease), transform 0.3s var(--slider-ease);
-    z-index: 2;
-  }
-  
-  .hero .arrow:hover {
-    background: var(--arrow-hover-bg);
-    transform: translateY(-50%) scale(1.1);
-  }
-  
-  .hero .arrow.left  { left: 1rem; }
-  .hero .arrow.right { right: 1rem; }
-  
-  .hero .slider-controls {
-    position: absolute;
-    bottom: 1rem;
-    width: 100%;
-    text-align: center;
-    z-index: 2;
-  }
-  
-  .hero .dot {
-    display: inline-block;
-    width: var(--dot-size);
-    height: var(--dot-size);
-    margin: 0 6px;
-    background: #ddd;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: background 0.3s var(--slider-ease), transform 0.3s var(--slider-ease);
-  }
-  
-  .hero .dot:hover {
-    transform: scale(1.2);
-  }
-  
-  .hero .dot.active {
-    background: var(--dot-active-bg);
-  }
-  
-  @media (max-width: 768px) {
-    .hero .arrow,
-    .hero .slider-controls {
-      display: none;
-    }
-  }
-  
-  
-.category-slider {
+  --transition-speed: 0.8s;
+  --slider-ease:      cubic-bezier(0.4, 0, 0.2, 1);
+  --arrow-bg:         rgba(0,0,0,.40);
+  --arrow-hover-bg:   rgba(0,0,0,.70);
+  --dot-active-bg:    #ffa500;
+  --card-width:       300px;
+  --category-gap:     16px;
+}
+
+/* ===================================================
+   HERO
+=================================================== */
+.hero {
   position: relative;
-  max-width: calc(var(--card-width) * 3 + var(--category-gap) * 2);
-  margin: 2rem auto;
   overflow: hidden;
 }
 
-/* Трек з усіма слайдами */
+.hero .slider {
+  position: relative;
+  width: 100%;
+  height: clamp(520px, 82vh, 780px);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* Slide: full-bleed image */
+.hero .slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transform: scale(1.04);
+  transition:
+    opacity    var(--transition-speed) var(--slider-ease),
+    transform  var(--transition-speed) var(--slider-ease);
+}
+.hero .slide.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Directional overlay — darkens the left (text) side */
+.hero .slide::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    rgba(0,0,0,0.68) 0%,
+    rgba(0,0,0,0.38) 52%,
+    rgba(0,0,0,0.08) 100%
+  );
+  z-index: 1;
+}
+
+/* ===================================================
+   HERO TEXT — left-aligned over gradient overlay
+=================================================== */
+.hero .hero-text {
+  position: absolute;
+  top: 50%;
+  left: clamp(32px, 8%, 120px);
+  transform: translateY(-50%) translateY(20px);
+  max-width: min(560px, 55%);
+  text-align: left;
+  z-index: 2;
+
+  /* Hidden until .active */
+  opacity: 0;
+  transition:
+    opacity   0.7s var(--slider-ease) 0.15s,
+    transform 0.7s var(--slider-ease) 0.15s;
+}
+
+.hero .slide.active .hero-text {
+  opacity: 1;
+  transform: translateY(-50%) translateY(0);
+}
+
+/* Hero label */
+.hero-label {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.72);
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-family: 'Lato', sans-serif;
+}
+
+/* H1 */
+.hero .hero-text h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(2rem, 4.5vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+  letter-spacing: -0.3px;
+  margin: 0 0 14px;
+}
+
+/* Accent first word with warm color */
+.hero .hero-text h1 span {
+  color: #ffc046;
+}
+
+/* Subtitle */
+.hero-subtitle {
+  font-family: 'Lato', sans-serif;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  margin: 0;
+  line-height: 1.6;
+  max-width: 500px;
+}
+
+/* CTA button */
+.hero-cta {
+  display: inline-block;
+  margin-top: 28px;
+  padding: 14px 36px;
+  background: #FFC107;
+  color: #5a2d0c;
+  text-decoration: none;
+  font-family: 'Lato', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  border-radius: 30px;
+  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.45);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hero-cta:hover {
+  background: #e6ac00;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255,193,7,0.5);
+}
+
+/* ===================================================
+   HERO WAVE — absolute, inside hero
+=================================================== */
+.hero-wave {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  line-height: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.hero-wave svg {
+  display: block;
+  width: 100%;
+  height: 72px;
+}
+
+/* ===================================================
+   DOTS
+=================================================== */
+.hero .slider-controls {
+  position: absolute;
+  bottom: calc(72px + 1.4rem);
+  width: 100%;
+  text-align: center;
+  z-index: 4;
+}
+.hero .dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  margin: 0 5px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.3s ease, width 0.3s ease, border-radius 0.3s ease;
+}
+.hero .dot.active {
+  background: var(--dot-active-bg);
+  width: 26px;
+  border-radius: 4px;
+}
+
+/* ===================================================
+   HERO ARROWS — hidden
+=================================================== */
+.hero .slider .arrow { display: none; }
+
+/* ===================================================
+   CATEGORY SLIDERS
+=================================================== */
+.category-slider {
+  position: relative;
+  max-width: calc(var(--card-width) * 3 + var(--category-gap) * 2);
+  /* від'ємні вертикальні margin + padding = той самий візуальний розмір,
+     але padding дає 20px простору щоб hover-ефект не обрізався зверху/знизу;
+     overflow: hidden прибирає горизонтальний скрол від невидимих слайдів */
+  overflow: hidden;
+  padding: 20px 0;
+  margin: -20px auto;
+}
+
 .category-slider .slider-track {
   display: flex;
   transition: transform var(--transition-speed) var(--slider-ease);
 }
 
-/* Кожен слайд */
 .category-slider .slide {
-  flex: 0 0 var(--card-width);
+  /* рівно 1/3 ширини слайдера з урахуванням gap */
+  flex: 0 0 calc((100% - 2 * var(--category-gap)) / 3);
   margin-right: var(--category-gap);
 }
 
-/* Картка елемента */
 .category-slider .item-card {
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 14px;
 }
 
-/* Зображення */
 .category-slider .item-card img {
   display: block;
   width: 100%;
-  height: auto;
+  /* flex: 0 0 200px — фіксований розмір у flex-колонці: не росте, не стискається */
+  flex: 0 0 200px;
+  height: 200px;
+  object-fit: contain;
+  object-position: center 52%;
+  /* тепле кремове тло — перекриває білий/прозорий фон фото продуктів */
+  background: #fdf6ee;
+  padding: 12px 10px 8px;
 }
 
-/* Стрілки */
 .category-slider .arrow {
   position: absolute;
-  top: 50%;
+  top: calc(20px + 100px);
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  background: var(--arrow-bg);
-  color: #fff;
+  width: 44px; height: 44px;
+  background: #fff;
+  color: #7a3b10;
+  border: none;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 2;
-  transition: background 0.3s var(--slider-ease);
+  font-size: 0;
+  z-index: 10;
+  box-shadow: 0 4px 18px rgba(0,0,0,.14), 0 1px 4px rgba(0,0,0,.08);
+  transition: background 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
 }
+.category-slider .arrow::before {
+  content: '';
+  display: block;
+  width: 10px; height: 10px;
+  border-top:   2.5px solid currentColor;
+  border-right: 2.5px solid currentColor;
+}
+.category-slider .arrow.left::before  { transform: rotate(-135deg) translate(-1px, 1px); }
+.category-slider .arrow.right::before { transform: rotate(45deg)   translate(-1px, 1px); }
+
 .category-slider .arrow:hover {
-  background: var(--arrow-hover-bg);
-  transform: translateY(-50%) scale(1.1);
+  background: #FFC107;
+  color: #5c3010;
+  box-shadow: 0 6px 24px rgba(255,193,7,.45);
+  transform: translateY(-50%) scale(1.12);
+}
+.category-slider .arrow.left  { left:  10px; }
+.category-slider .arrow.right { right: 10px; }
+
+/* ── Category slider progress bar ── */
+.cat-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: #FFC107;
+  border-radius: 0 2px 2px 0;
+  z-index: 10;
+  pointer-events: none;
 }
 
-.category-slider .arrow.left {
-  left: 2px;
-}
+/* ===================================================
+   RESPONSIVE
+=================================================== */
+@media (max-width: 768px) {
+  .hero .slider   { height: clamp(420px, 72vh, 620px); }
+  .hero .dot      { display: inline-block; }
 
-.category-slider .arrow.right {
-  right: 2px;
-}
+  .hero .hero-text {
+    left: 20px;
+    max-width: calc(100% - 40px);
+  }
 
-/* Мобільна адаптація */
-@media (max-width: 992px) {
   .category-slider {
     max-width: 100%;
-    padding: 0 1rem;
+    padding: 20px 0.5rem;
   }
-
   .category-slider .slide {
     flex: 0 0 80%;
-    margin-right: 16px;
+    margin-right: 14px;
   }
+  .category-slider .arrow { display: none; }
+}
 
-  .category-slider .arrow {
-    display: none;
-  }
+@media (max-width: 480px) {
+  .hero .slider .arrow { display: none; }
+  .hero-cta { padding: 12px 28px; font-size: 0.9rem; }
+  .hero .hero-text { max-width: calc(100% - 32px); left: 16px; }
 }

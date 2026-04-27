@@ -1,0 +1,571 @@
+/* =====================================================
+   Coffee Time — Global Animations & Enhancements
+===================================================== */
+
+/* ── CROSS-DOCUMENT VIEW TRANSITIONS (Chrome 126+, Safari 18+) ── */
+/*
+   Вмикає плавний перехід між сторінками.
+   Браузери без підтримки роблять звичайний перехід — без змін.
+*/
+@view-transition {
+  navigation: auto;
+}
+
+/* Навбар — "заморожений": браузер знає, що це один і той самий елемент
+   на обох сторінках, тому не анімує його окремо.                      */
+.site-header {
+  view-transition-name: site-header;
+}
+
+/* Тривалість і easing переходу сторінок */
+::view-transition-old(root) {
+  animation-duration: 0.18s;
+  animation-timing-function: ease-out;
+}
+::view-transition-new(root) {
+  animation-duration: 0.22s;
+  animation-timing-function: ease-in;
+}
+
+/* Навбар: без анімації (він ідентичний на всіх сторінках) */
+::view-transition-old(site-header),
+::view-transition-new(site-header) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* ── PAGE LOAD ─────────────────────────────────── */
+@keyframes pageFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* pageFadeIn тільки для браузерів БЕЗ підтримки view transitions —
+   в сучасних браузерах перехід вже забезпечений вище.              */
+@supports not (view-transition-name: none) {
+  body {
+    animation: pageFadeIn 0.4s ease both;
+  }
+}
+
+/* ── SCROLL REVEAL ──────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Stagger для дочірніх елементів */
+.reveal:nth-child(1) { transition-delay: 0s;   }
+.reveal:nth-child(2) { transition-delay: 0.1s; }
+.reveal:nth-child(3) { transition-delay: 0.2s; }
+.reveal:nth-child(4) { transition-delay: 0.3s; }
+
+/* Reveal from left / right (about section) */
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.reveal-right {
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── CUSTOM SCROLLBAR ───────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f0e8df; }
+::-webkit-scrollbar-thumb { background: #8B4513; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #5a2d0c; }
+
+/* ── GLOBAL BUTTONS ─────────────────────────────── */
+button,
+.btn,
+input[type="submit"],
+.auth-btn,
+.form-btn,
+.checkout-btn,
+.rv-submit,
+.banner-btn,
+.hero-cta,
+.btn-outline,
+.btn-add-cart,
+.add-to-cart {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.2s ease,
+    color 0.2s ease !important;
+}
+button:active,
+.btn:active,
+input[type="submit"]:active,
+.auth-btn:active,
+.form-btn:active,
+.rv-submit:active,
+.btn-add-cart:active {
+  transform: scale(0.97) !important;
+}
+
+/* ── INPUT / TEXTAREA / SELECT FOCUS ────────────── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: #8B4513 !important;
+  box-shadow: 0 0 0 3px rgba(139,69,19,0.12) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ── NAVBAR ─────────────────────────────────────── */
+.site-header {
+  transition: box-shadow 0.3s ease;
+}
+.site-header.scrolled {
+  box-shadow: 0 2px 20px rgba(0,0,0,0.28);
+}
+
+/* Animated underline on nav links — розширюється з центру */
+.nav-list a {
+  border-bottom: none !important;
+  transition: color 0.2s ease !important;
+}
+.nav-list a::after {
+  display: block !important;
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 0;
+  width: 100%; height: 2px;
+  background: #FFC107;
+  border-radius: 1px;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s ease;
+}
+.nav-list a:hover::after  { transform: scaleX(1); }
+.nav-list a.active::after { transform: scaleX(1); }
+.nav-list a.active        { color: #FFC107; }
+
+/* ── CART ANIMATIONS ────────────────────────────── */
+@keyframes cartBounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.4); }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+@keyframes badgePop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.6); }
+  100% { transform: scale(1); }
+}
+.cart-wrapper.bounce img { animation: cartBounce 0.4s ease both; }
+.cart-count.pop          { animation: badgePop  0.3s ease both; }
+
+/* ── HERO ───────────────────────────────────────── */
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes pulseCTA {
+  0%, 100% { box-shadow: 0 4px 24px rgba(255,165,0,0.45); }
+  50%       { box-shadow: 0 4px 32px rgba(255,193,7,0.75), 0 0 0 8px rgba(255,193,7,0.12); }
+}
+@keyframes kenBurns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.06); }
+}
+
+.hero .slide.active {
+  animation: kenBurns 8s ease-in-out 0.8s infinite alternate;
+}
+/* При деактивації зупиняємо */
+.hero .slide:not(.active) {
+  animation: none;
+}
+
+.hero .slide.active .hero-label {
+  animation: heroFadeUp 0.5s ease-out 0s both;
+}
+.hero .slide.active .hero-text h1 {
+  animation: heroFadeUp 0.6s ease-out 0.15s both;
+}
+.hero .slide.active .hero-subtitle {
+  animation: heroFadeUp 0.5s ease-out 0.3s both;
+}
+.hero .slide.active .hero-cta {
+  animation: heroFadeUp 0.5s ease-out 0.45s both, pulseCTA 2.5s ease-in-out 1.8s infinite;
+}
+
+/* ── BENEFITS STRIP ─────────────────────────────── */
+@keyframes iconWiggle {
+  0%, 100% { transform: rotate(0);     }
+  25%       { transform: rotate(-12deg); }
+  75%       { transform: rotate(12deg);  }
+}
+.benefit-block {
+  border-radius: 8px;
+  padding: 12px 24px;
+  transition: background 0.2s ease;
+}
+.benefit-block:hover { background: rgba(139,69,19,0.05); }
+.benefit-block:hover .benefit-icon { animation: iconWiggle 0.4s ease; }
+.benefit-block:hover .benefit-title { color: #8B4513; transition: color 0.2s ease; }
+
+/* ── PRODUCT CARDS (homepage + menu) ────────────── */
+
+/* menu-item */
+.menu-item {
+  transition: transform 0.3s cubic-bezier(0.25,0.8,0.25,1),
+              box-shadow 0.3s cubic-bezier(0.25,0.8,0.25,1);
+  overflow: hidden;
+}
+.menu-item:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(139,69,19,0.15);
+}
+.menu-item img {
+  transition: transform 0.4s ease;
+}
+.menu-item:hover img { transform: scale(1.08); }
+
+/* homepage cards — enhance existing hover */
+.item-card img {
+  transition: transform 0.4s ease;
+}
+
+/* Кнопка "Додати" — піднімається при hover на картку */
+.menu-item .add-to-cart {
+  transform: translateY(6px);
+  opacity: 0.88;
+  transition: transform 0.25s ease, opacity 0.25s ease, background 0.2s ease !important;
+}
+.menu-item:hover .add-to-cart {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* .added стан */
+@keyframes btnSuccess {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+.btn-add-cart.added {
+  animation: btnSuccess 0.3s ease;
+}
+
+/* Badge "Хіт" shimmer */
+@keyframes shimmer {
+  0%   { left: -100%; }
+  100% { left: 200%;  }
+}
+.card-badge {
+  overflow: hidden;
+}
+.card-badge::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+  animation: shimmer 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── MENU TABS ──────────────────────────────────── */
+.category-link {
+  transition: color 0.2s ease, background 0.2s ease,
+              border-color 0.2s ease, transform 0.15s ease;
+}
+.category-link:hover { transform: translateY(-1px); }
+
+@keyframes sectionFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.menu-items.animating { animation: sectionFade 0.35s ease both; }
+
+/* ── GALLERY ────────────────────────────────────── */
+.gallery-item {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.gallery-item img {
+  transition: transform 0.4s ease;
+  display: block;
+  width: 100%;
+}
+.gallery-item:hover img { transform: scale(1.05); }
+
+.gallery-item .gallery-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+}
+.gallery-item:hover .gallery-overlay { background: rgba(0,0,0,0.45); }
+
+.gallery-overlay .gallery-zoom {
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.25s ease 0.05s, opacity 0.25s ease 0.05s;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+}
+.gallery-item:hover .gallery-zoom {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Lightbox */
+@keyframes lightboxIn     { from { opacity: 0; }                           to { opacity: 1; } }
+@keyframes lightboxImgIn  { from { opacity: 0; transform: scale(0.88); }   to { opacity: 1; transform: scale(1); } }
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lightboxIn 0.3s ease both;
+}
+.lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  animation: lightboxImgIn 0.3s ease both;
+  object-fit: contain;
+}
+.lb-close,
+.lb-prev,
+.lb-next {
+  cursor: pointer;
+  color: #fff;
+  background: rgba(255,255,255,0.12);
+  border: none;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+.lb-close:hover,
+.lb-prev:hover,
+.lb-next:hover { background: rgba(255,255,255,0.28); }
+
+/* ── REVIEWS ────────────────────────────────────── */
+.rv-bar-fill {
+  width: 0;
+  transition: width 1s ease;
+}
+
+/* Review cards */
+.rv-card,
+.review-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.rv-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(139,69,19,0.10);
+  border-color: #d4a96a !important;
+}
+.review-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 28px rgba(139,69,19,0.12);
+  border-color: #d4a96a;
+}
+
+/* Stars in form */
+.rv-star {
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.rv-star:hover { transform: scale(1.2); }
+
+@keyframes starPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.rv-star.just-selected { animation: starPop 0.3s ease; }
+
+/* ── CART PAGE ──────────────────────────────────── */
+@keyframes slideOutRight {
+  from { transform: translateX(0);  opacity: 1; max-height: 200px; }
+  to   { transform: translateX(60px); opacity: 0; max-height: 0;   padding: 0; }
+}
+.cart-item.removing {
+  animation: slideOutRight 0.3s ease forwards;
+  overflow: hidden;
+}
+
+/* Кнопка "Очистити кошик" — перероблений стиль */
+a.btn.btn-clear {
+  background: transparent !important;
+  border: 1.5px solid #e74c3c !important;
+  color: #e74c3c !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  box-shadow: none !important;
+}
+a.btn.btn-clear:hover {
+  background: #e74c3c !important;
+  color: #fff !important;
+}
+
+/* Price flash */
+@keyframes priceFlash {
+  0%   { transform: scale(1);   color: inherit; }
+  50%  { transform: scale(1.1); color: #FFC107; }
+  100% { transform: scale(1);   color: inherit; }
+}
+.total-price.price-update { animation: priceFlash 0.3s ease; }
+
+/* ── AUTH FORMS ─────────────────────────────────── */
+@keyframes formSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.auth-card {
+  animation: formSlideUp 0.5s ease-out both;
+}
+
+/* Stagger полів */
+.auth-form .input-group:nth-child(1),
+.auth-form .form-group:nth-child(1) { animation: formSlideUp 0.45s ease-out 0s    both; }
+.auth-form .input-group:nth-child(2),
+.auth-form .form-group:nth-child(2) { animation: formSlideUp 0.45s ease-out 0.08s both; }
+.auth-form .input-group:nth-child(3),
+.auth-form .form-group:nth-child(3) { animation: formSlideUp 0.45s ease-out 0.16s both; }
+.auth-form .input-group:nth-child(4),
+.auth-form .form-group:nth-child(4) { animation: formSlideUp 0.45s ease-out 0.24s both; }
+
+/* Shake при помилці */
+@keyframes shake {
+  0%,100% { transform: translateX(0);   }
+  15%      { transform: translateX(-8px); }
+  30%      { transform: translateX(8px);  }
+  45%      { transform: translateX(-6px); }
+  60%      { transform: translateX(6px);  }
+  75%      { transform: translateX(-3px); }
+  90%      { transform: translateX(3px);  }
+}
+.auth-form.shake { animation: shake 0.45s ease; }
+
+/* Loading spinner на кнопці */
+@keyframes spin { to { transform: rotate(360deg); } }
+.auth-btn.loading,
+.form-btn.loading {
+  color: transparent !important;
+  pointer-events: none;
+  position: relative;
+}
+.auth-btn.loading::after,
+.form-btn.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 16px; height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── SCROLL TO TOP ──────────────────────────────── */
+.scroll-top-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 28px;
+  width: 46px; height: 46px;
+  background: #8B4513;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px rgba(139,69,19,0.4);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.3s ease, transform 0.3s ease, background 0.2s ease;
+  pointer-events: none;
+  z-index: 900;
+}
+.scroll-top-btn.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.scroll-top-btn:hover {
+  background: #5a2d0c;
+  transform: translateY(-3px);
+}
+
+/* ── TOAST NOTIFICATION ─────────────────────────── */
+.ct-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: #2c1810;
+  color: #fff;
+  padding: 11px 26px;
+  border-radius: 50px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+}
+.ct-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Eye-toggle кнопка */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.password-wrapper input {
+  flex: 1;
+  padding-right: 44px !important;
+}
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+  line-height: 1;
+  opacity: 0.65;
+  transition: opacity 0.2s ease;
+}
+.toggle-password:hover { opacity: 1; }
+.toggle-password:active { transform: none !important; }

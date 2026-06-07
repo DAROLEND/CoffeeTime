@@ -53,11 +53,24 @@
     }, { passive: true });
   }
 
+  /* ── 2b. DESSERT PHOTO PARALLAX ─────────────────── */
+  const dessertPhoto = document.querySelector('.dessert-banner__photo img');
+  if (dessertPhoto) {
+    const banner = dessertPhoto.closest('.dessert-banner__photo');
+    window.addEventListener('scroll', () => {
+      const rect = banner.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+      const pct    = 1 - (rect.top + rect.height) / (window.innerHeight + rect.height);
+      const shift  = ((pct - 0.5) * 40).toFixed(1);
+      dessertPhoto.style.transform = `translateY(${shift}px) scale(1.06)`;
+    }, { passive: true });
+  }
+
   /* ── 4. SCROLL TO TOP ──────────────────────────── */
   const scrollBtn = document.querySelector('.scroll-top-btn');
   if (scrollBtn) {
     window.addEventListener('scroll', () => {
-      scrollBtn.classList.toggle('visible', window.scrollY > 400);
+      scrollBtn.classList.toggle('visible', window.scrollY > 300);
     }, { passive: true });
     scrollBtn.addEventListener('click', () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -6,7 +6,29 @@
   const grid = document.getElementById('galleryGrid');
   let msnry;
 
-  imagesLoaded(grid, function () {
+  var isMobile = window.innerWidth <= 560;
+
+  function revealItems() {
+    document.querySelectorAll('.g-item').forEach(function (el, i) {
+      setTimeout(function () { el.classList.add('visible'); }, 50 + i * 50);
+    });
+  }
+
+  if (isMobile) {
+    /* Mobile: flexbox handles layout, just reveal items */
+    revealItems();
+  } else if (typeof imagesLoaded !== 'undefined') {
+    imagesLoaded(grid, function () {
+      msnry = new Masonry(grid, {
+        itemSelector: '.g-item:not(.hiding)',
+        columnWidth: '.g-sizer',
+        gutter: 18,
+        percentPosition: true,
+        transitionDuration: 0,
+      });
+      revealItems();
+    });
+  } else {
     msnry = new Masonry(grid, {
       itemSelector: '.g-item:not(.hiding)',
       columnWidth: '.g-sizer',
@@ -14,11 +36,8 @@
       percentPosition: true,
       transitionDuration: 0,
     });
-    /* Staggered reveal after Masonry positions everything */
-    document.querySelectorAll('.g-item').forEach(function (el, i) {
-      setTimeout(function () { el.classList.add('visible'); }, 50 + i * 50);
-    });
-  });
+    revealItems();
+  }
 
   /* ── Filter ── */
   const filterBtns = document.querySelectorAll('.gf-btn');

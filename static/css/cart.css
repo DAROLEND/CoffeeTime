@@ -35,11 +35,15 @@
   text-align: center;
 }
 .cart-empty-icon {
-  font-size: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.25;
   margin-bottom: 24px;
-  line-height: 1;
+  width: 72px;
+  height: 72px;
 }
+.cart-empty-icon svg { pointer-events: none; }
 .cart-empty h2 {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.8rem;
@@ -124,6 +128,13 @@
   background: #fdf6ee;
   flex-shrink: 0;
   display: block;
+}
+.cart-item-no-img {
+  width: 88px;
+  height: 88px;
+  border-radius: 10px;
+  background: #f5ece0 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%23c8a882' stroke-width='1.5'%3E%3Crect x='3' y='3' width='18' height='18' rx='3'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpath d='M21 15l-5-5L5 21'/%3E%3C/svg%3E") center/40px no-repeat;
+  flex-shrink: 0;
 }
 
 /* Item body */
@@ -260,14 +271,12 @@
   transform: scale(1.15);
 }
 
-/* Remove animation */
+/* Remove: клас лише блокує взаємодію — анімація через inline transition у JS */
 .cart-item.removing {
-  animation: slideOutItem 0.32s ease forwards;
   pointer-events: none;
+  overflow: hidden;
 }
-@keyframes slideOutItem {
-  to { opacity: 0; transform: translateX(40px); }
-}
+
 
 /* ── RIGHT COLUMN: SUMMARY ──────────────────────── */
 .cart-summary-col {
@@ -458,23 +467,137 @@
 
 /* ── RESPONSIVE ─────────────────────────────────── */
 @media (max-width: 900px) {
-  .cart-layout {
-    grid-template-columns: 1fr;
-  }
-  .cart-summary-col {
-    position: static;
-    order: -1;
-  }
-  .cart-page {
-    padding: 28px 16px 60px;
-  }
+  .cart-layout { grid-template-columns: 1fr; }
+  .cart-summary-col { position: static; order: -1; }
+  .cart-page { padding: 28px 16px 120px; } /* bottom padding for sticky bar */
 }
+
 @media (max-width: 540px) {
   .cart-item {
     grid-template-columns: 72px 1fr auto;
     gap: 12px;
   }
-  .cart-item img { width: 72px; height: 72px; }
+  .cart-item img,
+  .cart-item-no-img { width: 72px; height: 72px; }
   .item-subtotal { font-size: 16px; }
   .cart-items-col { padding: 4px 14px; }
+}
+
+@media (max-width: 480px) {
+  .cart-page { padding: 20px 12px 120px; }
+  .cart-header h1 { font-size: 1.6rem; }
+
+  /* Qty buttons — 44px touch target */
+  .qty-btn { width: 44px; height: 44px; font-size: 20px; }
+  .qty-value { width: 44px; height: 44px; font-size: 15px; }
+
+  /* Remove btn always visible on mobile */
+  .remove-btn { opacity: 1 !important; }
+
+  /* Edit btn always visible */
+  .table-actions { opacity: 1 !important; }
+
+  .cart-items-col { padding: 4px 10px; }
+  .cart-category-header { font-size: 16px; margin: 20px 0 10px; }
+
+  /* Summary hidden from top — shown in sticky bar */
+  .cart-summary-col { display: none; }
+}
+
+@media (max-width: 360px) {
+  .cart-item { grid-template-columns: 60px 1fr auto; gap: 10px; }
+  .cart-item img,
+  .cart-item-no-img { width: 60px; height: 60px; }
+}
+
+/* ── STICKY TOTAL BAR (mobile) ── */
+.cart-sticky-bar {
+  display: none;
+}
+@media (max-width: 480px) {
+  .cart-sticky-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #fff;
+    border-top: 1px solid #f0e8df;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 200;
+    box-shadow: 0 -4px 20px rgba(139,69,19,0.10);
+  }
+  .cart-sticky-total {
+    display: flex;
+    flex-direction: column;
+  }
+  .cart-sticky-label {
+    font-size: 12px;
+    color: #999;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .cart-sticky-amount {
+    font-size: 22px;
+    font-weight: 700;
+    color: #8B4513;
+    line-height: 1;
+  }
+  .cart-sticky-btn {
+    flex: 1;
+    max-width: 200px;
+    padding: 13px 16px;
+    background: #FFC107;
+    color: #5a2d00;
+    border: none;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .cart-sticky-btn:hover { background: #e6ac00; }
+}
+
+/* ── Category section header ── */
+.cart-category-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: #5a2d0c;
+  padding: 10px 14px 10px 16px;
+  margin: 28px 0 12px;
+  background: rgba(255,193,7,.09);
+  border-left: 4px solid #FFC107;
+  border-radius: 0 10px 10px 0;
+  letter-spacing: .01em;
+}
+.cart-category-header:first-child { margin-top: 4px; }
+
+/* ── Cart item option tags (pizza size, sauce, etc.) ── */
+.cart-item-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 4px 0 6px;
+}
+.cart-opt-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  background: #f5f0eb;
+  border: 1px solid #e8ddd4;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #7a5a3a;
+  white-space: nowrap;
 }

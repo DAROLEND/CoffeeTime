@@ -291,12 +291,12 @@
    RESPONSIVE
 =================================================== */
 @media (max-width: 768px) {
-  .hero .slider   { height: clamp(420px, 72vh, 620px); }
+  .hero .slider   { height: clamp(380px, 65vh, 560px); }
   .hero .dot      { display: inline-block; }
 
   .hero .hero-text {
-    left: 20px;
-    max-width: calc(100% - 40px);
+    left: 24px;
+    max-width: calc(100% - 48px);
   }
 
   .category-slider {
@@ -304,14 +304,30 @@
     padding: 20px 0.5rem;
   }
   .category-slider .slide {
-    flex: 0 0 80%;
+    flex: 0 0 75%;
     margin-right: 14px;
   }
   .category-slider .arrow { display: none; }
 }
 
 @media (max-width: 480px) {
+  .hero .slider { height: clamp(320px, 58vh, 480px); }
   .hero .slider .arrow { display: none; }
-  .hero-cta { padding: 12px 28px; font-size: 0.9rem; }
-  .hero .hero-text { max-width: calc(100% - 32px); left: 16px; }
+  .hero-cta { padding: 11px 24px; font-size: 0.88rem; margin-top: 20px; }
+  .hero .hero-text { left: 20px; max-width: calc(100% - 40px); }
+  .hero-label { font-size: 11px; margin-bottom: 8px; }
+  .hero-subtitle { font-size: 0.92rem; }
+  .hero .hero-text h1 { font-size: clamp(1.7rem, 7.5vw, 2.4rem); }
+
+  .category-slider .slide { flex: 0 0 82%; }
+
+  /* Hero dots — move up since wave is smaller */
+  .hero .slider-controls { bottom: calc(60px + 1rem); }
+  .hero-wave svg { height: 52px; }
+}
+
+@media (max-width: 360px) {
+  .hero .slider { height: clamp(280px, 55vh, 420px); }
+  .hero-cta { padding: 10px 20px; font-size: 0.84rem; }
+  .category-slider .slide { flex: 0 0 88%; }
 }

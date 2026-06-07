@@ -1,0 +1,381 @@
+/* ================================================================
+   Cart edit modal — same visual style as menu item modal
+   Uses identical CSS class names so it looks exactly the same.
+================================================================ */
+
+:root {
+  --menu-bg:        #FAF7F2;
+  --menu-card:      #ffffff;
+  --menu-primary:   #FFC107;
+  --menu-primary-h: #e6ac00;
+  --menu-brown:     #8B4513;
+  --menu-dark:      #5a2d0c;
+  --menu-text:      #2c2c2a;
+  --menu-muted:     #666;
+  --menu-border:    #e8e0d8;
+  --menu-radius:    14px;
+  --menu-trans:     0.2s ease;
+}
+
+/* ── Edit button on cart items ── */
+.edit-cart-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid #ddd3c8;
+  border-radius: 8px;
+  background: transparent;
+  color: #a07850;
+  cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+  flex-shrink: 0;
+}
+.edit-cart-item:hover {
+  border-color: var(--menu-brown);
+  color: var(--menu-brown);
+  background: rgba(139,69,19,.06);
+}
+.edit-cart-item:active { transform: scale(.92); }
+
+/* ── Modal overlay ── */
+.item-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20,10,4,.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .32s ease;
+  padding: 16px;
+}
+.item-modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.item-modal-overlay.closing {
+  opacity: 0;
+  pointer-events: none;
+}
+.item-modal-overlay.closing .item-modal {
+  transform: scale(.93) translateY(28px);
+}
+
+.item-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: min(900px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  position: relative;
+  box-shadow: 0 24px 80px rgba(20,10,4,.45);
+  transform: scale(.94) translateY(20px);
+  transition: transform .38s cubic-bezier(.34,1.3,.64,1);
+}
+.item-modal-overlay.open .item-modal {
+  transform: scale(1) translateY(0);
+}
+
+/* Close button */
+.item-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.06);
+  border: none;
+  font-size: 18px;
+  color: #555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background .2s, transform .2s;
+  line-height: 1;
+}
+.item-modal-close:hover { background: rgba(0,0,0,.12); transform: rotate(90deg); }
+
+/* Image column */
+.im-img-col {
+  width: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, #fdf8f3 0%, #f5ede3 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  min-height: 480px;
+  overflow: hidden;
+}
+.im-img-col img { max-width: 100%; max-height: 360px; object-fit: contain; display: block; }
+@keyframes imImgIn {
+  from { transform: scale(1.07); opacity: .7; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.item-modal-overlay.open .im-img-col img {
+  animation: imImgIn .45s cubic-bezier(.4,0,.2,1) both;
+}
+
+/* Info column */
+.im-info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 36px 32px;
+  overflow-y: auto;
+}
+
+.im-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 27px;
+  font-weight: 700;
+  color: var(--menu-text);
+  margin: 0 0 8px;
+  line-height: 1.25;
+}
+.im-desc {
+  font-size: 14.5px;
+  color: var(--menu-muted);
+  line-height: 1.65;
+  margin: 0;
+  flex: 1;
+}
+.im-divider {
+  border: none;
+  border-top: 1px solid #ede4db;
+  margin: 18px 0 16px;
+}
+.im-price {
+  display: block;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--menu-brown);
+  margin-bottom: 16px;
+  letter-spacing: -.01em;
+  transition: transform .2s ease, color .2s ease;
+}
+
+/* Qty row */
+.im-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.im-qty {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--menu-border);
+  border-radius: 25px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.im-qty-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: var(--menu-brown);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, transform .12s;
+  font-weight: 700;
+  line-height: 1;
+}
+.im-qty-btn:hover  { background: #faf5f0; }
+.im-qty-btn:active { transform: scale(.75); background: #f0e8df; }
+.im-qty-val {
+  width: 40px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--menu-text);
+  line-height: 40px;
+  user-select: none;
+}
+
+/* Cake weight */
+.im-weight-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.im-weight-label { font-size: 13px; color: #888; font-weight: 600; white-space: nowrap; }
+.im-weight-total { font-size: 12px; color: #aaa; width: 100%; margin-top: 2px; }
+
+/* Save button */
+.im-cancel-btn {
+  flex: 0 0 auto;
+  padding: 13px 20px;
+  background: transparent;
+  color: var(--menu-brown);
+  border: 2px solid var(--menu-border);
+  border-radius: 25px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+  white-space: nowrap;
+}
+.im-cancel-btn:hover  { border-color: var(--menu-brown); background: rgba(139,69,19,.05); }
+.im-cancel-btn:active { transform: scale(.96); }
+
+.im-add-btn {
+  flex: 1;
+  padding: 13px 20px;
+  background: var(--menu-primary);
+  color: var(--menu-dark);
+  border: none;
+  border-radius: 25px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, transform .18s, box-shadow .2s;
+  box-shadow: 0 6px 22px rgba(255,193,7,.45);
+  text-align: center;
+}
+.im-add-btn:hover   { background: var(--menu-primary-h); transform: translateY(-2px) scale(1.025); box-shadow: 0 12px 32px rgba(255,193,7,.6); }
+.im-add-btn:active  { transform: scale(.96); box-shadow: 0 2px 10px rgba(255,193,7,.3); transition-duration: .08s; }
+.im-add-btn.saving  { background: #2e7d32; color: #fff; box-shadow: 0 6px 22px rgba(46,125,50,.35); }
+
+/* ── Option groups ── */
+.im-size-wrap,
+.ce-scoops-wrap {
+  background: #faf7f2;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.im-option-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b89a7a;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  margin-bottom: 10px;
+}
+.im-size-btns { display: flex; gap: 8px; }
+.im-size-btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #e6ddd4;
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #888;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .2s, background .2s, color .2s, transform .15s, box-shadow .2s;
+  line-height: 1.5;
+}
+.im-size-btn:hover  { border-color: var(--menu-brown); color: var(--menu-brown); }
+.im-size-btn:active { transform: scale(.93); }
+.im-size-btn.active {
+  border-color: var(--menu-brown);
+  background: var(--menu-brown);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(139,69,19,.28);
+}
+.im-size-price { display: block; font-size: 12.5px; font-weight: 600; opacity: .9; margin-top: 2px; }
+
+/* Pizza crust checkbox row */
+.pizza-option-row {
+  background: #faf7f2;
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  transition: background .2s;
+}
+.pizza-option-row label { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.pizza-option-row:hover { background: #f5ede3; }
+.pizza-option-row.active { background: rgba(255,193,7,0.1); }
+.pizza-option-row label span:first-of-type { flex: 1; font-size: 14px; font-weight: 600; color: var(--menu-text); }
+.crust-price-label { font-size: 13px; font-weight: 700; color: var(--menu-brown); white-space: nowrap; flex-shrink: 0; }
+.pizza-option-row.active .crust-price-label { color: #c9960a; }
+.cb-box {
+  width: 20px; height: 20px;
+  border: 2px solid #d4a96a;
+  border-radius: 5px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; line-height: 1;
+  transition: background .15s, border-color .15s;
+}
+.cb-box.active { background: #FFC107; border-color: #FFC107; }
+.cb-box.active::after { content: '\2713'; color: #5a2d0c; font-weight: 700; }
+
+/* Scoop / filling buttons */
+.im-scoops-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 2px; }
+.im-scoop-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 2px solid #e6ddd4;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, transform .15s, box-shadow .2s;
+  text-align: center;
+  font-family: inherit;
+}
+.im-scoop-btn:active { transform: scale(.93); }
+.im-scoop-btn:hover  { border-color: var(--menu-brown); }
+.im-scoop-btn.selected {
+  border-color: var(--menu-brown);
+  background: rgba(139,69,19,.06);
+  box-shadow: 0 3px 14px rgba(139,69,19,.18);
+}
+.isb-label { font-size: 12.5px; font-weight: 600; color: var(--menu-text); }
+.isb-price { font-size: 13px; font-weight: 700; color: var(--menu-brown); }
+
+/* FF size sub-section */
+@keyframes ffSizeSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.im-ff-size-sub { animation: ffSizeSlideIn .22s ease; }
+
+/* ── Mobile bottom sheet ── */
+@media (max-width: 700px) {
+  .item-modal-overlay { align-items: flex-end; padding: 0; }
+  .item-modal {
+    flex-direction: column;
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 24px 24px 0 0;
+    transform: translateY(100%);
+  }
+  .item-modal-overlay.open .item-modal { transform: translateY(0); }
+  .item-modal-overlay.closing .item-modal { transform: translateY(100%); }
+  .item-modal::before {
+    content: '';
+    display: block;
+    width: 40px; height: 4px;
+    background: #ddd;
+    border-radius: 2px;
+    margin: 12px auto 0;
+    flex-shrink: 0;
+  }
+  .im-img-col { width: 100%; min-height: 0; padding: 24px; }
+  .im-img-col img { max-height: 170px; }
+  .im-info-col { padding: 12px 16px 36px; }
+  .im-name  { font-size: 20px; }
+  .im-price { font-size: 24px; }
+  .item-modal-close { top: 52px; }
+  .im-size-wrap,
+  .ce-scoops-wrap,
+  .pizza-option-row { padding: 12px 14px; }
+}

@@ -386,6 +386,8 @@
   padding: 44px 0; /* 1 spacer item top + bottom */
   box-sizing: border-box;
   transition: opacity .15s ease;
+  cursor: grab;
+  user-select: none;
 }
 .dt-drum--fading { opacity: 0.1; }
 .dt-drum::-webkit-scrollbar { display: none; }

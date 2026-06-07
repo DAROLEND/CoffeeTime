@@ -227,14 +227,11 @@
 .category-slider .item-card img {
   display: block;
   width: 100%;
-  /* flex: 0 0 200px — фіксований розмір у flex-колонці: не росте, не стискається */
   flex: 0 0 200px;
   height: 200px;
-  object-fit: contain;
-  object-position: center 52%;
-  /* тепле кремове тло — перекриває білий/прозорий фон фото продуктів */
+  object-fit: cover;
+  object-position: center;
   background: #fdf6ee;
-  padding: 12px 10px 8px;
 }
 
 .category-slider .arrow {

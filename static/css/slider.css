@@ -23,7 +23,7 @@
 .hero .slider {
   position: relative;
   width: 100%;
-  height: clamp(520px, 82vh, 780px);
+  height: clamp(520px, 82vh, 960px);
   overflow: hidden;
   cursor: pointer;
 }

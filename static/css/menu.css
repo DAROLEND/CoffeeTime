@@ -351,6 +351,9 @@
 }
 
 /* ── Глобальний пошук ── */
+.global-search-active .menu-cat-section:not(.search-visible) {
+  display: none;
+}
 .global-search-active .menu-cat-section.search-visible {
   display: block;
 }

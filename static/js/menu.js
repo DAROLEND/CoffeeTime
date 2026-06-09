@@ -611,6 +611,7 @@
           if (!entry.isIntersecting) return;
           var card = entry.target;
           cardIO.unobserve(card);
+          if (card.dataset.spotlightTarget) return; /* skip — handled by scroll-to spotlight */
           var delay = parseFloat(card.dataset.ioDelay || 0);
           card.style.animation = 'none';
           void card.offsetWidth;
@@ -618,6 +619,7 @@
         });
       }, { threshold: 0.06, rootMargin: '40px' })
     : null;
+  window._cardIO = cardIO;
 
   function observeCards(cards) {
     if (!cardIO) {

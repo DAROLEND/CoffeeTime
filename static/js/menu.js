@@ -299,11 +299,9 @@
 
     var cards = Array.from(grid.querySelectorAll('.menu-card'));
     if (activeSort === 'default') {
-      // Restore original DOM order via data-id numeric sort as proxy
+      // Restore original render order using data-order set server-side
       cards.sort(function (a, b) {
-        var oa = parseInt(a.querySelector('[data-id]') ? a.querySelector('[data-id]').dataset.id : 0);
-        var ob = parseInt(b.querySelector('[data-id]') ? b.querySelector('[data-id]').dataset.id : 0);
-        return oa - ob;
+        return (parseInt(a.dataset.order) || 0) - (parseInt(b.dataset.order) || 0);
       });
     } else {
       cards.sort(function (a, b) {

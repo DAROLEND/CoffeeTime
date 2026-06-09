@@ -227,6 +227,7 @@
     if (hasActiveFilter) revealAllLazy(pizzaSection);
     var cards = Array.from(pizzaSection.querySelectorAll('.pizza-card'));
     var visibleCount = 0;
+    var toReveal = [];
 
     cards.forEach(function (card) {
       var sauce  = card.dataset.sauce  || 'tomato';
@@ -247,8 +248,20 @@
       }
 
       var hidden = !(sauceOk && specialOk && ingOk);
+      var wasHidden = card.classList.contains('filter-hidden');
       card.classList.toggle('filter-hidden', hidden);
-      if (!hidden) visibleCount++;
+      if (!hidden) {
+        visibleCount++;
+        if (wasHidden) toReveal.push(card);
+      }
+    });
+
+    toReveal.forEach(function (card, i) {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(26px)';
+      card.style.animation = 'none';
+      void card.offsetWidth;
+      card.style.animation = 'menuCardIn .42s ease ' + (i * 0.06).toFixed(2) + 's forwards';
     });
 
     var noRes = document.getElementById('no-pizza-results');

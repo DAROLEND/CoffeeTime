@@ -29,12 +29,8 @@
 html { scroll-behavior: smooth; overflow-x: hidden; }
 html, body { max-width: 100%; }
 
-/* ── Page transition fade ── */
-body { animation: pageFadeIn 0.18s ease both; }
-@keyframes pageFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* pageFadeIn removed — transform on body breaks position:fixed
+   for modal overlays (creates new containing block) */
 
 body {
   font-family: 'Lato', 'Segoe UI', Arial, sans-serif;

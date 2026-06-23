@@ -634,8 +634,7 @@
     cards.forEach(function (card, i) {
       var rowDelay = Math.floor(i / 3) * 0.08 + (i % 3) * 0.05;
       card.dataset.ioDelay = rowDelay.toFixed(3);
-      /* Don't cancel CSS animation here — let IO restart it with stagger.
-         CSS animation serves as a fallback if IO never fires. */
+      card.style.animation = 'none';
       cardIO.observe(card);
     });
   }

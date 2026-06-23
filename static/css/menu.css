@@ -311,9 +311,19 @@
   flex-direction: column;
   height: 100%;
   opacity: 0;
+  animation: menuCardIn .42s ease forwards;
   transition: transform var(--menu-trans), box-shadow var(--menu-trans);
   will-change: transform;
 }
+.menu-card:nth-child(1)  { animation-delay: .04s; }
+.menu-card:nth-child(2)  { animation-delay: .08s; }
+.menu-card:nth-child(3)  { animation-delay: .12s; }
+.menu-card:nth-child(4)  { animation-delay: .16s; }
+.menu-card:nth-child(5)  { animation-delay: .20s; }
+.menu-card:nth-child(6)  { animation-delay: .24s; }
+.menu-card:nth-child(7)  { animation-delay: .28s; }
+.menu-card:nth-child(8)  { animation-delay: .32s; }
+.menu-card:nth-child(9)  { animation-delay: .36s; }
 .menu-card:hover {
   transform: translateY(-5px);
   box-shadow: var(--menu-shadow-h);

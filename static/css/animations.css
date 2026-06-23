@@ -2,50 +2,9 @@
    Coffee Time — Global Animations & Enhancements
 ===================================================== */
 
-/* ── CROSS-DOCUMENT VIEW TRANSITIONS (Chrome 126+, Safari 18+) ── */
-/*
-   Вмикає плавний перехід між сторінками.
-   Браузери без підтримки роблять звичайний перехід — без змін.
-*/
-@view-transition {
-  navigation: auto;
-}
-
-/* Навбар — "заморожений": браузер знає, що це один і той самий елемент
-   на обох сторінках, тому не анімує його окремо.                      */
-.site-header {
-  view-transition-name: site-header;
-}
-
-/* Тривалість і easing переходу сторінок */
-::view-transition-old(root) {
-  animation-duration: 0.18s;
-  animation-timing-function: ease-out;
-}
-::view-transition-new(root) {
-  animation-duration: 0.22s;
-  animation-timing-function: ease-in;
-}
-
-/* Навбар: без анімації (він ідентичний на всіх сторінках) */
-::view-transition-old(site-header),
-::view-transition-new(site-header) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-/* ── PAGE LOAD ─────────────────────────────────── */
-@keyframes pageFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-/* pageFadeIn тільки для браузерів БЕЗ підтримки view transitions —
-   в сучасних браузерах перехід вже забезпечений вище.              */
-@supports not (view-transition-name: none) {
-  body {
-    animation: pageFadeIn 0.4s ease both;
-  }
-}
+/* View transitions and pageFadeIn removed — conflicted with
+   per-element entrance animations (menu cards, gallery items),
+   causing a visible double-animation on page load. */
 
 /* ── SCROLL REVEAL ──────────────────────────────── */
 .reveal {

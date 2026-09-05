@@ -10,6 +10,20 @@ avoiding real routes.
 """
 from __future__ import annotations
 
+import os
+
+# Must be set BEFORE any `app.*` module is imported: app/config.py's
+# get_settings() is @lru_cache'd, and app/db/base.py + app/main.py both
+# call it at import time. Left at the default APP_ENV=production, the
+# session cookie is marked Secure (see app/middleware/session.py), which
+# a plain-http TestClient silently refuses to store/resend between
+# requests — session state would appear to "not persist" across calls
+# even though the middleware logic is correct. This bit us once already
+# while writing the Phase 3 cart tests; setting it here up front avoids
+# every future test file needing to remember it.
+os.environ.setdefault("APP_ENV", "development")
+os.environ.setdefault("DB_NAME", "coffeetime_test")
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

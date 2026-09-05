@@ -298,7 +298,7 @@
   function loadCart() {
     if (loaded) return;
     loaded = true;
-    fetch('/forms/cart-preview').then(function(r) { return r.json(); }).then(renderCart).catch(function() { loaded = false; });
+    fetch('/forms/get_cart_preview.php').then(function(r) { return r.json(); }).then(renderCart).catch(function() { loaded = false; });
   }
   function removeItem(si) {
     var row = dropdown.querySelector('.cmd-remove-btn[data-si="' + si + '"]');
@@ -308,7 +308,7 @@
     }
     var fd = new FormData();
     fd.append('session_index', si);
-    fetch('/forms/cart/remove', { method: 'POST', body: fd })
+    fetch('/forms/remove_from_cart.php', { method: 'POST', body: fd })
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (!data.ok) return;

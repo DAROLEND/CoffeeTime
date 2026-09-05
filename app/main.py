@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.dependencies import AuthRequired
 from app.middleware.session import DBSessionMiddleware
+from app.routers.public import cart_forms as public_cart_forms
+from app.routers.public import cart_page as public_cart_page
 from app.routers.public import menu as public_menu
 from app.routers.public import pages as public_pages
 from app.routers.public import reviews as public_reviews
@@ -35,6 +37,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(public_pages.router)
 app.include_router(public_menu.router)
 app.include_router(public_reviews.router)
+app.include_router(public_cart_forms.router)
+app.include_router(public_cart_page.router)
 
 
 @app.exception_handler(CSRFError)

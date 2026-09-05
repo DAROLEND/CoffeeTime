@@ -1,0 +1,83 @@
+<!-- Standalone page — the PHP original (liqpay_checkout.php) did not
+     include header.php/footer.php either, so no site nav here. -->
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Перехід до оплати — Coffee Time</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fdf8f3; font-family: 'Lato', sans-serif; }
+    .pay-box { text-align: center; padding: 48px 40px; background: #fff; border-radius: 20px; border: 1px solid #f0e8df; box-shadow: 0 4px 28px rgba(139,69,19,0.08); max-width: 420px; width: 90%; }
+    .pay-icon { font-size: 48px; margin-bottom: 20px; }
+    h2 { font-size: 1.35rem; color: #2c1810; margin-bottom: 10px; }
+    .pay-sub { font-size: 14px; color: #999; line-height: 1.6; margin-bottom: 28px; }
+    .pay-amount { font-size: 2rem; font-weight: 700; color: #8B4513; margin-bottom: 28px; }
+    .pay-btn { display: block; width: 100%; padding: 16px 40px; background: #FFC107; color: #5a2d0c; border: none; border-radius: 50px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(255,193,7,0.4); opacity: 0; transform: translateY(12px); transition: background .2s, transform .35s ease, opacity .35s ease; pointer-events: none; }
+    .pay-btn.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .pay-btn:hover { background: #e6ac00; transform: translateY(-2px); }
+    .pay-back { display: inline-block; margin-top: 16px; font-size: 13px; color: #aaa; text-decoration: none; }
+    .pay-back:hover { color: #8B4513; }
+    .liqpay-badge { margin-top: 24px; font-size: 12px; color: #ccc; }
+    .liqpay-badge strong { color: #4ca800; }
+  </style>
+</head>
+<body>
+  <div class="pay-box">
+    <div class="pay-icon">💳</div>
+    <h2>Оплата замовлення #{{ order_id }}</h2>
+    <p class="pay-sub" id="paySubText">Переходимо до сторінки оплати…</p>
+    <div class="pay-amount">{{ '%.0f'|format(total)|replace(',', ' ') }} ₴</div>
+
+    <form id="liqpayForm" method="POST" action="https://www.liqpay.ua/api/3/checkout" accept-charset="utf-8">
+      <input type="hidden" name="data" value="{{ data }}">
+      <input type="hidden" name="signature" value="{{ signature }}">
+      <button type="submit" class="pay-btn" id="payBtn" style="margin-top:8px;">Перейти до оплати →</button>
+    </form>
+
+    {% if is_localhost %}
+    <p style="font-size:12px;color:#bbb;margin-top:20px;">
+      Після оплати поверніться на сайт вручну:<br>
+      <a href="/payment-success" style="color:#8B4513;">→ Сторінка підтвердження замовлення</a>
+    </p>
+    {% endif %}
+    <a href="{{ back_href }}" class="pay-back">{{ back_label }}</a>
+    <div class="liqpay-badge">Powered by <strong>LiqPay</strong> · PCI DSS</div>
+  </div>
+
+<script>
+(function() {
+  var form    = document.getElementById('liqpayForm');
+  var btn     = document.getElementById('payBtn');
+  var subText = document.getElementById('paySubText');
+  var orderId = {{ order_id }};
+  var stKey   = 'liqpay_sent_' + orderId;
+  if (!form) return;
+
+  function showBtn(msg, delay) {
+    if (msg && subText) subText.textContent = msg;
+    setTimeout(function() { if (btn) btn.classList.add('visible'); }, delay || 0);
+  }
+  function autoSubmit() {
+    var dots = 0;
+    var iv = setInterval(function() {
+      dots = (dots + 1) % 4;
+      if (subText) subText.textContent = 'Переходимо до сторінки оплати' + '.'.repeat(dots);
+    }, 400);
+    setTimeout(function() {
+      clearInterval(iv);
+      sessionStorage.setItem(stKey, '1');
+      form.submit();
+      showBtn('Якщо сторінка оплати не відкрилась — натисніть кнопку нижче.', 2000);
+    }, 800);
+  }
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) { showBtn('Якщо хочете оплатити — натисніть кнопку нижче.', 300); return; }
+    if (sessionStorage.getItem(stKey)) { showBtn('Якщо сторінка оплати не відкрилась — натисніть кнопку нижче.', 300); return; }
+    autoSubmit();
+  });
+})();
+</script>
+</body>
+</html>

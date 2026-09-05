@@ -1,0 +1,812 @@
+<!-- Port of pages/checkout.php. This page's <head>/layout historically did
+     NOT extend the shared header.php exactly like other pages (it still
+     includes it, but with its own <head>), so we still extend base.html
+     for consistency (nav/footer must match the rest of the site) while
+     keeping the checkout-specific styles. -->
+{% extends "base.html" %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/checkout.css">{% endblock %}
+
+{% block content %}
+<main class="checkout-page">
+  {% if flash_error %}
+  <div style="background:#ffebee;color:#c62828;padding:12px 20px;border-radius:8px;margin-bottom:20px;font-size:14px;border:1px solid #f5c6c6;">{{ flash_error }}</div>
+  {% endif %}
+
+  <nav class="breadcrumb" aria-label="Навігація">
+    <a href="/cart">Кошик</a><span class="bc-sep">›</span>
+    <span class="bc-current">Оформлення</span><span class="bc-sep">›</span>
+    <span class="bc-future">Підтвердження</span>
+  </nav>
+
+  <div class="checkout-layout" id="checkoutLayout">
+    <div class="checkout-form-col">
+      {% if error_message and error_message != "Будь ласка, заповніть усі обов'язкові поля." %}
+      <div class="checkout-error">{{ error_message }}</div>
+      {% endif %}
+
+      {% if has_cakes %}
+      <div style="background:#fff8e1;border-radius:10px;padding:14px 18px;border-left:4px solid #FFC107;margin-bottom:20px;font-size:14px;line-height:1.55;color:#5a4000;">
+        Торти на замовлення готуються від 1 до 3 днів. Менеджер зв'яжеться з вами після підтвердження замовлення для уточнення деталей.
+      </div>
+      {% endif %}
+
+      <form method="post" id="checkoutForm" novalidate>
+        {{ csrf_field()|safe }}
+        <input type="hidden" name="ready_time" id="readyTimeHidden" value="{{ ready_time }}">
+        <input type="hidden" name="order_type" id="orderTypeInput" value="{{ order_type }}">
+
+        <div class="form-section order-type-section">
+          <h2 class="section-title" style="margin-bottom:14px"><span class="section-num">1</span> Тип замовлення</h2>
+          <div class="order-type-btns">
+            <button type="button" class="ot-btn {{ 'active' if order_type == 'dine_in' else '' }}" data-type="dine_in">
+              {{ icon('dine-in', 32, '#8B4513', 'ot-icon') }}<span class="ot-label">В кафе</span><span class="ot-sub">Їжте на місці</span>
+            </button>
+            <button type="button" class="ot-btn {{ 'active' if order_type == 'takeaway' else '' }}" data-type="takeaway">
+              {{ icon('takeaway', 32, '#8B4513', 'ot-icon') }}<span class="ot-label">З собою</span><span class="ot-sub">Заберіть замовлення</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-section" id="section1">
+          <h2 class="section-title"><span class="section-num">2</span> Контактні дані</h2>
+          <div class="form-row">
+            <div>
+              <div class="field-group" id="fg-first">
+                <input type="text" id="first_name" name="first_name" placeholder=" " value="{{ first_name }}" autocomplete="given-name">
+                <label for="first_name">Ім'я *</label>
+              </div>
+              <div class="field-msg" id="msg-first"></div>
+            </div>
+            <div>
+              <div class="field-group" id="fg-last">
+                <input type="text" id="last_name" name="last_name" placeholder=" " value="{{ last_name }}" autocomplete="family-name">
+                <label for="last_name">Прізвище *</label>
+              </div>
+              <div class="field-msg" id="msg-last"></div>
+            </div>
+          </div>
+          <div class="field-group" id="fg-phone">
+            <input type="tel" id="phone" name="phone" placeholder="+38 (0XX) XXX-XX-XX" value="{{ phone }}" autocomplete="tel">
+            <label for="phone">Телефон *</label>
+          </div>
+          <div class="field-msg" id="msg-phone"></div>
+          <div class="field-group" id="fg-email" style="margin-top:4px">
+            <input type="email" id="customer_email" name="customer_email" placeholder="your@email.com" value="{{ email }}" autocomplete="email">
+            <label for="customer_email">Email для нагадувань (необов'язково)</label>
+            <div class="field-msg" id="msg-email"></div>
+          </div>
+        </div>
+
+        <div class="form-section" id="section2">
+          <h2 class="section-title"><span class="section-num">3</span> Дата та час отримання</h2>
+          <button type="button" class="dt-asap-btn" id="dtAsapBtn">
+            <span class="dt-asap-label">Якнайшвидше</span><span class="dt-asap-time" id="dtAsapTime"></span>
+          </button>
+          <div class="dt-travel" id="dtTravel">
+            <span class="dt-travel-label">Час до кафе:</span>
+            <div class="dt-travel-chips">
+              <button type="button" class="dt-travel-chip" data-min="5">5 хв</button>
+              <button type="button" class="dt-travel-chip active" data-min="15">15 хв</button>
+              <button type="button" class="dt-travel-chip" data-min="25">25 хв</button>
+              <button type="button" class="dt-travel-chip" data-min="35">35 хв</button>
+            </div>
+          </div>
+          <input type="hidden" id="travelMinHidden" name="travel_minutes" value="15">
+
+          <div class="dt-drums" id="dtDrums">
+            <div class="dt-drum-col">
+              <div class="dt-drum-lbl">Дата</div>
+              <div class="dt-drum-wrap"><div class="dt-drum" id="dtDayDrum"></div><div class="dt-drum-hl"></div><div class="dt-drum-fade dt-drum-fade-t"></div><div class="dt-drum-fade dt-drum-fade-b"></div></div>
+            </div>
+            <div class="dt-drum-sep"></div>
+            <div class="dt-drum-col" style="flex:0 0 68px">
+              <div class="dt-drum-lbl">Год</div>
+              <div class="dt-drum-wrap"><div class="dt-drum" id="dtHourDrum"></div><div class="dt-drum-hl"></div><div class="dt-drum-fade dt-drum-fade-t"></div><div class="dt-drum-fade dt-drum-fade-b"></div></div>
+            </div>
+            <div class="dt-drum-colon"><span>:</span></div>
+            <div class="dt-drum-col" style="flex:0 0 58px">
+              <div class="dt-drum-lbl">Хв</div>
+              <div class="dt-drum-wrap"><div class="dt-drum" id="dtMinDrum"></div><div class="dt-drum-hl"></div><div class="dt-drum-fade dt-drum-fade-t"></div><div class="dt-drum-fade dt-drum-fade-b"></div></div>
+            </div>
+          </div>
+
+          <div class="dt-summary" id="dtSummary" style="display:none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="dtSummaryText"></span>
+          </div>
+          <div class="field-msg" id="msg-time"></div>
+          <p class="time-hint">Пн–Пт 08:00–20:00 &nbsp;·&nbsp; Сб 10:00–20:00 &nbsp;·&nbsp; Нд 12:00–20:00</p>
+        </div>
+
+        <div class="form-section" id="section3">
+          <h2 class="section-title"><span class="section-num">4</span> Коментар до замовлення</h2>
+          <div class="field-group" id="fg-comment">
+            <textarea id="comment" name="comment" placeholder=" " rows="3">{{ comment }}</textarea>
+            <label for="comment">Додаткові побажання (необов'язково)</label>
+          </div>
+        </div>
+
+        <div class="form-section" id="section4">
+          <h2 class="section-title"><span class="section-num">5</span> Спосіб оплати</h2>
+          <div class="payment-cards" id="paymentCards">
+            <label class="payment-card">
+              <input type="radio" name="payment" value="cash_on_pickup" {{ 'checked' if payment == 'cash_on_pickup' else '' }}>
+              <span class="pay-checkmark"><svg viewBox="0 0 12 10"><polyline points="1.5 5 4.5 8.5 10.5 1.5"/></svg></span>
+              {{ icon('cash', 32, '#8B4513', 'pay-icon') }}
+              <div class="pay-name">При отриманні</div><div class="pay-desc">Готівка або картка на місці</div>
+            </label>
+            <label class="payment-card">
+              <input type="radio" name="payment" value="card_online" {{ 'checked' if payment == 'card_online' else '' }}>
+              <span class="pay-checkmark"><svg viewBox="0 0 12 10"><polyline points="1.5 5 4.5 8.5 10.5 1.5"/></svg></span>
+              {{ icon('card', 32, '#8B4513', 'pay-icon') }}
+              <div class="pay-name">Картка онлайн</div><div class="pay-desc">Visa / Mastercard через LiqPay</div>
+            </label>
+          </div>
+          <div class="field-msg" id="msg-payment"></div>
+          <div class="liqpay-info" id="liqpayInfo">
+            {{ icon('lock', 16, '#aaa', 'liqpay-lock') }}
+            <p>Ви будете перенаправлені на захищену сторінку оплати LiqPay. Дані вашої картки обробляються безпечно за стандартом <strong>PCI DSS</strong>.</p>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="checkout-summary-col">
+      <div class="checkout-summary-box" id="checkoutSummaryBox">
+        <h3 class="summary-title">Ваше замовлення</h3>
+        <ul class="order-items-list">
+          {% for it in order_details %}
+          <li class="order-item">
+            {% if it.image_url %}<img src="{{ it.image_url }}" alt="{{ it.name }}" loading="lazy">
+            {% else %}<div class="order-item-no-img" aria-hidden="true"></div>{% endif %}
+            <div class="order-item-info">
+              <div class="order-item-name">{{ it.name }}</div>
+              <div class="order-item-qty">{{ it.quantity }} шт.</div>
+            </div>
+            <div class="order-item-price">{{ '%.0f'|format(it.subtotal)|replace(',', ' ') }} ₴</div>
+          </li>
+          {% endfor %}
+        </ul>
+        <div class="summary-divider"></div>
+        <div class="summary-total-row">
+          <span class="summary-total-label">Загальна сума:</span>
+          <span class="summary-total-price">{{ '%.0f'|format(total)|replace(',', ' ') }} ₴</span>
+        </div>
+        <button type="submit" form="checkoutForm" class="btn-checkout" id="checkoutBtn">Оформити замовлення</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="checkout-sticky-bar">
+  <div class="checkout-sticky-total">
+    <span class="checkout-sticky-label">Сума:</span>
+    <span class="checkout-sticky-amount">{{ '%.0f'|format(total)|replace(',', ' ') }} ₴</span>
+  </div>
+  <button type="submit" form="checkoutForm" class="checkout-sticky-submit">Оформити замовлення</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+  const sections = document.querySelectorAll('.form-section');
+  sections.forEach((s, i) => { setTimeout(() => s.classList.add('visible'), 100 + i * 110); });
+  const summaryBox = document.getElementById('checkoutSummaryBox');
+  if (summaryBox) setTimeout(() => summaryBox.classList.add('visible'), 150);
+
+  const phoneInput = document.getElementById('phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', function () {
+      let d = this.value.replace(/\D/g, '');
+      if (d.startsWith('380')) d = d.slice(2);
+      else if (d.startsWith('38')) d = d.slice(2);
+      if (d.length > 0 && !d.startsWith('0')) d = '0' + d;
+      d = d.slice(0, 10);
+      let out = '';
+      if (d.length > 0) out = '+38 (' + d.slice(0, Math.min(3, d.length));
+      if (d.length > 3) out += ') ' + d.slice(3, Math.min(6, d.length));
+      if (d.length > 6) out += '-' + d.slice(6, Math.min(8, d.length));
+      if (d.length > 8) out += '-' + d.slice(8, 10);
+      this.value = out;
+    });
+    if (phoneInput.value) phoneInput.dispatchEvent(new Event('input'));
+  }
+
+  const schedule      = {{ schedule_json|safe }};
+  const nextAvailable = {{ next_json|safe }};
+  const prepMinutes   = {{ prep_minutes }};
+  const _userEmail    = {{ user_email|tojson }};
+
+  const ITEM_H        = 44;
+  const rtHidden        = document.getElementById('readyTimeHidden');
+  const dtAsapBtn       = document.getElementById('dtAsapBtn');
+  const dtAsapTime      = document.getElementById('dtAsapTime');
+  const dtDayDrum       = document.getElementById('dtDayDrum');
+  const dtHourDrum      = document.getElementById('dtHourDrum');
+  const dtMinDrum       = document.getElementById('dtMinDrum');
+  const dtSummary       = document.getElementById('dtSummary');
+  const dtSummaryText   = document.getElementById('dtSummaryText');
+  const dtTravel        = document.getElementById('dtTravel');
+  const travelMinHidden = document.getElementById('travelMinHidden');
+
+  let travelMinutes = 15;
+
+  function fmtTime(date) { return String(date.getHours()).padStart(2,'0') + ':' + String(date.getMinutes()).padStart(2,'0'); }
+  function fmtDate(date) { return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0'); }
+  function isTodayStr(ds) { return ds === fmtDate(new Date()); }
+  function isToday(d)     { return fmtDate(d) === fmtDate(new Date()); }
+  function isTomorrow(d)  { const t=new Date(); t.setDate(t.getDate()+1); return fmtDate(d)===fmtDate(t); }
+
+  function dayDrumLabel(date) {
+    if (isToday(date))    return 'Сьогодні';
+    if (isTomorrow(date)) return 'Завтра';
+    const wd = date.toLocaleDateString('uk-UA', {weekday:'short'});
+    return wd.charAt(0).toUpperCase() + wd.slice(1) + ' ' + date.getDate();
+  }
+  function dayLabel(date) {
+    if (isToday(date))    return 'Сьогодні';
+    if (isTomorrow(date)) return 'Завтра';
+    return date.toLocaleDateString('uk-UA', {weekday:'long', day:'numeric', month:'long'});
+  }
+  function isCafeOpenAt(date) {
+    const dow = date.getDay()===0 ? 7 : date.getDay();
+    const day = schedule[dow]; if (!day) return false;
+    const [oh,om]=day.open.split(':').map(Number), [ch,cm]=day.close.split(':').map(Number);
+    const open=new Date(date); open.setHours(oh,om,0,0);
+    const close=new Date(date); close.setHours(ch,cm,0,0);
+    return date>=open && date<close;
+  }
+  function findFirstOpenSlot(fromDate) {
+    const d=new Date(fromDate);
+    const rem=d.getMinutes()%15; if(rem!==0) d.setMinutes(d.getMinutes()+(15-rem));
+    d.setSeconds(0,0);
+    for(let i=0;i<14*24*4;i++) { if(isCafeOpenAt(d)) return new Date(d); d.setMinutes(d.getMinutes()+15); }
+    return null;
+  }
+
+  function getEarliestReadyTime() {
+    const now = new Date();
+    let prepStart;
+    if (isCafeOpenAt(now)) {
+      prepStart = now;
+    } else {
+      const d = new Date(now);
+      const rem = d.getMinutes() % 15;
+      if (rem !== 0) d.setMinutes(d.getMinutes() + (15 - rem));
+      d.setSeconds(0, 0);
+      prepStart = null;
+      for (let i = 0; i < 14 * 24 * 4; i++) {
+        if (isCafeOpenAt(d)) { prepStart = new Date(d); break; }
+        d.setMinutes(d.getMinutes() + 15);
+      }
+      if (!prepStart) return new Date(9999, 0, 1);
+    }
+    return new Date(prepStart.getTime() + (prepMinutes + travelMinutes) * 60000);
+  }
+
+  function buildAvailableHours(dateStr) {
+    const [y,mo,dd] = dateStr.split('-').map(Number);
+    const dow = new Date(y,mo-1,dd).getDay()===0 ? 7 : new Date(y,mo-1,dd).getDay();
+    const conf = schedule[dow]; if (!conf) return [];
+    const [oh] = conf.open.split(':').map(Number);
+    const [ch] = conf.close.split(':').map(Number);
+    const minTime = isTodayStr(dateStr) ? getEarliestReadyTime() : new Date(0);
+    if (isTodayStr(dateStr)) minTime.setSeconds(0, 0);
+    const hours = [];
+    for (let h=oh; h<ch; h++) {
+      const hasSlot = [0,15,30,45].some(m => {
+        const slot = new Date(y,mo-1,dd,h,m,0);
+        return !isTodayStr(dateStr) || slot >= minTime;
+      });
+      if (hasSlot) hours.push(h);
+    }
+    return hours;
+  }
+
+  function buildAvailableMins(dateStr, hour) {
+    const [y,mo,dd] = dateStr.split('-').map(Number);
+    const minTime = isTodayStr(dateStr) ? getEarliestReadyTime() : new Date(0);
+    if (isTodayStr(dateStr)) minTime.setSeconds(0, 0);
+    return [0,15,30,45].filter(m => {
+      const slot = new Date(y,mo-1,dd,hour,m,0);
+      return !isTodayStr(dateStr) || slot >= minTime;
+    });
+  }
+
+  const today = new Date();
+  const availableDays = [];
+  for (let i=0; i<=13; i++) {
+    const d = new Date(today); d.setDate(today.getDate()+i);
+    const dow = d.getDay()===0 ? 7 : d.getDay();
+    if (!schedule[dow]) continue;
+    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if (buildAvailableHours(ds).length > 0) availableDays.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+  }
+
+  let dayItems  = [], hourItems = [], minItems  = [];
+  let selDayIdx  = 0, selHourIdx = 0, selMinIdx  = 0;
+  let asapActive  = false, _lock = false, _rebuilding = 0, _animGen = 0;
+
+  function curDateStr() { return dayItems[selDayIdx]?.dateStr || null; }
+  function curHour()    { return hourItems[selHourIdx]?.hour ?? null; }
+  function curMin()     { return minItems[selMinIdx]?.min ?? null; }
+
+  function fillDrum(drum, items) {
+    drum.innerHTML = '';
+    items.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'dt-drum-item';
+      el.textContent = item.label;
+      drum.appendChild(el);
+    });
+  }
+  function scrollDrumTo(drum, idx, smooth) { drum.scrollTo({ top: Math.max(0, idx) * ITEM_H, behavior: smooth ? 'smooth' : 'instant' }); }
+
+  const _drumRaf = new WeakMap();
+  function animateDrumTo(drum, targetIdx, duration, onComplete) {
+    const prev = _drumRaf.get(drum);
+    if (prev) cancelAnimationFrame(prev);
+    const start = drum.scrollTop;
+    const end   = Math.max(0, targetIdx) * ITEM_H;
+    if (Math.abs(end - start) < 1) { drum.style.scrollSnapType = ''; if (onComplete) onComplete(); return; }
+    drum.style.scrollSnapType = 'none';
+    const t0 = performance.now();
+    const dur = duration || 260;
+    function ease(t) { return t < .5 ? 2*t*t : -1+(4-2*t)*t; }
+    function step(now) {
+      const p = Math.min((now - t0) / dur, 1);
+      drum.scrollTop = start + (end - start) * ease(p);
+      if (p < 1) { _drumRaf.set(drum, requestAnimationFrame(step)); }
+      else { drum.scrollTop = end; drum.style.scrollSnapType = ''; _drumRaf.delete(drum); if (onComplete) onComplete(); }
+    }
+    _drumRaf.set(drum, requestAnimationFrame(step));
+  }
+
+  function rebuildHourDrum(dateStr, preferHour, noScroll) {
+    _rebuilding++;
+    const hours = buildAvailableHours(dateStr);
+    hourItems = hours.map(h => ({ label: String(h).padStart(2,'0'), hour: h }));
+    let idx = preferHour !== null ? hourItems.findIndex(x => x.hour === preferHour) : -1;
+    selHourIdx = idx < 0 ? 0 : idx;
+    fillDrum(dtHourDrum, hourItems);
+    if (!noScroll) scrollDrumTo(dtHourDrum, selHourIdx, false);
+    requestAnimationFrame(() => requestAnimationFrame(() => { _rebuilding = Math.max(0, _rebuilding - 1); }));
+  }
+  function rebuildMinDrum(dateStr, hour, preferMin, noScroll) {
+    _rebuilding++;
+    const mins = buildAvailableMins(dateStr, hour);
+    minItems = mins.map(m => ({ label: String(m).padStart(2,'0'), min: m }));
+    let idx = preferMin !== null ? minItems.findIndex(x => x.min === preferMin) : -1;
+    selMinIdx = idx < 0 ? 0 : idx;
+    fillDrum(dtMinDrum, minItems);
+    if (!noScroll) scrollDrumTo(dtMinDrum, selMinIdx, false);
+    requestAnimationFrame(() => requestAnimationFrame(() => { _rebuilding = Math.max(0, _rebuilding - 1); }));
+  }
+
+  function getAsapSlot() {
+    const ready = getEarliestReadyTime();
+    const rem = ready.getMinutes() % 15;
+    if (rem !== 0) ready.setMinutes(ready.getMinutes() + (15 - rem));
+    ready.setSeconds(0, 0);
+    return isCafeOpenAt(ready) ? ready : findFirstOpenSlot(ready);
+  }
+
+  function commit() {
+    const ds = curDateStr(), h = curHour(), m = curMin();
+    if (ds !== null && h !== null && m !== null) {
+      const ts = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+      rtHidden.value = ds + ' ' + ts;
+      const [y,mo,dd] = ds.split('-').map(Number);
+      dtSummaryText.textContent = dayLabel(new Date(y,mo-1,dd)) + ' о ' + ts;
+      dtSummary.style.display = 'flex';
+      hideTimeMsg();
+      if (!asapActive) {
+        const slot = getAsapSlot();
+        if (slot && fmtDate(slot) === ds && slot.getHours() === h && slot.getMinutes() === m) {
+          asapActive = true;
+          dtAsapBtn.classList.add('active');
+          dtAsapTime.textContent = '~' + ts;
+          if (dtTravel) dtTravel.classList.toggle('visible', isTodayStr(ds));
+        }
+      }
+    } else {
+      rtHidden.value = '';
+      dtSummary.style.display = 'none';
+    }
+    if (typeof enforcePrepayment === 'function') enforcePrepayment();
+    if (typeof updatePaymentUI   === 'function') updatePaymentUI();
+    updateEmailField();
+  }
+
+  function updateEmailField() {
+    const fgEmail    = document.getElementById('fg-email');
+    const emailInput = document.getElementById('customer_email');
+    if (!fgEmail || !emailInput) return;
+    const rtVal = rtHidden ? rtHidden.value.trim() : '';
+    let hoursAhead = 0;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(rtVal)) {
+      const [ds, ts] = rtVal.split(' ');
+      const [y, mo, dd] = ds.split('-').map(Number);
+      const [h, m]      = ts.split(':').map(Number);
+      hoursAhead = (new Date(y, mo - 1, dd, h, m, 0) - new Date()) / 3_600_000;
+    }
+    const needsEmail = hoursAhead >= 3;
+    fgEmail.classList.toggle('fg-hidden', !needsEmail);
+    emailInput.disabled = !needsEmail;
+    if (needsEmail) { if (!emailInput.value && _userEmail) emailInput.value = _userEmail; }
+    else { emailInput.value = ''; }
+  }
+
+  function showTimeMsg(type, msg) {
+    const el = document.getElementById('msg-time');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'field-msg ' + (type==='error' ? 'err' : 'info');
+  }
+  function hideTimeMsg() {
+    const el = document.getElementById('msg-time');
+    if (el) { el.textContent=''; el.className='field-msg'; }
+  }
+
+  function listenDrum(drum, onIdxChange) {
+    const fire = () => {
+      if (_lock || _rebuilding > 0) return;
+      const count = drum.querySelectorAll('.dt-drum-item').length;
+      if (!count) return;
+      const idx = Math.max(0, Math.min(Math.round(drum.scrollTop / ITEM_H), count - 1));
+      onIdxChange(idx);
+    };
+    if ('onscrollend' in window) {
+      drum.addEventListener('scrollend', fire, {passive: true});
+    } else {
+      let t;
+      drum.addEventListener('scroll', () => {
+        if (_lock || _rebuilding > 0) return;
+        clearTimeout(t);
+        t = setTimeout(fire, 150);
+      }, {passive: true});
+    }
+
+    let _wTargetPx  = -1, _wAnimating = false, _wCurPos = 0;
+    function _wGoTo(targetPx) {
+      const count = drum.querySelectorAll('.dt-drum-item').length;
+      if (!count) return;
+      _wTargetPx = Math.max(0, Math.min(targetPx, (count - 1) * ITEM_H));
+      if (_wAnimating) return;
+      _wAnimating = true;
+      _wCurPos    = drum.scrollTop;
+      drum.style.scrollSnapType = 'none';
+      (function tick() {
+        const diff = _wTargetPx - _wCurPos;
+        if (Math.abs(diff) < 0.5) {
+          const cnt     = drum.querySelectorAll('.dt-drum-item').length;
+          const snapIdx = Math.max(0, Math.min(Math.round(_wCurPos / ITEM_H), cnt - 1));
+          const snapPx  = snapIdx * ITEM_H;
+          drum.scrollTop = snapPx;
+          drum.style.scrollSnapType = '';
+          _wTargetPx  = snapPx; _wCurPos = snapPx; _wAnimating = false;
+          fire();
+          return;
+        }
+        _wCurPos += diff * 0.25;
+        drum.scrollTop = _wCurPos;
+        _drumRaf.set(drum, requestAnimationFrame(tick));
+      })();
+    }
+
+    drum.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (_lock || _rebuilding > 0) return;
+      if (_dragActive) return;
+      const count = drum.querySelectorAll('.dt-drum-item').length;
+      if (!count) return;
+      const basePx = _wAnimating ? _wTargetPx : drum.scrollTop;
+      if (Math.abs(e.deltaY) >= 50) {
+        const baseIdx = Math.round(basePx / ITEM_H);
+        const newIdx  = Math.max(0, Math.min(baseIdx + (e.deltaY > 0 ? 1 : -1), count - 1));
+        _wGoTo(newIdx * ITEM_H);
+      } else {
+        _wGoTo(basePx + e.deltaY * (ITEM_H / 60));
+      }
+    }, { passive: false });
+
+    let _dragActive = false, _dragStartY = 0, _dragStartScroll = 0, _dragEndAt = 0;
+    function _dragStart(clientY) {
+      if (_lock || _rebuilding > 0) return;
+      const prev = _drumRaf.get(drum);
+      if (prev) { cancelAnimationFrame(prev); _drumRaf.delete(drum); }
+      _wAnimating = false;
+      _dragActive      = true;
+      _dragStartY      = clientY;
+      _dragStartScroll = drum.scrollTop;
+      drum.style.scrollSnapType = 'none';
+      drum.style.cursor = 'grabbing';
+    }
+    function _dragMove(clientY) {
+      if (!_dragActive) return;
+      const count  = drum.querySelectorAll('.dt-drum-item').length;
+      const maxPx  = (count - 1) * ITEM_H;
+      const newPos = Math.max(0, Math.min(_dragStartScroll + (_dragStartY - clientY), maxPx));
+      drum.scrollTop = newPos;
+      _wTargetPx = newPos; _wCurPos = newPos;
+    }
+    function _dragEnd() {
+      if (!_dragActive) return;
+      _dragActive = false; _dragEndAt = Date.now();
+      drum.style.cursor = '';
+      _wGoTo(drum.scrollTop);
+    }
+    drum.addEventListener('mousedown', (e) => { e.preventDefault(); _dragStart(e.clientY); });
+    document.addEventListener('mousemove', (e) => { _dragMove(e.clientY); });
+    document.addEventListener('mouseup',   ()  => { _dragEnd(); });
+    drum.addEventListener('touchstart', (e) => { _dragStart(e.touches[0].clientY); }, { passive: true });
+    drum.addEventListener('touchmove',  (e) => { _dragMove(e.touches[0].clientY); },  { passive: true });
+    drum.addEventListener('touchend',   ()  => { _dragEnd(); },                        { passive: true });
+  }
+
+  function _finishAsap(ds, h, m, ts) {
+    asapActive = true;
+    dtAsapBtn.classList.add('active');
+    dtAsapTime.textContent = '~' + ts;
+    rtHidden.value = ds + ' ' + ts;
+    const [y,mo,dd] = ds.split('-').map(Number);
+    dtSummaryText.textContent = dayLabel(new Date(y,mo-1,dd)) + ' о ' + ts;
+    dtSummary.style.display = 'flex';
+    hideTimeMsg();
+    if (dtTravel) dtTravel.classList.toggle('visible', isTodayStr(ds));
+    if (typeof enforcePrepayment === 'function') enforcePrepayment();
+    if (typeof updatePaymentUI   === 'function') updatePaymentUI();
+    updateEmailField();
+  }
+
+  function applyAsapInstant() {
+    const slot = getAsapSlot();
+    if (!slot) { showTimeMsg('error','Кафе зачинене найближчим часом.'); return; }
+    const ds = fmtDate(slot), h = slot.getHours(), m = slot.getMinutes();
+    const ts = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    const di = dayItems.findIndex(x => x.dateStr === ds);
+    if (di < 0) return;
+    selDayIdx = di;
+    scrollDrumTo(dtDayDrum, di, false);
+    rebuildHourDrum(ds, h, false);
+    rebuildMinDrum(ds, h, m, false);
+    setTimeout(() => _finishAsap(ds, h, m, ts), 0);
+  }
+
+  function activateAsap() {
+    const slot = getAsapSlot();
+    if (!slot) { showTimeMsg('error','Кафе зачинене найближчим часом.'); return; }
+    const ds = fmtDate(slot), h  = slot.getHours(), m  = slot.getMinutes();
+    const ts = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    const di = dayItems.findIndex(x => x.dateStr === ds);
+    if (di < 0) return;
+    const gen = ++_animGen;
+    _lock = true;
+    selDayIdx = di;
+    animateDrumTo(dtDayDrum, di, 380, () => {
+      if (_animGen !== gen) return;
+      dtHourDrum.classList.add('dt-drum--fading');
+      dtMinDrum.classList.add('dt-drum--fading');
+      setTimeout(() => {
+        if (_animGen !== gen) return;
+        rebuildHourDrum(ds, h, true);
+        rebuildMinDrum(ds, h, m, true);
+        dtHourDrum.classList.remove('dt-drum--fading');
+        dtMinDrum.classList.remove('dt-drum--fading');
+        animateDrumTo(dtHourDrum, selHourIdx, 300, () => {
+          if (_animGen !== gen) return;
+          animateDrumTo(dtMinDrum, selMinIdx, 240, () => {
+            if (_animGen !== gen) return;
+            _lock = false;
+            _finishAsap(ds, h, m, ts);
+          });
+        });
+      }, 160);
+    });
+  }
+
+  function initDrums() {
+    dayItems = availableDays.map(d => ({ label: dayDrumLabel(d), dateStr: fmtDate(d) }));
+    fillDrum(dtDayDrum, dayItems);
+    const val = rtHidden ? rtHidden.value.trim() : '';
+    if (val && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(val)) {
+      const [ds, ts] = val.split(' ');
+      const [h, m] = ts.split(':').map(Number);
+      const di = dayItems.findIndex(x => x.dateStr === ds);
+      selDayIdx = di >= 0 ? di : 0;
+      scrollDrumTo(dtDayDrum, selDayIdx, false);
+      rebuildHourDrum(ds, h);
+      rebuildMinDrum(ds, h, m);
+      commit();
+    } else {
+      applyAsapInstant();
+    }
+  }
+
+  if (dtDayDrum && dtHourDrum && dtMinDrum && dtAsapBtn) {
+    initDrums();
+    updateEmailField();
+
+    listenDrum(dtDayDrum, idx => {
+      if (idx === selDayIdx) return;
+      selDayIdx = idx; asapActive = false;
+      dtAsapBtn.classList.remove('active');
+      if (dtTravel) dtTravel.classList.remove('visible');
+      const ds = curDateStr(); if (!ds) return;
+      rebuildHourDrum(ds, curHour());
+      rebuildMinDrum(ds, curHour(), curMin());
+      commit();
+    });
+    listenDrum(dtHourDrum, idx => {
+      if (idx === selHourIdx) return;
+      selHourIdx = idx; asapActive = false;
+      dtAsapBtn.classList.remove('active');
+      if (dtTravel) dtTravel.classList.remove('visible');
+      const ds = curDateStr(), h = curHour();
+      if (ds && h !== null) rebuildMinDrum(ds, h, curMin());
+      commit();
+    });
+    listenDrum(dtMinDrum, idx => {
+      if (idx === selMinIdx) return;
+      selMinIdx = idx; asapActive = false;
+      dtAsapBtn.classList.remove('active');
+      if (dtTravel) dtTravel.classList.remove('visible');
+      commit();
+    });
+
+    dtAsapBtn.addEventListener('click', activateAsap);
+    if (dtTravel) {
+      dtTravel.querySelectorAll('.dt-travel-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          dtTravel.querySelectorAll('.dt-travel-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          travelMinutes = parseInt(chip.dataset.min, 10);
+          if (travelMinHidden) travelMinHidden.value = travelMinutes;
+          activateAsap();
+        });
+      });
+    }
+  }
+
+  function setField(fgId, msgId, state, text) {
+    const fg  = document.getElementById(fgId);
+    const msg = document.getElementById(msgId);
+    if (!fg) return;
+    fg.classList.remove('co-valid', 'co-error');
+    if (state === 'valid') fg.classList.add('co-valid');
+    if (state === 'error') fg.classList.add('co-error');
+    if (msg) { msg.textContent = text || ''; msg.className = 'field-msg ' + (state === 'valid' ? 'ok' : state === 'error' ? 'err' : ''); }
+  }
+  function validateName(inputId, fgId, msgId) {
+    const inp = document.getElementById(inputId);
+    if (!inp) return true;
+    const v = inp.value.trim();
+    if (v.length < 2) { setField(fgId, msgId, 'error', 'Мінімум 2 символи'); return false; }
+    setField(fgId, msgId, 'valid', '');
+    return true;
+  }
+  function validatePhone() {
+    if (!phoneInput) return true;
+    const v = phoneInput.value;
+    const ok = /^\+38 \(0\d{2}\) \d{3}-\d{2}-\d{2}$/.test(v);
+    if (!ok) { setField('fg-phone', 'msg-phone', 'error', 'Формат: +38 (0XX) XXX-XX-XX'); return false; }
+    setField('fg-phone', 'msg-phone', 'valid', '');
+    return true;
+  }
+  function validateTime() {
+    const val = rtHidden ? rtHidden.value.trim() : '';
+    if (!val || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(val)) {
+      const el = document.getElementById('msg-time');
+      if (el) { el.textContent = 'Оберіть дату та час отримання'; el.className = 'field-msg err'; }
+      return false;
+    }
+    const el = document.getElementById('msg-time');
+    if (el) { el.textContent = ''; el.className = 'field-msg'; }
+    return true;
+  }
+  function validatePayment() {
+    const chosen = document.querySelector('input[name="payment"]:checked');
+    const msg = document.getElementById('msg-payment');
+    if (!chosen) { if (msg) { msg.textContent = 'Оберіть спосіб оплати'; msg.className = 'field-msg err'; } return false; }
+    if (msg) { msg.textContent = ''; msg.className = 'field-msg'; }
+    return true;
+  }
+
+  const fnEl = document.getElementById('first_name');
+  const lnEl = document.getElementById('last_name');
+  if (fnEl) fnEl.addEventListener('blur', () => validateName('first_name', 'fg-first', 'msg-first'));
+  if (lnEl) lnEl.addEventListener('blur', () => validateName('last_name',  'fg-last',  'msg-last'));
+  if (phoneInput) phoneInput.addEventListener('blur', validatePhone);
+  const liqpayInfo    = document.getElementById('liqpayInfo');
+  const checkoutBtnEl = document.getElementById('checkoutBtn');
+  const cashCard      = document.querySelector('.payment-card:has(input[value="cash_on_pickup"])');
+  const cashInput     = document.querySelector('input[name="payment"][value="cash_on_pickup"]');
+  const cardInput     = document.querySelector('input[name="payment"][value="card_online"]');
+  const advanceNote   = (() => {
+    const el = document.createElement('p');
+    el.id = 'advancePayNote';
+    el.style.cssText = 'font-size:12px;color:#b07840;margin:10px 0 0;display:none;line-height:1.5';
+    el.textContent = '⚠ Замовлення на майбутній день приймаються лише з онлайн-оплатою карткою.';
+    const cards = document.getElementById('paymentCards');
+    if (cards) cards.after(el);
+    return el;
+  })();
+
+  function isAdvanceOrder() {
+    const val = rtHidden ? rtHidden.value.trim() : '';
+    if (!val) return false;
+    return val.slice(0, 10) > fmtDate(new Date());
+  }
+  function enforcePrepayment() {
+    const advance = isAdvanceOrder();
+    if (cashCard) { cashCard.style.opacity = advance ? '0.4' : ''; cashCard.style.pointerEvents = advance ? 'none' : ''; }
+    advanceNote.style.display = advance ? '' : 'none';
+    if (advance && cashInput && cashInput.checked) { cashInput.checked = false; if (cardInput) cardInput.checked = true; }
+  }
+  function updatePaymentUI() {
+    const chosen = document.querySelector('input[name="payment"]:checked');
+    const isCard = chosen && chosen.value === 'card_online';
+    if (liqpayInfo) liqpayInfo.classList.toggle('show', isCard);
+    if (checkoutBtnEl) checkoutBtnEl.textContent = isCard ? 'Перейти до оплати →' : 'Оформити замовлення';
+  }
+  document.querySelectorAll('input[name="payment"]').forEach(r => { r.addEventListener('change', () => { validatePayment(); updatePaymentUI(); }); });
+  updatePaymentUI();
+  enforcePrepayment();
+
+  const commentEl = document.getElementById('comment');
+  if (commentEl) {
+    function syncComment() { if (commentEl.value.trim()) commentEl.classList.add('has-value'); else commentEl.classList.remove('has-value'); }
+    function growComment() { commentEl.style.height = 'auto'; commentEl.style.height = commentEl.scrollHeight + 'px'; }
+    commentEl.addEventListener('input', () => { syncComment(); growComment(); });
+    syncComment(); growComment();
+  }
+
+  const checkoutForm = document.getElementById('checkoutForm');
+  const checkoutBtn  = document.getElementById('checkoutBtn');
+  if (checkoutForm) {
+    checkoutForm.addEventListener('submit', (e) => {
+      const ok = [
+        validateName('first_name', 'fg-first', 'msg-first'),
+        validateName('last_name',  'fg-last',  'msg-last'),
+        validatePhone(), validateTime(), validatePayment(),
+      ].every(Boolean);
+      if (!ok) {
+        e.preventDefault();
+        const firstErr = document.querySelector('.field-msg.err, .co-error input, .co-error textarea');
+        if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (asapActive) {
+        const freshReady = getEarliestReadyTime();
+        const freshRem = freshReady.getMinutes() % 15;
+        if (freshRem !== 0) freshReady.setMinutes(freshReady.getMinutes() + (15 - freshRem));
+        freshReady.setSeconds(0, 0);
+        const fresh = isCafeOpenAt(freshReady) ? freshReady : findFirstOpenSlot(freshReady);
+        if (fresh) rtHidden.value = fmtDate(fresh) + ' ' + fmtTime(fresh);
+      }
+      if (checkoutBtn) { checkoutBtn.classList.add('loading'); checkoutBtn.textContent = ''; }
+    });
+  }
+
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted && !{{ 'true' if has_pending_order else 'false' }}) {
+      window.location.replace('/cart');
+    }
+  });
+})();
+
+(function () {
+  var otBtns = Array.from(document.querySelectorAll('.ot-btn'));
+  var otInput = document.getElementById('orderTypeInput');
+  otBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      otBtns.forEach(function (b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      if (otInput) otInput.value = this.dataset.type;
+    });
+  });
+})();
+</script>
+{% endblock %}

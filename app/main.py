@@ -15,6 +15,9 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.dependencies import AuthRequired
 from app.middleware.session import DBSessionMiddleware
+from app.routers.public import menu as public_menu
+from app.routers.public import pages as public_pages
+from app.routers.public import reviews as public_reviews
 from app.services.csrf import CSRFError
 from app.services.csrf import is_ajax as _is_ajax
 from app.services.permissions import AdminAccessDenied
@@ -28,6 +31,10 @@ app.add_middleware(DBSessionMiddleware)
 # The existing static/ directory (CSS/JS/images) is reused unchanged —
 # no asset was touched or renamed for this port.
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+app.include_router(public_pages.router)
+app.include_router(public_menu.router)
+app.include_router(public_reviews.router)
 
 
 @app.exception_handler(CSRFError)

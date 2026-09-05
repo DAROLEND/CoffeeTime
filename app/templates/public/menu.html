@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/menu.css">{% endblock %}
+
+{% macro render_card(c) %}
+<div id="item-{{ c.id }}"
+     class="menu-card{{ ' pizza-card' if c.is_pizza_type else '' }}{{ ' lazy-hidden' if c.card_idx >= 9 else '' }}"
+     data-name="{{ c.name|lower }}"
+     data-desc="{{ c.description|lower }}"
+     data-category="{{ c.tbl }}"
+     data-item-id="{{ c.id }}"
+     data-order="{{ c.card_idx }}"
+     data-price="{{ c.price }}"
+     data-ordered="{{ c.popularity }}"
+     {% if c.tbl == 'coffee_items' %}data-is-cold="{{ 1 if c.is_cold else 0 }}"{% endif %}
+     {% if c.is_pizza_type %}data-sauce="{{ c.sauce_type }}" data-spicy="{{ 1 if c.is_spicy else 0 }}" data-tags="{{ c.tags_json }}"{% endif %}>
+
+  <div class="mc-img-zone">
+    {% if c.is_default %}
+    <div class="mc-no-img">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d4c4b0" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <span>{{ c.name }}</span>
+    </div>
+    {% else %}
+    <img src="{{ c.img_src }}" alt="{{ c.name }}" loading="lazy">
+    {% endif %}
+
+    {% if c.is_pizza_type %}
+      {% if c.is_spicy %}<span class="mc-badge mc-badge-spicy">{{ icon('filter-spicy', 16, '#e53935') }} Гостра</span>{% endif %}
+      {% if c.sauce_type == 'cream' %}<span class="mc-badge mc-badge-cream">Вершковий</span>
+      {% elif c.sauce_type == 'bbq' %}<span class="mc-badge mc-badge-bbq">BBQ</span>{% endif %}
+      {% if c.is_mini_pizza %}<span class="mc-badge mc-badge-mini">20 см</span>{% endif %}
+    {% endif %}
+    {% if c.is_cold_coffee %}<span class="mc-badge mc-badge-cold">{{ icon('snowflake', 16, '#1565c0') }} Холодна</span>{% endif %}
+    {% if c.is_ice_cream %}<span class="mc-badge mc-badge-icecream">{{ icon('icecream', 16, '#880e4f') }} Морозиво</span>{% endif %}
+
+    <div class="mc-img-overlay"
+         data-id="{{ c.id }}" data-cat="{{ c.tbl }}" data-cat-label="{{ c.label }}"
+         data-name="{{ c.name }}" data-desc="{{ c.description }}"
+         data-price="{{ c.price|fmt_price }}"
+         data-price-per-kg="{{ c.price_per_kg if c.tbl == 'cake_items' else '' }}"
+         data-min-weight="{{ c.min_weight if c.tbl == 'cake_items' else '' }}"
+         data-price-large="{{ c.price_large }}"
+         data-has-size="{{ '1' if c.has_size else '0' }}"
+         data-sauce-type="{{ c.sauce_type }}"
+         data-is-fast-food="{{ '1' if c.is_fast_food else '0' }}"
+         data-is-ice-cream="{{ '1' if c.is_ice_cream else '0' }}"
+         data-has-ff-size="{{ '1' if c.has_fast_food_size else '0' }}"
+         data-variant-options="{{ c.variant_options_raw if (c.has_sauce_variant or c.has_ice_cream_scoop or c.has_fast_food_size) else '' }}"
+         data-img="{{ c.img_src }}">
+      <span class="mc-overlay-label">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Детальніше
+      </span>
+    </div>
+  </div>
+
+  <div class="mc-content">
+    <h3 class="mc-name">{{ c.name }}</h3>
+    {% if c.description %}<p class="mc-desc">{{ c.description }}</p>{% endif %}
+    {% if c.is_pizza_type and c.tags_arr %}
+    <div class="mc-tags">{% for tag in c.tags_arr[:4] %}<span class="mc-tag">{{ tag }}</span>{% endfor %}</div>
+    {% endif %}
+    {% if c.sushi_tags %}
+    <div class="mc-tags mc-tags-sushi">{% for tag in c.sushi_tags %}<span class="mc-tag mc-tag-sushi">{{ tag }}</span>{% endfor %}</div>
+    {% endif %}
+    <div class="mc-footer">
+      {% if c.is_pizza and c.price_large > 0 and c.has_size %}
+      <div class="mc-price-dual">
+        <span class="mc-price">{{ c.price|fmt_price }}</span><span class="mc-price-sep">/</span>
+        <span class="mc-price mc-price-large">{{ c.price_large|fmt_price }}</span>
+        <span class="mc-price-sizes">30 / 40 см</span>
+      </div>
+      {% elif c.has_fast_food_size and c.ff_large_price > c.ff_small_price %}
+      <div class="mc-price-dual">
+        <span class="mc-price">{{ c.ff_small_price|fmt_price }}</span><span class="mc-price-sep">/</span>
+        <span class="mc-price mc-price-large">{{ c.ff_large_price|fmt_price }}</span>
+        {% if c.ff_size_str %}<span class="mc-price-sizes">{{ c.ff_size_str }}</span>{% endif %}
+      </div>
+      {% else %}
+      <span class="mc-price">{{ c.price|fmt_price }}</span>
+      {% endif %}
+
+      {% if c.tbl == 'cake_items' %}
+      <button class="mc-add-btn mc-order-btn" data-id="{{ c.id }}" data-cat="{{ c.tbl }}" data-name="{{ c.name }}" data-price-per-kg="{{ c.price_per_kg }}" data-min-weight="{{ c.min_weight }}">Замовити</button>
+      {% elif c.has_size %}
+      <button class="mc-add-btn mc-size-btn" data-id="{{ c.id }}" data-cat="{{ c.tbl }}" data-name="{{ c.name }}" data-price="{{ c.price }}" data-price-large="{{ c.price_large }}" data-sauce-type="{{ c.sauce_type }}">Обрати</button>
+      {% elif c.has_ice_cream_scoop %}
+      <button class="mc-add-btn mc-scoop-btn {{ 'in-cart' if c.in_cart else '' }}" data-id="{{ c.id }}" data-cat="{{ c.tbl }}" data-name="{{ c.name }}">{{ 'В кошику ✓' if c.in_cart else 'Обрати' }}</button>
+      {% elif c.has_fast_food_size %}
+      <button class="mc-add-btn mc-ff-size-btn {{ 'in-cart' if c.in_cart else '' }}" data-id="{{ c.id }}" data-cat="{{ c.tbl }}" data-name="{{ c.name }}">{{ 'В кошику ✓' if c.in_cart else 'Обрати' }}</button>
+      {% else %}
+      <button class="mc-add-btn {{ 'in-cart' if c.in_cart else '' }}" data-id="{{ c.id }}" data-cat="{{ c.tbl }}" data-name="{{ c.name }}"
+              {% if c.has_sauce_variant %}data-variant-options="{{ c.variant_options_raw }}"{% endif %}>
+        {{ 'В кошику ✓' if c.in_cart else 'Додати' }}
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}
+<main class="menu-page">
+  <div class="menu-hero">
+    <h1 class="menu-title">Наше меню</h1>
+    <p class="menu-subtitle">Свіжа кава, смачна їжа та затишна атмосфера</p>
+  </div>
+
+  <div class="menu-search-wrap">
+    <svg class="msw-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="menuSearch" class="menu-search-input" placeholder="Пошук по меню…" autocomplete="off" spellcheck="false">
+    <button class="msw-clear" id="menuSearchClear" aria-label="Очистити" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="menu-tabs-outer" id="menuTabsOuter">
+    <div class="menu-tabs-wrap" id="menuTabsWrap">
+      <div class="menu-nav">
+        <div class="menu-main-tabs">
+          {% for gid, g in groups.items() %}
+          <button class="mmt-btn {{ 'active' if gid == current_group else '' }}" data-group="{{ gid }}">
+            <span class="mmt-icon">{{ g.icon|safe }}</span>
+            <span class="mmt-label">{{ g.label }}</span>
+          </button>
+          {% endfor %}
+        </div>
+
+        {% for gid, g in groups.items() %}
+        {% set visible_cats = g.cats|select('in', tables.keys())|list %}
+        {% if visible_cats|length > 1 %}
+        <div class="menu-sub-tabs{{ ' active' if gid == current_group else '' }}" data-group="{{ gid }}">
+          {% for tbl in g.cats %}
+          {% if tbl in tables %}
+          {% set tab_count = sub_tab_counts.get(tbl, counts.get(tbl, 0)) %}
+          <button class="menu-tab{{ ' active' if tbl == current else '' }}" data-cat="{{ tbl }}" role="tab" aria-selected="{{ 'true' if tbl == current else 'false' }}">
+            {{ tables[tbl] }}<span class="tab-badge">{{ tab_count }}</span>
+          </button>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-body">
+    <div id="menu-filter-bar" style="display:none; margin:12px 0 4px;">
+      <div class="mfb-inner">
+        <div class="filter-dropdown" style="position:relative;">
+          <button class="filter-btn" id="sortFilterBtn" data-filter="sort">
+            {{ icon('sort', 18, 'currentColor') }}
+            <span id="sortBtnLabel">Сортування</span>
+            <svg class="fd-arrow" width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+          </button>
+          <div class="filter-dropdown-menu" id="sortMenu">
+            <div class="sort-option active" data-sort="default">{{ icon('default-sort', 16, 'currentColor', 'fo-icon') }} За замовчуванням</div>
+            <div class="sort-option" data-sort="price_asc">{{ icon('arrow-up', 16, 'currentColor', 'fo-icon') }} Ціна: від дешевших</div>
+            <div class="sort-option" data-sort="price_desc">{{ icon('arrow-down', 16, 'currentColor', 'fo-icon') }} Ціна: від дорожчих</div>
+            <div class="sort-option" data-sort="popular">{{ icon('trending', 16, 'currentColor', 'fo-icon') }} За популярністю</div>
+          </div>
+        </div>
+
+        <div class="mfb-sep" id="coffee-sep" style="display:none;"></div>
+        <div class="filter-dropdown" id="coffee-temp-wrap" style="display:none;position:relative;">
+          <button class="filter-btn" id="coffeeTempBtn" data-filter="coffee-temp">
+            {{ icon('coffee-cup', 18, 'currentColor') }}
+            <span id="coffeeTempLabel">Тип</span>
+            <svg class="fd-arrow" width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+          </button>
+          <div class="filter-dropdown-menu" id="coffeeTempMenu">
+            <div class="filter-option active" data-value="all">{{ icon('coffee-cup', 16, 'currentColor', 'fo-icon') }} Всі</div>
+            <div class="filter-option" data-value="hot">{{ icon('coffee-cup', 16, '#c0623d', 'fo-icon') }} Тепла</div>
+            <div class="filter-option" data-value="cold">{{ icon('snowflake', 16, '#1565c0', 'fo-icon') }} Холодна</div>
+          </div>
+        </div>
+
+        <div class="mfb-sep" id="pizza-sep" style="display:none;"></div>
+        <div class="filter-dropdown" id="sauce-filter-wrap" style="display:none;position:relative;">
+          <button class="filter-btn" id="sauceFilterBtn" data-filter="sauce">
+            {{ icon('filter-sauce-tomato', 18, 'currentColor') }}
+            <span id="sauceBtnLabel">Соус</span>
+            <svg class="fd-arrow" width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+          </button>
+          <div class="filter-dropdown-menu" id="sauceMenu">
+            <div class="filter-option active" data-value="all">{{ icon('filter-sauce-tomato', 16, 'currentColor', 'fo-icon') }} Всі</div>
+            <div class="filter-option" data-value="tomato">{{ icon('filter-sauce-tomato', 16, '#c0392b', 'fo-icon') }} Томатний</div>
+            <div class="filter-option" data-value="cream">{{ icon('filter-sauce-cream', 16, '#b8860b', 'fo-icon') }} Вершковий</div>
+            <div class="filter-option" data-value="bbq">{{ icon('filter-bbq', 16, '#6d2f00', 'fo-icon') }} BBQ</div>
+          </div>
+        </div>
+
+        <div class="filter-dropdown" id="ingredients-filter-wrap" style="display:none;position:relative;">
+          <button class="filter-btn" id="ingFilterBtn" data-filter="ingredients">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="M8 11h6M11 8v6"/></svg>
+            <span id="ingBtnLabel">Склад</span>
+            <svg class="fd-arrow" width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+          </button>
+          <div class="filter-dropdown-menu fdm-wide" id="ingMenu">
+            <div class="fdm-hint">Мультивибір інгредієнтів</div>
+            <div class="fdm-chips">
+              {% for tag in all_ing_tags %}<button class="ingredient-chip" data-tag="{{ tag|lower|trim }}">{{ tag }}</button>{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <button class="filter-btn" id="spicy-toggle" style="display:none;">{{ icon('filter-spicy', 18, 'currentColor') }} Гострі</button>
+        <div id="active-filters-bar" style="display:none;"></div>
+      </div>
+    </div>
+
+    {% for tbl, label in tables.items() %}
+    {% set cards = cards_by_tbl.get(tbl, []) %}
+    <section class="menu-cat-section {{ 'active' if tbl == current else '' }}" data-cat="{{ tbl }}" data-label="{{ label }}" id="cat-{{ tbl }}">
+      {% if not cards %}
+      <div class="menu-empty-state">
+        <div class="mes-icon">
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="32" stroke="#e8ddd5" stroke-width="2"/>
+            <path d="M22 36c0-7.732 6.268-14 14-14s14 6.268 14 14-6.268 14-14 14-14-6.268-14-14z" stroke="#d4c4b8" stroke-width="2"/>
+            <path d="M30 36h12M36 30v12" stroke="#d4c4b8" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>Ця категорія поки порожня</h3>
+        <p>Скоро тут з'являться нові позиції</p>
+      </div>
+      {% else %}
+      <div class="menu-grid" id="grid-{{ tbl }}">
+        {% for card in cards %}{{ render_card(card) }}{% endfor %}
+      </div>
+      {% if tbl == 'pizza_items' %}
+      <div id="no-pizza-results" class="no-pizza-results" style="display:none">
+        <span class="npr-icon"></span>
+        <p>Нічого не знайдено за заданими фільтрами</p>
+        <button class="pf-reset-link" id="noResultsReset">Скинути фільтри</button>
+      </div>
+      {% endif %}
+      <div class="menu-search-empty" id="sem-{{ tbl }}" style="display:none">
+        <span class="mse-emoji"></span><p class="mse-text"></p><button class="mse-reset">Скинути пошук</button>
+      </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </div>
+</main>
+
+<div class="item-modal-overlay" id="itemModalOverlay">
+  <div class="item-modal" id="itemModal">
+    <button class="item-modal-close" id="itemModalClose" aria-label="Закрити">✕</button>
+    <div class="im-img-col"><img id="imModalImg" src="" alt=""></div>
+    <div class="im-info-col">
+      <span class="im-cat-badge" id="imModalCatBadge"></span>
+      <h2 class="im-name" id="imModalName"></h2>
+      <p class="im-desc" id="imModalDesc"></p>
+      <div class="im-divider"></div>
+
+      <div class="im-size-wrap" id="imSizeWrap" style="display:none">
+        <div class="im-option-label">Розмір:</div>
+        <div class="im-size-btns">
+          <button class="im-size-btn active" data-size="small" id="imSizeSmall">30 см<br><span class="im-size-price" id="imSizePriceSmall"></span></button>
+          <button class="im-size-btn" data-size="large" id="imSizeLarge">40 см<br><span class="im-size-price" id="imSizePriceLarge"></span></button>
+        </div>
+      </div>
+
+      <div class="pizza-option-row" id="imCrustWrap" style="display:none">
+        <label>
+          <input type="checkbox" id="imCheeseCrust" style="display:none">
+          <div class="cb-box" id="crustCbBox"></div>
+          <span>Сирний бортик</span>
+          <span class="crust-price-label" id="crustPriceLabel">+65 ₴</span>
+        </label>
+      </div>
+
+      <div class="im-extra-wrap" id="imInboxWrap" style="display:none">
+        <label class="im-checkbox-label"><input type="checkbox" id="imInBox"><span>З собою</span></label>
+      </div>
+
+      <div id="imScoopsWrap" style="display:none">
+        <div class="im-option-label" id="imScoopsLabel">Кількість кульок:</div>
+        <div class="im-scoops-grid" id="imScoopsGrid"></div>
+      </div>
+
+      <div id="imFfSizeWrap" class="im-size-wrap im-ff-size-sub" style="display:none">
+        <div class="im-option-label">Розмір:</div>
+        <div class="im-size-btns" id="imFfSizeGrid"></div>
+      </div>
+
+      <div id="imSaucesWrap" style="display:none">
+        <div class="im-option-label">Додати соус:</div>
+        <div class="im-sauces-grid">
+          {% for sauce in sauces %}
+          <label class="im-sauce-chip">
+            <input type="checkbox" class="sauce-checkbox" data-sauce-id="{{ sauce.id }}" data-sauce-name="{{ sauce.name }}" data-sauce-price="{{ sauce.price }}" style="display:none">
+            <span>{{ sauce.emoji }} {{ sauce.name }}</span>
+            {% if sauce.price > 0 %}<span class="im-sauce-price">+{{ sauce.price|int }} ₴</span>{% endif %}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <span class="im-price" id="imModalPrice"></span>
+      <div class="im-footer">
+        <div class="im-qty" id="imQtyWrap">
+          <button class="im-qty-btn" id="imQtyMinus">−</button><span class="im-qty-val" id="imQtyVal">1</span><button class="im-qty-btn" id="imQtyPlus">+</button>
+        </div>
+        <div class="im-weight-wrap" id="imWeightWrap" style="display:none;">
+          <label class="im-weight-label">Вага (кг):</label>
+          <div class="im-qty"><button class="im-qty-btn" id="imWeightMinus">−</button><span class="im-qty-val" id="imWeightVal">1</span><button class="im-qty-btn" id="imWeightPlus">+</button></div>
+          <span class="im-weight-total" id="imWeightTotal"></span>
+        </div>
+        <button class="im-add-btn" id="imModalAdd">Додати в кошик</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sauce-popup" id="saucePopup">
+  <div class="sp-header"><span class="sp-title" id="spTitle">Який соус бажаєте?</span><button class="sp-close" id="spClose" aria-label="Закрити">✕</button></div>
+  <div class="sp-options" id="spOptions"></div>
+</div>
+
+<div class="sm-overlay" id="smOverlay" role="dialog" aria-modal="true">
+  <div class="sm-box">
+    <div class="sm-head">
+      <div><div class="sm-title">Додати соус?</div><div class="sm-subtitle" id="smSubtitle"></div></div>
+      <button class="sm-close" id="smClose" type="button" aria-label="Закрити">✕</button>
+    </div>
+    <div class="sm-list" id="smList">
+      {% for sc in sauces %}
+      <div class="sm-row" data-sauce-id="{{ sc.id }}" data-sauce-name="{{ sc.name }}" data-sauce-price="{{ sc.price }}">
+        <button class="sm-toggle" type="button">
+          {% if sc.image and 'default.jpg' not in sc.image %}
+          <img src="/{{ sc.image }}" class="sm-img" alt="">
+          {% else %}
+          <span class="sm-img sm-img--empty"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c8b9a8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+          {% endif %}
+          <span class="sm-name">{{ sc.name }}</span>
+          <span class="sm-price{{ ' sm-price--free' if sc.price <= 0 else '' }}">{{ ('+' ~ sc.price|int ~ ' ₴') if sc.price > 0 else 'Безкоштовно' }}</span>
+        </button>
+        <div class="sm-check"><svg class="sm-check-icon" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="sm-qty"><button class="sm-qty-btn sm-minus" type="button" aria-label="Менше">−</button><span class="sm-qty-val">1</span><button class="sm-qty-btn sm-plus" type="button" aria-label="Більше">+</button></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="sm-footer">
+      <button class="sm-skip" id="smSkip" type="button">Пропустити</button>
+      <button class="sm-confirm" id="smConfirm" type="button">Додати в кошик</button>
+    </div>
+  </div>
+</div>
+
+<div class="menu-toast" id="menuToast"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window._cartKeys   = {{ cart_keys_json|safe }};
+window._currentCat = {{ current_json|safe }};
+window._scrollTo   = {{ scroll_to }};
+</script>
+<script src="/static/js/menu.js"></script>
+<script>
+(function() {
+  var itemId = window._scrollTo;
+  if (!itemId) return;
+  window._scrollTo = 0;
+  var cat = window._currentCat || '';
+  var el  = document.querySelector('[data-category="' + cat + '"][data-item-id="' + itemId + '"]');
+  if (!el) el = document.getElementById('item-' + itemId);
+  if (!el) return;
+  el.classList.remove('lazy-hidden');
+  el.dataset.spotlightTarget = '1';
+  el.style.animation = 'none';
+  el.style.opacity   = '1';
+  if (window._cardIO) window._cardIO.unobserve(el);
+
+  function smoothScrollTo(targetY, duration, onDone) {
+    var startY = window.pageYOffset;
+    var dist   = Math.max(0, targetY) - startY;
+    var t0     = null;
+    function step(ts) {
+      if (!t0) t0 = ts;
+      var p = Math.min((ts - t0) / duration, 1);
+      var e = p < 0.5 ? 4*p*p*p : 1 - Math.pow(-2*p + 2, 3) / 2;
+      window.scrollTo(0, startY + dist * e);
+      if (p < 1) { requestAnimationFrame(step); } else if (onDone) { onDone(); }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function applySpotlight() {
+    var grid     = el.closest('.menu-grid');
+    var siblings = grid ? Array.from(grid.querySelectorAll('.menu-card:not(.lazy-hidden)')).filter(function(c){ return c !== el; }) : [];
+    siblings.forEach(function(c) { c.style.animation = 'none'; c.style.opacity = '1'; });
+    el.style.opacity = '1';
+    document.body.getBoundingClientRect();
+    siblings.forEach(function(c) { c.style.transition = 'opacity 0.4s ease'; c.style.opacity = '0.15'; });
+    el.style.transition = 'box-shadow 0.3s ease, transform 0.3s ease';
+    el.style.boxShadow  = '0 0 0 3px #FFC107, 0 0 32px 8px rgba(255,193,7,0.5)';
+    el.style.transform  = 'scale(1.04)';
+    setTimeout(function() {
+      siblings.forEach(function(c) {
+        c.style.transition = 'opacity 0.9s ease';
+        c.style.opacity    = '1';
+        setTimeout(function() { c.style.transition = ''; c.style.animation = ''; }, 900);
+      });
+      el.style.transition = 'box-shadow 1.2s ease, transform 0.5s ease';
+      el.style.boxShadow  = '';
+      el.style.transform  = '';
+      setTimeout(function() { el.style.transition = ''; delete el.dataset.spotlightTarget; }, 1200);
+    }, 2000);
+  }
+
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      var stickyH = (document.querySelector('.menu-tabs-outer') || {offsetHeight:60}).offsetHeight || 60;
+      var targetY = el.getBoundingClientRect().top + window.pageYOffset - stickyH - 96;
+      smoothScrollTo(Math.max(0, targetY), 900, applySpotlight);
+    }, 150);
+  });
+})();
+</script>
+{% endblock %}

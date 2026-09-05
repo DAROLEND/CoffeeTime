@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/slider.css">
+<link rel="stylesheet" href="/static/css/slider_food.css">
+<link rel="stylesheet" href="/static/css/homepage.css">
+{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="slider">
+    {% for s in hero_slides %}
+    <div class="slide{{ ' active' if loop.first else '' }}" style="background-image: url('/{{ s.image }}')">
+      <div class="hero-text">
+        {% if s.label %}<span class="hero-label">{{ s.label }}</span>{% endif %}
+        <h1>{{ s.text }}</h1>
+        <p class="hero-subtitle">{{ s.sub }}</p>
+        <a href="/menu" class="hero-cta">Переглянути меню →</a>
+      </div>
+    </div>
+    {% endfor %}
+    <button class="arrow left" aria-label="Попередній слайд"></button>
+    <button class="arrow right" aria-label="Наступний слайд"></button>
+    <div class="slider-controls">
+      {% for s in hero_slides %}<span class="dot{{ ' active' if loop.first else '' }}"></span>{% endfor %}
+    </div>
+    <div class="hero-wave">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 72" preserveAspectRatio="none">
+        <path d="M0,0 C480,72 960,0 1440,0 L1440,72 L0,72 Z" fill="#fdf6ee"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="benefits-strip">
+  <div class="container">
+    <div class="benefit-block">
+      {{ icon('coffee-cup', 36, '#8B4513', 'benefit-icon') }}
+      <div><p class="benefit-title">Свіжозварена кава</p><p class="benefit-sub">Щоранку нова обсмажка</p></div>
+    </div>
+    <div class="benefit-block">
+      {{ icon('cake', 36, '#8B4513', 'benefit-icon') }}
+      <div><p class="benefit-title">Десерти щодня</p><p class="benefit-sub">Мусові, еклери, макарони</p></div>
+    </div>
+    <div class="benefit-block">
+      {{ icon('leaf', 36, '#8B4513', 'benefit-icon') }}
+      <div><p class="benefit-title">Свіжі інгредієнти</p><p class="benefit-sub">Без консервантів</p></div>
+    </div>
+    <div class="benefit-block">
+      {{ icon('clock', 36, '#8B4513', 'benefit-icon') }}
+      <div><p class="benefit-title">Графік роботи</p><p class="benefit-sub">Пн–Пт 8:00–20:00</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="home-section">
+  <div class="container">
+    <h2>Краща їжа</h2>
+    <div class="product-grid">
+      {% for item in food_items %}
+      <div class="item-card food-item">
+        <span class="card-badge">{{ icon('fire', 13, '#e65100') }} Хіт</span>
+        {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+        {% else %}<div class="item-no-img" aria-hidden="true"></div>{% endif %}
+        <div class="card-info">
+          <p class="card-name">{{ item.name }}</p>
+          {% if item.description %}<p class="card-desc">{{ item.description[:72] }}{{ '…' if item.description|length > 72 else '' }}</p>{% endif %}
+          <div class="card-footer">
+            <span class="card-price">{{ '%.0f'|format(item.price) }} грн</span>
+            <a href="/menu?category={{ item.table }}&scroll_to={{ item.id }}" class="btn-add-cart">Переглянути в меню →</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="dessert-banner">
+  <div class="dessert-banner__text">
+    {% if dessert_banner.label %}<p class="banner-label">{{ dessert_banner.label }}</p>{% endif %}
+    <h2>{{ dessert_banner.title }}</h2>
+    <p class="dessert-banner__desc">{{ dessert_banner.desc|replace('\n', '<br>')|safe }}</p>
+    <a href="/menu?category=dessert_items" class="banner-btn">{{ dessert_banner.btn }}</a>
+  </div>
+  <div class="dessert-banner__photo{{ ' has-photo' if dessert_banner_img else '' }}">
+    {% if dessert_banner_img %}<img src="{{ dessert_banner_img }}" alt="Десерт дня">{% endif %}
+  </div>
+</section>
+
+<section class="home-section">
+  <div class="container">
+    <h2>Обирають найчастіше</h2>
+    <p class="section-subtitle">Найпопулярніші напої та кава</p>
+    {% if drink_items|length < 4 %}
+    <div class="product-grid">
+      {% for item in drink_items %}
+      <div class="item-card drink-item">
+        {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+        {% else %}<div class="item-no-img" aria-hidden="true"></div>{% endif %}
+        <div class="card-info">
+          <p class="card-name">{{ item.name }}</p>
+          {% if item.description %}<p class="card-desc">{{ item.description[:72] }}{{ '…' if item.description|length > 72 else '' }}</p>{% endif %}
+          <div class="card-footer">
+            <span class="card-price">{{ '%.0f'|format(item.price) }} грн</span>
+            <a href="/menu?category={{ item.table }}&scroll_to={{ item.id }}" class="btn-add-cart">Переглянути в меню →</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="slider category-slider">
+      <button class="arrow left" aria-label="Попередній">&#10094;</button>
+      <button class="arrow right" aria-label="Наступний">&#10095;</button>
+      <div class="slider-track">
+        {% for item in drink_items %}
+        <div class="slide">
+          <div class="item-card drink-item">
+            {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+            {% else %}<div class="item-no-img" aria-hidden="true"></div>{% endif %}
+            <div class="card-info">
+              <p class="card-name">{{ item.name }}</p>
+              {% if item.description %}<p class="card-desc">{{ item.description[:72] }}{{ '…' if item.description|length > 72 else '' }}</p>{% endif %}
+              <div class="card-footer">
+                <span class="card-price">{{ '%.0f'|format(item.price) }} грн</span>
+                <a href="/menu?category={{ item.table }}&scroll_to={{ item.id }}" class="btn-add-cart">Переглянути в меню →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="home-section about-section">
+  <div class="container">
+    <div class="about-content">
+      <p class="about-label">Про нас</p>
+      <h2>{{ about.about_title }}</h2>
+      <p class="about-text">{{ about.about_text }}</p>
+      <div class="about-stats">
+        <div class="stat-item">
+          <span class="stat-number" data-count="{{ years_open }}">{{ years_open }}</span>
+          <span class="stat-label">років на ринку</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number" data-count="{{ about.about_menu_count }}" data-suffix="+">{{ about.about_menu_count }}+</span>
+          <span class="stat-label">позицій меню</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number" data-count="{{ about.about_rating }}" data-suffix="★" data-decimals="1">{{ about.about_rating }}★</span>
+          <span class="stat-label">Google рейтинг</span>
+        </div>
+      </div>
+    </div>
+    <div class="about-photo"><img src="{{ about_photo }}" alt="Coffee Time кафе"></div>
+  </div>
+</section>
+
+<section class="home-section dessert-featured">
+  <div class="container">
+    <h2>Наші десерти</h2>
+    <p class="section-subtitle">Готуємо щоранку — мусові торти, еклери, макарони, тарти</p>
+    <div class="product-grid">
+      {% for item in dessert_items %}
+      <div class="item-card dessert-item">
+        {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+        {% else %}<div class="item-no-img" aria-hidden="true"></div>{% endif %}
+        <div class="card-info">
+          <p class="card-name">{{ item.name }}</p>
+          {% if item.description %}<p class="card-desc">{{ item.description[:72] }}{{ '…' if item.description|length > 72 else '' }}</p>{% endif %}
+          <div class="card-footer">
+            <span class="card-price">{{ '%.0f'|format(item.price) }} грн</span>
+            <a href="/menu?category={{ item.table }}&scroll_to={{ item.id }}" class="btn-add-cart">Переглянути в меню →</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="home-section reviews-section">
+  <div class="container">
+    <h2>Що кажуть наші гості</h2>
+    <p class="section-subtitle">
+      {{ 'На основі ' ~ total_reviews ~ ' відгуків' if total_reviews >= 10 else 'Реальні відгуки наших відвідувачів' }}
+    </p>
+    <div class="reviews-grid">
+      {% for r in reviews %}
+      {% set stars = '★' * (r.rating or 5) ~ '☆' * (5 - (r.rating or 5)) %}
+      <div class="review-card">
+        <div class="review-avatar" style="background: {{ review_avatar_color(r.name) }}">{{ r.name[:1]|upper }}</div>
+        <div class="review-stars">{{ stars }}</div>
+        <p class="review-text">"{{ r.text }}"</p>
+        <div class="review-author"><span class="review-name">{{ r.name }}</span></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="reviews-cta">
+      <a href="/reviews" class="btn-outline">Переглянути всі відгуки{{ ' (' ~ total_reviews ~ ')' if total_reviews > 0 else '' }} →</a>
+    </div>
+    <div class="reviews-leave-cta">
+      <a href="/reviews#leave-review" class="btn-leave-review">Залишити відгук</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/slider.js"></script>
+<script src="/static/js/scroll-reveal.js"></script>
+{% endblock %}

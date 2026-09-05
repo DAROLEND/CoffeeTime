@@ -1,0 +1,63 @@
+{# Rendered both inline (reviews.html) and standalone for the ?ajax=1 endpoint. #}
+<div id="rvGridInner">
+  {% if not reviews %}
+  <div class="rv-empty"><div class="rv-empty-icon">☕</div><p>Відгуків не знайдено.</p></div>
+  {% else %}
+  <div class="rv-grid">
+    {% for r in reviews %}
+    {% set initial = r.name[:1]|upper %}
+    {% set color = review_avatar_color(r.name) %}
+    {% set full = r.rating %}
+    {% set is_long = r.text|length > 140 %}
+    {% set short = (r.text[:140] ~ '...') if is_long else r.text %}
+    <div class="rv-card">
+      <span class="rv-card-quote">❝</span>
+      <div class="rv-card-head">
+        <div class="rv-avatar" style="background:{{ color }}">{{ initial }}</div>
+        <div class="rv-card-meta">
+          <span class="rv-name">{{ r.name }}</span>
+          <span class="rv-date">{{ r.created_at.strftime('%d.%m.%Y') }}</span>
+        </div>
+        <div class="rv-stars">
+          {% for i in range(1, 6) %}<span class="{{ 'star-full' if i <= full else 'star-empty' }}">★</span>{% endfor %}
+        </div>
+      </div>
+      <p class="rv-text" data-full="{{ r.text }}" data-short="{{ short }}" data-long="{{ '1' if is_long else '0' }}">{{ short }}</p>
+      {% if is_long %}<button class="rv-read-more" type="button">читати далі</button>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if total_pages > 1 %}
+  <nav class="rv-pagination" aria-label="Pagination">
+    {% if page_num > 1 %}
+      <a href="{{ build_url({'p': page_num - 1}) }}" class="rv-page-btn">← Попередня</a>
+    {% else %}
+      <span class="rv-page-btn rv-page-btn--disabled">← Попередня</span>
+    {% endif %}
+
+    {% set range_start = [1, page_num - 2]|max %}
+    {% set range_end = [total_pages, page_num + 2]|min %}
+    {% if range_start > 1 %}
+      <a href="{{ build_url({'p': 1}) }}" class="rv-page-btn">1</a>
+      {% if range_start > 2 %}<span class="rv-page-ellipsis">…</span>{% endif %}
+    {% endif %}
+
+    {% for i in range(range_start, range_end + 1) %}
+      <a href="{{ build_url({'p': i}) }}" class="rv-page-btn{{ ' rv-page-btn--active' if i == page_num else '' }}">{{ i }}</a>
+    {% endfor %}
+
+    {% if range_end < total_pages %}
+      {% if range_end < total_pages - 1 %}<span class="rv-page-ellipsis">…</span>{% endif %}
+      <a href="{{ build_url({'p': total_pages}) }}" class="rv-page-btn">{{ total_pages }}</a>
+    {% endif %}
+
+    {% if page_num < total_pages %}
+      <a href="{{ build_url({'p': page_num + 1}) }}" class="rv-page-btn">Наступна →</a>
+    {% else %}
+      <span class="rv-page-btn rv-page-btn--disabled">Наступна →</span>
+    {% endif %}
+  </nav>
+  {% endif %}
+</div>

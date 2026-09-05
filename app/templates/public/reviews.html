@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/reviews.css">{% endblock %}
+
+{% block content %}
+<main class="reviews-page">
+  <section class="rv-hero">
+    <div class="rv-hero-inner container">
+      <h1 class="rv-title">Відгуки наших клієнтів</h1>
+      <p class="rv-subtitle">Думки людей, які вже скуштували смак Coffee Time</p>
+    </div>
+
+    {% if total_count > 0 %}
+    <div class="rv-stats-card">
+      <div class="rv-avg">
+        <span class="rv-avg-num" data-value="{{ '%.1f'|format(avg_rating) }}">{{ '%.1f'|format(avg_rating) }}</span>
+        <div class="rv-avg-stars">
+          {% set full = avg_rating|int %}
+          {{ '★' * full }}{{ '★' * (5 - full) }}
+        </div>
+        <span class="rv-avg-label">
+          на основі {{ total_count }} {{ 'відгуку' if (total_count % 10 == 1 and total_count % 100 != 11) else 'відгуків' }}
+        </span>
+      </div>
+      <div class="rv-stats-divider"></div>
+      <div class="rv-bars">
+        {% for i in range(5, 0, -1) %}
+        {% set pct = ((distribution[i] / total_count * 100)|round) if total_count > 0 else 0 %}
+        <div class="rv-bar-row">
+          <span class="rv-bar-label">{{ i }}★</span>
+          <div class="rv-bar-track"><div class="rv-bar-fill" style="width:0" data-width="{{ pct|int }}"></div></div>
+          <span class="rv-bar-pct">{{ pct|int }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="rv-stats-divider"></div>
+      <div class="rv-stats-badge">
+        <div class="rv-stats-badge-icon">★</div>
+        <span class="rv-stats-badge-text">Рекомендують<br>наші клієнти</span>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="rv-controls" id="rvControls">
+    <div class="container">
+      <div class="rv-controls-inner">
+        <div class="rv-ctrl-group">
+          <span class="rv-ctrl-label">Сортування</span>
+          <div class="rv-tabs" id="rvSortTabs">
+            {% for val, label in [('newest','Нові'),('oldest','Старі'),('best','Висока оцінка'),('worst','Низька оцінка')] %}
+            <button type="button" class="rv-tab{{ ' rv-tab--active' if sort == val else '' }}" data-sort="{{ val }}">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="rv-ctrl-group">
+          <span class="rv-ctrl-label">Рейтинг</span>
+          <div class="rv-filter-tabs" id="rvFilterTabs">
+            <button type="button" class="rv-tab{{ ' rv-tab--active' if filter == 0 else '' }}" data-filter="0">Всі</button>
+            {% for i in range(5, 0, -1) %}
+            <button type="button" class="rv-tab{{ ' rv-tab--active' if filter == i else '' }}" data-filter="{{ i }}">{{ '★' * i }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        <a href="https://www.google.com/maps/search/Coffee+Time" target="_blank" rel="noopener" class="rv-google-link">Google Maps →</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="rv-grid-section">
+    <div class="container">
+      <div id="rvGridWrap" data-sort="{{ sort }}" data-filter="{{ filter }}" data-page="{{ page_num }}">
+        {% include "public/_reviews_grid.html" %}
+      </div>
+    </div>
+  </section>
+
+  <section class="rv-form-section">
+    <div class="container">
+      {% if show_success %}
+      <div class="rv-success" id="successMsg">✓ Дякуємо! Ваш відгук успішно додано.</div>
+      {% endif %}
+
+      {% if not user %}
+      <div class="rv-auth-prompt">
+        <div class="rv-auth-icon">☕</div>
+        <p class="rv-auth-text">Увійдіть, щоб залишити відгук</p>
+        <a href="/login" class="rv-auth-btn">Увійти</a>
+      </div>
+      {% elif reviewed_already %}
+      <div class="rv-already"><span class="rv-already-icon">✓</span><p>Ви вже залишили відгук. Дякуємо за вашу думку!</p></div>
+      {% else %}
+      <div class="rv-form-wrap">
+        <h2>Залишити свій відгук</h2>
+        <form method="post" class="rv-form" id="reviewForm" novalidate>
+          {{ csrf_field()|safe }}
+          <input type="hidden" name="sort" value="{{ sort }}">
+
+          <div class="rv-field" id="starsField">
+            <label class="rv-label">Оцінка:</label>
+            <div class="rv-star-picker" id="starPicker">
+              {% for i in range(1, 6) %}<span class="rv-star" data-value="{{ i }}">★</span>{% endfor %}
+            </div>
+            <input type="hidden" name="rating" id="ratingInput" value="0">
+            <p class="rv-star-hint" id="starHint">&nbsp;</p>
+            <p class="rv-field-error" id="ratingError" hidden>Оберіть оцінку</p>
+          </div>
+
+          <div class="rv-field" id="nameField">
+            <label class="rv-label" for="reviewName">Ваше ім'я:</label>
+            <input type="text" name="name" id="reviewName" class="rv-input" placeholder="Ваше ім'я (мінімум 2 символи)" autocomplete="name">
+            <p class="rv-field-error" id="nameError" hidden>Ім'я занадто коротке</p>
+          </div>
+
+          <div class="rv-field" id="textField">
+            <label class="rv-label" for="reviewText">Відгук:</label>
+            <textarea name="text" id="reviewText" class="rv-input rv-textarea" placeholder="Розкажіть що вам сподобалось або що можна покращити... (мінімум 10 символів)"></textarea>
+            <p class="rv-field-error" id="textError" hidden>Відгук занадто короткий</p>
+          </div>
+
+          <button type="submit" class="rv-submit">Надіслати</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}<script src="/static/js/reviews.js"></script>{% endblock %}

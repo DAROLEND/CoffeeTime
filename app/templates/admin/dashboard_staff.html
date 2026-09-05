@@ -1,0 +1,76 @@
+{% extends "admin/admin_base.html" %}
+{% import "admin/_dashboard_cards.html" as cards %}
+
+{% block content %}
+<div class="sh-welcome">
+  <div class="sh-welcome__left">
+    <div class="sh-welcome__avatar">{{ admin_initial }}</div>
+    <div>
+      <div class="sh-welcome__name">Вітаємо, {{ admin_display }}!</div>
+      <div class="sh-welcome__role">{{ role_label }}</div>
+    </div>
+  </div>
+  <div class="sh-welcome__date">{{ today_str }}, {{ weekday }}</div>
+</div>
+
+{% if staff_stats %}
+<div class="sh-stats-row">
+  {% if staff_stats.products_total is defined %}
+  <div class="sh-stat"><div class="sh-stat__val">{{ staff_stats.products_total }}</div><div class="sh-stat__lbl">Товарів всього</div><div class="sh-stat__sub">у всіх категоріях</div></div>
+  <div class="sh-stat"><div class="sh-stat__val">{{ cat_counts|length }}</div><div class="sh-stat__lbl">Категорій</div><div class="sh-stat__sub">в меню</div></div>
+  <div class="sh-stat"><div class="sh-stat__val">{{ staff_stats.sauces_total }}</div><div class="sh-stat__lbl">Соусів</div><div class="sh-stat__sub">додаткові інгредієнти</div></div>
+  {% endif %}
+  {% if staff_stats.reviews_total is defined %}
+  <div class="sh-stat"><div class="sh-stat__val">{{ staff_stats.reviews_total }}</div><div class="sh-stat__lbl">Відгуків всього</div><div class="sh-stat__sub">{{ staff_stats.reviews_week or 0 }} за тиждень</div></div>
+  {% endif %}
+  {% if staff_stats.gallery_total is defined %}
+  <div class="sh-stat"><div class="sh-stat__val">{{ staff_stats.gallery_total }}</div><div class="sh-stat__lbl">Фото в галереї</div><div class="sh-stat__sub">{{ (staff_stats.gallery_cats or {}).get('food', 0) }} їжа · {{ (staff_stats.gallery_cats or {}).get('interior', 0) }} інтер'єр</div></div>
+  {% endif %}
+  {% if staff_stats.slides_total is defined %}
+  <div class="sh-stat"><div class="sh-stat__val">{{ staff_stats.slides_active }}<span style="font-size:14px;font-weight:500;color:#aaa"> / {{ staff_stats.slides_total }}</span></div><div class="sh-stat__lbl">Слайдів активних</div><div class="sh-stat__sub">з {{ staff_stats.slides_total }} всього</div></div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="sh-section-title">Швидкий перехід</div>
+<div class="staff-home-grid">
+  {% if cat_counts %}
+    {{ cards.categories_card(staff_stats, cat_counts) }}
+    <a href="/admin/sauces" class="staff-home-card">
+      <div class="shc-icon" style="background:#fef3e2"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e6851a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div>
+      <div><div class="shc-title">Соуси</div><div class="shc-sub">Додаткові інгредієнти до страв</div></div>
+      <div class="shc-badge">{{ staff_stats.sauces_total }} шт</div>
+    </a>
+  {% endif %}
+
+  {% if staff_stats.reviews_total is defined %}
+  <a href="/admin/reviews" class="staff-home-card">
+    <div class="shc-icon" style="background:#fce4ec"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E91E63" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+    <div><div class="shc-title">Відгуки</div><div class="shc-sub">Модерація відгуків клієнтів</div></div>
+    {% if (staff_stats.reviews_week or 0) > 0 %}<div class="shc-badge shc-badge--new">{{ staff_stats.reviews_week }} нових</div>{% endif %}
+  </a>
+  {% endif %}
+
+  {% if staff_stats.gallery_total is defined %}
+  {{ cards.content_overview_card(staff_stats) }}
+  {% endif %}
+</div>
+
+<style>
+.sh-welcome { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 16px; padding: 22px 26px; border: 1.5px solid #ede5dd; margin-bottom: 18px; }
+.sh-welcome__left { display: flex; align-items: center; gap: 16px; }
+.sh-welcome__avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #8B4513, #c26d2a); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.sh-welcome__name { font-size: 20px; font-weight: 800; color: #2c2c2a; }
+.sh-welcome__role { font-size: 13px; color: #999; margin-top: 2px; }
+.sh-welcome__date { font-size: 13px; color: #bbb; font-weight: 500; }
+.sh-stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.sh-stat { background: #fff; border-radius: 14px; padding: 18px 20px; border: 1.5px solid #ede5dd; }
+.sh-stat__val { font-size: 28px; font-weight: 800; color: #3d1f07; line-height: 1; }
+.sh-stat__lbl { font-size: 12px; font-weight: 600; color: #555; margin-top: 6px; }
+.sh-stat__sub { font-size: 11px; color: #bbb; margin-top: 2px; }
+.sh-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #bbb; margin-bottom: 12px; }
+.staff-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.staff-home-card { background: #fff; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 10px; border: 1.5px solid #ede5dd; text-decoration: none; color: inherit; transition: box-shadow 0.18s, transform 0.18s, border-color 0.18s; position: relative; }
+.staff-home-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.09); transform: translateY(-2px); border-color: #d4b896; }
+</style>
+{% endblock %}

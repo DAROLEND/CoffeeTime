@@ -1,0 +1,542 @@
+<!-- Port of admin/includes/layout_top.php + layout_bottom.php merged into
+     one Jinja base template. Two fixes made here "by construction" per
+     the migration plan:
+     1. The admin_flash/admin_flash_type session keys (set by
+        services/permissions.py's require_perm()/require_super() on
+        access-denied) are rendered unconditionally below — in the PHP
+        original, only 4 of the pages that could receive this redirect
+        actually displayed it, and dashboard.php (the actual redirect
+        target) was not one of them, so access-denied messages were
+        silently lost. Centralizing here fixes that for every admin page.
+     2. The 30s new-order poll was duplicated verbatim in both
+        layout_top.php and layout_bottom.php (two independent
+        setInterval(..., 30000) calls hitting check_new_orders.php). Kept
+        only one (the layout_top version, which also plays a beep). -->
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title or 'Адмін' }} — Coffee Time</title>
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/uk.js"></script>
+  <script>
+  window.fpBuildYearSelect = function(sd, ds, fp) {
+    var wrapper   = fp.calendarContainer.querySelector('.numInputWrapper');
+    var yearInput = fp.calendarContainer.querySelector('input.cur-year');
+    if (!wrapper || !yearInput) return;
+    yearInput.style.display = 'none';
+    wrapper.querySelectorAll('span').forEach(function(s) { s.style.display = 'none'; });
+    var cur = fp.currentYear;
+    var sel = document.createElement('select');
+    sel.className = 'fp-year-sel';
+    for (var y = cur - 20; y <= cur + 5; y++) {
+      var o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      if (y === cur) o.selected = true;
+      sel.appendChild(o);
+    }
+    wrapper.appendChild(sel);
+    sel.addEventListener('change', function() { fp.changeYear(+this.value); });
+    fp.calendarContainer.querySelectorAll('.flatpickr-prev-month,.flatpickr-next-month').forEach(function(btn) {
+      btn.addEventListener('click', function() { setTimeout(function() { sel.value = fp.currentYear; }, 30); });
+    });
+  };
+  </script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="admin-wrapper">
+
+  <aside class="admin-sidebar" id="adminSidebar">
+    <button class="sidebar-collapser" id="sidebarToggle" title="Згорнути/розгорнути">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="sidebar-inner">
+      <div class="sidebar-brand">
+        <img src="/static/images/main/logo-cup.svg" alt="Coffee Time" class="sidebar-logo">
+        <div class="sidebar-subtitle">Панель адміна</div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Головне</div>
+        <a href="/admin/dashboard" class="sidebar-link {{ 'active' if active_page == 'dashboard' else '' }}" data-tooltip="Головна">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span class="sl-text">Головна</span>
+        </a>
+
+        {% if has_perm_orders_view %}
+        <a href="/admin/orders" class="sidebar-link {{ 'active' if active_page == 'orders' else '' }}" data-tooltip="Замовлення">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <span class="sl-text">Замовлення</span>
+          {% if new_orders_count > 0 %}<span class="nav-badge orders-badge pulse">{{ new_orders_count }}</span>{% endif %}
+        </a>
+        {% endif %}
+
+        {% if has_perm_products %}
+        <a href="/admin/manage-items" class="sidebar-link {{ 'active' if active_page == 'products' else '' }}" data-tooltip="Товари">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <span class="sl-text">Товари</span>
+        </a>
+        <a href="/admin/sauces" class="sidebar-link {{ 'active' if active_page == 'sauces' else '' }}" data-tooltip="Соуси">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          <span class="sl-text">Соуси</span>
+        </a>
+        {% endif %}
+
+        {% if is_super %}
+        <div class="nav-section-label">Адміністрація</div>
+        <a href="/admin/users" class="sidebar-link {{ 'active' if active_page == 'admin_users' else '' }}" data-tooltip="Персонал">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="sl-text">Персонал</span>
+        </a>
+        {% endif %}
+
+        {% if has_perm_reviews or has_perm_content %}<div class="nav-section-label">Контент</div>{% endif %}
+
+        {% if has_perm_reviews %}
+        <a href="/admin/reviews" class="sidebar-link {{ 'active' if active_page == 'reviews' else '' }}" data-tooltip="Відгуки">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span class="sl-text">Відгуки</span>
+          {% if pending_reviews > 0 %}<span class="nav-badge">{{ pending_reviews }}</span>{% endif %}
+        </a>
+        {% endif %}
+
+        {% if has_perm_content %}
+        <a href="/admin/gallery" class="sidebar-link {{ 'active' if active_page == 'gallery' else '' }}" data-tooltip="Галерея">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span class="sl-text">Галерея</span>
+        </a>
+        <a href="/admin/hero-slides" class="sidebar-link {{ 'active' if active_page == 'hero_slides' else '' }}" data-tooltip="Хіро слайдер">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M17 7V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2"/><polyline points="9 12 12 15 15 12"/></svg>
+          <span class="sl-text">Хіро слайдер</span>
+        </a>
+        <a href="/admin/about-section" class="sidebar-link {{ 'active' if active_page == 'about_section' else '' }}" data-tooltip="Про нас">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span class="sl-text">Про нас</span>
+        </a>
+        <a href="/admin/dessert-banner" class="sidebar-link {{ 'active' if active_page == 'dessert_banner' else '' }}" data-tooltip="Десерт дня">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+          <span class="sl-text">Десерт дня</span>
+        </a>
+        {% endif %}
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="sidebar-avatar" id="sidebarAvatar">{{ admin_initial }}</div>
+        <div class="sidebar-bottom-info">
+          <span class="sidebar-admin-name">{{ admin_display }}</span>
+          <a href="/admin/logout" class="sidebar-logout-inline">Вийти</a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+  (function(){
+    var sb = document.getElementById('adminSidebar');
+    if (!sb || window.innerWidth <= 700) return;
+    if (localStorage.getItem('sb_collapsed') !== '0') sb.classList.add('collapsed', 'sb-notransition');
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ sb.classList.remove('sb-notransition'); }); });
+  })();
+  </script>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="topbar-hamburger" id="hamburgerBtn" aria-label="Меню">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">{{ page_title or '' }}</div>
+      </div>
+      <div class="topbar-right">
+        {% if can_see_orders %}
+        <div class="notif-wrap" id="notifWrap">
+          <button class="topbar-bell" id="notifBtn" title="Нові замовлення" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            {% if new_orders_count > 0 %}<span class="topbar-bell-badge orders-badge">{{ new_orders_count }}</span>{% endif %}
+          </button>
+          <div class="notif-dropdown" id="notifDropdown">
+            <div class="notif-header">
+              <span class="notif-title">Нові замовлення</span>
+              {% if new_orders_count > 0 %}<span class="notif-count">{{ new_orders_count }}</span>{% endif %}
+            </div>
+            <div class="notif-list">
+              {% if not notif_orders %}
+              <div class="notif-empty">Нових замовлень немає</div>
+              {% else %}
+              {% for no in notif_orders %}
+              <a href="/admin/orders/{{ no.order_id }}" class="notif-item">
+                <div class="notif-item__dot"></div>
+                <div class="notif-item__body">
+                  <span class="notif-item__id">#{{ no.order_id }}</span>
+                  <span class="notif-item__name">{{ no.name }}</span>
+                  <span class="notif-item__price">{{ '%.0f'|format(no.total)|replace(',', ' ') }} ₴</span>
+                </div>
+                <span class="notif-item__time">{{ no.time_label }}</span>
+              </a>
+              {% endfor %}
+              {% endif %}
+            </div>
+            <a href="/admin/orders" class="notif-footer">Переглянути всі замовлення →</a>
+          </div>
+        </div>
+        {% endif %}
+        <div class="topbar-admin">
+          <div class="topbar-admin-avatar">{{ admin_initial }}</div>
+          <span class="topbar-admin-name">{{ admin_display }}</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="admin-content">
+      {% if admin_flash %}
+      <div class="admin-alert admin-alert--{{ admin_flash_type or 'info' }}" style="margin-bottom:16px;padding:12px 18px;border-radius:8px;{{ 'background:#ffebee;color:#c62828;border:1px solid #f5c6c6;' if admin_flash_type == 'error' else 'background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;' }}">
+        {{ admin_flash }}
+      </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script>
+(function() {
+  var btn = document.getElementById('notifBtn');
+  var dropdown = document.getElementById('notifDropdown');
+  if (btn && dropdown) {
+    btn.addEventListener('click', function(e) { e.stopPropagation(); dropdown.classList.toggle('notif-dropdown--open'); });
+    document.addEventListener('click', function(e) {
+      var wrap = document.getElementById('notifWrap');
+      if (wrap && !wrap.contains(e.target)) dropdown.classList.remove('notif-dropdown--open');
+    });
+  }
+
+  var knownCount = {{ new_orders_count|default(0) }};
+  function playBeep() {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.35);
+    } catch (e) {}
+  }
+  function showNewOrderToast(count) {
+    var el = document.createElement('div');
+    el.className = 'admin-toast success';
+    el.innerHTML = 'Нове замовлення! Всього нових: <strong>' + count + '</strong> &nbsp;<a href="/admin/orders" style="color:#fff;text-decoration:underline">Переглянути →</a>';
+    el.style.cssText = 'max-width:380px;line-height:1.5';
+    document.body.appendChild(el);
+    requestAnimationFrame(function() { el.classList.add('show'); });
+    setTimeout(function() { el.classList.remove('show'); setTimeout(function() { el.remove(); }, 350); }, 6000);
+  }
+  window.updateOrderBadges = function(count) {
+    document.querySelectorAll('.orders-badge').forEach(function(b) {
+      b.textContent = count > 0 ? count : '';
+      b.style.display = count > 0 ? '' : 'none';
+      b.classList.toggle('pulse', count > 0);
+    });
+  };
+  function pollOrders() {
+    fetch('/admin/check-new-orders')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var newCount = data.count || 0;
+        if (newCount > knownCount) { playBeep(); showNewOrderToast(newCount); }
+        if (newCount !== knownCount) { updateOrderBadges(newCount); knownCount = newCount; }
+      })
+      .catch(function() {});
+  }
+  setInterval(pollOrders, 30000);
+})();
+</script>
+
+<script>
+(function() {
+  var sidebar = document.getElementById('adminSidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  var hamburger = document.getElementById('hamburgerBtn');
+  if (!sidebar) return;
+  var tip = document.createElement('div');
+  tip.className = 'sb-tooltip';
+  document.body.appendChild(tip);
+  function setCollapsed(collapsed) {
+    sidebar.classList.toggle('collapsed', collapsed);
+    localStorage.setItem('sb_collapsed', collapsed ? '1' : '0');
+    tip.style.opacity = '0';
+  }
+  var collapser = document.getElementById('sidebarToggle');
+  collapser && collapser.addEventListener('click', function() { setCollapsed(!sidebar.classList.contains('collapsed')); });
+  hamburger && hamburger.addEventListener('click', function() { sidebar.classList.add('mobile-open'); overlay && overlay.classList.add('visible'); });
+  overlay && overlay.addEventListener('click', function() { sidebar.classList.remove('mobile-open'); overlay.classList.remove('visible'); });
+  sidebar.querySelectorAll('.sidebar-link[data-tooltip]').forEach(function(link) {
+    link.addEventListener('mouseenter', function() {
+      if (!sidebar.classList.contains('collapsed') || window.innerWidth <= 700) return;
+      var rect = link.getBoundingClientRect();
+      tip.textContent = link.dataset.tooltip;
+      tip.style.top = Math.round(rect.top + rect.height / 2) + 'px';
+      tip.style.opacity = '1';
+    });
+    link.addEventListener('mouseleave', function() { tip.style.opacity = '0'; });
+    link.addEventListener('click', function() { tip.style.opacity = '0'; });
+  });
+  var avatar = document.getElementById('sidebarAvatar');
+  avatar && avatar.addEventListener('click', function() {
+    if (!sidebar.classList.contains('collapsed')) return;
+    if (confirm('Вийти з панелі адміна?')) window.location.href = '/admin/logout';
+  });
+  var _lastW = window.innerWidth;
+  window.addEventListener('resize', function() {
+    var w = window.innerWidth;
+    if (w === _lastW) return;
+    _lastW = w;
+    if (w <= 700) { sidebar.classList.remove('collapsed', 'mobile-open'); overlay && overlay.classList.remove('visible'); tip.style.opacity = '0'; }
+  });
+})();
+</script>
+
+<script>
+function showAdminToast(msg, type) {
+  type = type || 'success';
+  const t = document.createElement('div');
+  t.className = 'admin-toast ' + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3500);
+}
+function countUp(el, target, duration) {
+  duration = duration || 800;
+  const decimals = el.dataset.decimals ? parseInt(el.dataset.decimals) : 0;
+  const suffix = el.dataset.suffix || '';
+  const prefix = el.dataset.prefix || '';
+  let current = 0;
+  const step = target / (duration / 16);
+  const timer = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = prefix + (decimals > 0 ? current.toFixed(decimals) : Math.floor(current).toLocaleString('uk-UA')) + suffix;
+    if (current >= target) clearInterval(timer);
+  }, 16);
+}
+document.querySelectorAll('.stat-value[data-count]').forEach(el => {
+  const target = parseFloat(el.dataset.count);
+  if (!isNaN(target)) countUp(el, target);
+});
+
+document.querySelectorAll('.status-select').forEach(function(sel) {
+  sel.addEventListener('change', function() {
+    const orderId = this.dataset.orderId;
+    const newStatus = this.value;
+    const row = this.closest('tr');
+    const badge = row ? row.querySelector('.status-badge') : null;
+    fetch('/admin/orders/' + orderId + '/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        if (badge) {
+          badge.textContent = data.label;
+          badge.className = 'status-badge ' + data.css_class;
+          badge.style.animation = 'none';
+          badge.offsetWidth;
+          badge.style.animation = 'statusPop 0.3s ease';
+        }
+        showAdminToast('Статус оновлено', 'success');
+        window.updateOrderBadges && window.updateOrderBadges(data.new_count);
+      } else {
+        showAdminToast('Помилка оновлення', 'error');
+      }
+    })
+    .catch(function() { showAdminToast('Помилка з\'єднання', 'error'); });
+  });
+});
+
+window.openModal = function(id) { var overlay = document.getElementById(id); if (overlay) overlay.classList.add('open'); };
+window.closeModal = function(id) { var overlay = document.getElementById(id); if (overlay) overlay.classList.remove('open'); };
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+  overlay.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+  var closeBtn = overlay.querySelector('.modal-close');
+  if (closeBtn) closeBtn.addEventListener('click', function() { overlay.classList.remove('open'); });
+});
+
+(function() {
+  var cropperInstance = null;
+  var cropTarget = null;
+  var modal = document.createElement('div');
+  modal.id = 'imgCropModal';
+  modal.innerHTML = [
+    '<div class="icm-backdrop"></div>',
+    '<div class="icm-dialog">',
+    '  <div class="icm-header"><span class="icm-title">Редагування фото</span>',
+    '    <button class="icm-close" id="icmClose" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>',
+    '  </div>',
+    '  <div class="icm-body"><img id="icmImg" src=""></div>',
+    '  <div class="icm-toolbar">',
+    '    <button type="button" id="icmRotL"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Вліво</button>',
+    '    <button type="button" id="icmRotR"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>Вправо</button>',
+    '    <button type="button" id="icmZoomIn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>',
+    '    <button type="button" id="icmZoomOut"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>',
+    '    <button type="button" id="icmReset"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.47"/></svg>Скинути</button>',
+    '    <div class="icm-toolbar-sep"></div><span class="icm-hint">Тягни рамку · Scroll = зум</span>',
+    '  </div>',
+    '  <div class="icm-footer"><button type="button" id="icmCancel" class="icm-btn icm-btn--sec">Скасувати</button><button type="button" id="icmApply" class="icm-btn icm-btn--pri">Застосувати</button></div>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(modal);
+
+  var st = document.createElement('style');
+  st.textContent = [
+    '#imgCropModal{display:none;position:fixed;inset:0;z-index:9999;}',
+    '#imgCropModal.open{display:flex;align-items:center;justify-content:center;}',
+    '.icm-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.72);}',
+    '.icm-dialog{position:relative;background:#fff;border-radius:16px;width:min(900px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.45);}',
+    '.icm-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f0e8df;flex-shrink:0;}',
+    '.icm-title{font-size:15px;font-weight:700;color:#2c2c2a;}',
+    '.icm-close{background:none;border:none;cursor:pointer;color:#888;padding:4px;border-radius:6px;display:flex;}',
+    '.icm-close:hover{background:#f5f0ea;color:#333;}',
+    '.icm-body{flex:1;overflow:hidden;background:#1a1a1a;min-height:340px;}',
+    '.icm-body img{display:block;max-width:100%;}',
+    '.icm-toolbar{display:flex;align-items:center;gap:6px;padding:10px 14px;border-top:1px solid #f0e8df;background:#fafaf8;flex-shrink:0;flex-wrap:wrap;}',
+    '.icm-toolbar button{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1.5px solid #e0d8d0;border-radius:8px;padding:6px 11px;font-size:13px;color:#555;cursor:pointer;font-family:inherit;transition:all .15s;}',
+    '.icm-toolbar button:hover{border-color:#8B4513;color:#8B4513;background:#fdf8f4;}',
+    '#icmZoomIn,#icmZoomOut{padding:6px 9px;}',
+    '.icm-toolbar-sep{flex:1;}',
+    '.icm-hint{font-size:11px;color:#bbb;}',
+    '.icm-footer{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid #f0e8df;flex-shrink:0;}',
+    '.icm-btn{padding:10px 24px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .2s;}',
+    '.icm-btn--sec{background:#f5f0ea;color:#555;}.icm-btn--sec:hover{background:#eae0d8;}',
+    '.icm-btn--pri{background:#8B4513;color:#fff;}.icm-btn--pri:hover{background:#6d3410;}',
+    '.upload-recrop{position:relative;z-index:3;display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:#fff;border:1.5px solid #e0d8d0;border-radius:8px;padding:5px 12px;font-size:12px;color:#8B4513;cursor:pointer;font-family:inherit;transition:all .15s;}',
+    '.upload-recrop:hover{background:#fdf8f4;border-color:#8B4513;}',
+  ].join('');
+  document.head.appendChild(st);
+
+  function parseRatio(r) {
+    if (!r) return NaN;
+    var p = r.toString().split('/');
+    return p.length === 2 ? parseFloat(p[0]) / parseFloat(p[1]) : parseFloat(p[0]);
+  }
+  function closeCropper() {
+    modal.classList.remove('open');
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+    cropTarget = null;
+  }
+  function launchCropper(dataUrl, ratio) {
+    var img = document.getElementById('icmImg');
+    img.src = dataUrl;
+    modal.classList.add('open');
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+    setTimeout(function() {
+      cropperInstance = new Cropper(img, { aspectRatio: parseRatio(ratio), viewMode: 1, dragMode: 'move', background: false, autoCropArea: 0.95, responsive: true, checkCrossOrigin: false });
+    }, 80);
+  }
+  function openCropper(file, hiddenInput, previewEl, fileInput, ratio, livePreviewSel) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      cropTarget = { hiddenInput: hiddenInput, previewEl: previewEl, fileInput: fileInput, ratio: ratio, livePreviewSel: livePreviewSel || null, originalDataUrl: e.target.result, onApply: null };
+      launchCropper(e.target.result, ratio);
+    };
+    reader.readAsDataURL(file);
+  }
+  window.openImgCropper = function(dataUrl, opts) {
+    opts = opts || {};
+    cropTarget = { hiddenInput: opts.hiddenInput || null, previewEl: opts.previewEl || null, fileInput: null, ratio: opts.ratio || null, livePreviewSel: opts.livePreviewSel || null, originalDataUrl: dataUrl, onApply: opts.onApply || null };
+    launchCropper(dataUrl, opts.ratio || null);
+  };
+
+  document.getElementById('icmClose').addEventListener('click', closeCropper);
+  document.getElementById('icmCancel').addEventListener('click', closeCropper);
+  modal.querySelector('.icm-backdrop').addEventListener('click', closeCropper);
+  document.getElementById('icmRotL').addEventListener('click', function() { if (cropperInstance) cropperInstance.rotate(-90); });
+  document.getElementById('icmRotR').addEventListener('click', function() { if (cropperInstance) cropperInstance.rotate(90); });
+  document.getElementById('icmZoomIn').addEventListener('click', function() { if (cropperInstance) cropperInstance.zoom(0.1); });
+  document.getElementById('icmZoomOut').addEventListener('click', function() { if (cropperInstance) cropperInstance.zoom(-0.1); });
+  document.getElementById('icmReset').addEventListener('click', function() { if (cropperInstance) cropperInstance.reset(); });
+
+  document.getElementById('icmApply').addEventListener('click', function() {
+    if (!cropperInstance || !cropTarget) return;
+    var canvas = cropperInstance.getCroppedCanvas({ maxWidth: 2400, maxHeight: 2400, imageSmoothingQuality: 'high' });
+    if (!canvas) return;
+    var b64 = canvas.toDataURL('image/jpeg', 0.92);
+    if (cropTarget.hiddenInput) cropTarget.hiddenInput.value = b64;
+    if (cropTarget.previewEl) {
+      var saved = cropTarget;
+      cropTarget.previewEl.innerHTML = '<img src="' + b64 + '" style="max-height:110px;border-radius:8px;object-fit:cover;display:block;">' +
+        '<button type="button" class="upload-recrop"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Переобрати</button>';
+      cropTarget.previewEl.style.display = 'block';
+      cropTarget.previewEl.querySelector('.upload-recrop').addEventListener('click', function(e) {
+        e.stopPropagation(); e.preventDefault();
+        cropTarget = saved;
+        launchCropper(saved.originalDataUrl, saved.ratio);
+      });
+    }
+    if (cropTarget.livePreviewSel) {
+      var liveEl = document.querySelector(cropTarget.livePreviewSel);
+      if (liveEl) { liveEl.src = b64; liveEl.style.display = ''; }
+    }
+    if (typeof cropTarget.onApply === 'function') cropTarget.onApply(b64);
+    if (cropTarget.fileInput) { try { cropTarget.fileInput.value = ''; } catch(e) {} }
+    closeCropper();
+  });
+
+  function bindUploadZones() {
+    document.querySelectorAll('.upload-zone input[type="file"]:not([data-cropper-bound])').forEach(function(input) {
+      input.setAttribute('data-cropper-bound', '1');
+      input.addEventListener('change', function() {
+        if (!this.files || !this.files[0]) return;
+        var file = this.files[0];
+        var zone = this.closest('.upload-zone');
+        var previewEl = zone ? zone.querySelector('.upload-preview') : null;
+        var ratio = zone ? (zone.dataset.cropRatio || null) : null;
+        var livePreviewSel = zone ? (zone.dataset.livePreview || null) : null;
+        var hiddenId = this.dataset.cropHidden;
+        var hiddenInp = hiddenId ? document.getElementById(hiddenId) : null;
+        var fileInput = this;
+        if (!previewEl) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var dataUrl = e.target.result;
+          previewEl.innerHTML = '<img src="' + dataUrl + '" style="max-height:110px;border-radius:8px;object-fit:cover;display:block;">' +
+            '<button type="button" class="upload-recrop"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Редагувати</button>';
+          previewEl.style.display = 'block';
+          previewEl.querySelector('.upload-recrop').addEventListener('click', function(ev) {
+            ev.stopPropagation(); ev.preventDefault();
+            if (window.Cropper) openCropper(file, hiddenInp, previewEl, fileInput, ratio, livePreviewSel);
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  }
+  bindUploadZones();
+  window.bindUploadZones = bindUploadZones;
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+
+<button class="admin-scroll-top" id="adminScrollTop" aria-label="Вгору" title="Вгору">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+<script>
+(function () {
+  var btn = document.getElementById('adminScrollTop');
+  if (!btn) return;
+  window.addEventListener('scroll', function () { btn.classList.toggle('visible', window.scrollY > 300); }, { passive: true });
+  btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+})();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

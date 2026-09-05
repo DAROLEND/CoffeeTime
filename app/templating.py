@@ -41,3 +41,11 @@ def render(request: Request, template_name: str, status_code: int = 200, **conte
     }
     base_context.update(context)
     return templates.TemplateResponse(request, template_name, base_context, status_code=status_code)
+
+
+def admin_render(request: Request, db, template_name: str, status_code: int = 200, **context) -> HTMLResponse:
+    from app.services.admin_common import admin_layout_context
+
+    base_context = {"request": request, **admin_layout_context(request, db)}
+    base_context.update(context)
+    return templates.TemplateResponse(request, template_name, base_context, status_code=status_code)

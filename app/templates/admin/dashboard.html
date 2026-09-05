@@ -1,0 +1,292 @@
+{% extends "admin/admin_base.html" %}
+{% import "admin/_dashboard_cards.html" as cards %}
+
+{% macro stat_card(icon_bg, icon_svg, label, value, compare) %}
+<div class="stat-card">
+  <div class="stat-icon-box" style="background:{{ icon_bg }}">{{ icon_svg|safe }}</div>
+  <div class="stat-text">
+    <div class="stat-label">{{ label }}</div>
+    <div class="stat-value">{{ value|safe }}</div>
+    <span class="stat-compare stat-compare--{{ compare.direction }}">{{ compare.text }}</span>
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="stats-grid {{ 'stats-grid--five' if show_reviews_stat else 'stats-grid--four' }}">
+  {{ stat_card('#fff8e6', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFC107" stroke-width="2" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', 'Замовлення сьогодні', today_orders, stat_compare(today_orders, yest_orders)) }}
+  {{ stat_card('#e8f5e9', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>', 'Виручка сьогодні', ('%.0f'|format(today_revenue)|replace(',', ' ')) ~ ' ₴', stat_compare(today_revenue, yest_revenue, ' ₴')) }}
+  {{ stat_card('#f3e5f5', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>', 'Середній чек', (avg_check ~ ' ₴') if avg_check > 0 else '—', (stat_compare(avg_check, avg_check_yest, ' ₴') if avg_check_yest > 0 else {'direction': 'eq', 'text': 'за сьогодні'})) }}
+  {{ stat_card('#e3f2fd', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', 'Клієнтів усього', total_clients, stat_compare(today_clients, yest_clients, ' сьогодні')) }}
+  {% if show_reviews_stat %}
+  {{ stat_card('#fce4ec', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E91E63" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', 'Відгуки за тиждень', week_reviews, stat_compare(week_reviews, prev_reviews, ' vs тиждень тому')) }}
+  {% endif %}
+</div>
+
+<div class="dashboard-grid">
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <div class="dash-section">
+      <div class="section-head">
+        <h2 class="section-title">Графік замовлень</h2>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="chart-tabs" id="chartTabs">
+            <button class="chart-tab active" data-mode="today">Сьогодні</button>
+            <button class="chart-tab" data-mode="week">Тиждень</button>
+            <button class="chart-tab" data-mode="month">Місяць</button>
+            <button class="chart-tab" data-mode="day">День</button>
+          </div>
+          <span id="chartDayPickerWrap" style="display:none">
+            <input type="text" id="chartDayPicker" value="{{ today_iso }}" style="border:1px solid #e0d6cd;border-radius:8px;padding:5px 10px;font-size:12px;color:#3a2a1a;background:#fff;cursor:pointer;font-family:inherit;outline:none;transition:border-color .2s;width:130px" readonly>
+          </span>
+        </div>
+      </div>
+      <canvas id="ordersChart" style="display:block;transition:opacity 0.13s ease"></canvas>
+    </div>
+
+    <div class="dash-section">
+      <div class="section-head">
+        <h2 class="section-title">Останні замовлення</h2>
+        <a href="/admin/orders" class="btn-ghost btn-sm">Всі →</a>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>#</th><th>Клієнт</th><th>Телефон</th><th>Оплата</th><th>Сума</th><th>Статус</th><th>Дата</th></tr></thead>
+          <tbody>
+            {% for o in recent_orders %}
+            {% set label, badge_class = status_info(o.status) %}
+            {% set pay_cls, pay_icon, pay_label = payment_badge(o) %}
+            <tr>
+              <td><a href="/admin/orders/{{ o.order_id }}" style="font-weight:700;color:#8B4513;text-decoration:none">#{{ o.order_id }}</a></td>
+              <td>{{ o.full_name }}</td>
+              <td style="color:#666;font-size:12px">{{ o.phone }}</td>
+              <td><span class="pay-tag {{ pay_cls }}">{{ icon(pay_icon, 13, '#2e7d32' if pay_cls == 'pay-paid' else ('#f57f17' if pay_cls == 'pay-cash' else '#9e9e9e')) }} {{ pay_label }}</span></td>
+              <td><strong>{{ '%.0f'|format(o.total)|replace(',', ' ') }} ₴</strong></td>
+              <td><span class="order-status-badge {{ badge_class }}">{{ label }}</span></td>
+              <td style="color:#999;font-size:12px">{{ o.created_at.strftime('%d.%m %H:%M') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center;color:#bbb;padding:32px">Замовлень ще немає</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-section dash-section--narrow">
+    <div class="section-head" style="align-items:flex-start;flex-wrap:wrap;gap:10px">
+      <h2 class="section-title">Топ товарів</h2>
+      <div class="top-filter-tabs" id="topFilterTabs">
+        <button class="top-ftab active" data-period="all">Весь час</button>
+        <button class="top-ftab" data-period="month">Місяць</button>
+        <button class="top-ftab" data-period="week">Тиждень</button>
+        <button class="top-ftab" data-period="custom">Власний</button>
+      </div>
+    </div>
+    <div id="customRangeRow" style="display:none;padding:10px 0 4px;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="text" id="topDateFrom" placeholder="Від" autocomplete="off" readonly style="border:1px solid #e0d6cd;border-radius:8px;padding:6px 10px;font-size:13px;color:#3a2a1a;background:#fff;cursor:pointer;width:120px">
+      <span style="color:#aaa;font-size:13px">—</span>
+      <input type="text" id="topDateTo" placeholder="До" autocomplete="off" readonly style="border:1px solid #e0d6cd;border-radius:8px;padding:6px 10px;font-size:13px;color:#3a2a1a;background:#fff;cursor:pointer;width:120px">
+      <button id="applyCustomRange" style="padding:6px 14px;background:#6b3a1f;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Застосувати</button>
+    </div>
+    <ul class="top-list" id="topProductsList">
+      {% if not top_products %}
+      <li style="color:#bbb;font-size:13px;padding:16px 0;list-style:none">Даних поки немає</li>
+      {% else %}
+      {% set rank_colors = ['#FFC107', '#aaaaaa', '#cd7f32'] %}
+      {% for p in top_products %}
+      <li class="top-item" {{ 'style="opacity:.55"'|safe if p.deleted else '' }}>
+        <span class="top-rank" style="color:{{ rank_colors[loop.index0] if loop.index0 < 3 else '#ccc' }}">{{ loop.index }}</span>
+        {% if p.image %}<img src="/{{ p.image }}" class="top-thumb" alt="" style="object-fit:cover;border-radius:8px">
+        {% else %}<div class="top-thumb top-thumb--letter">{{ p.name[:1]|upper }}</div>{% endif %}
+        <div style="flex:1;min-width:0">
+          <div class="top-name" {{ 'style="color:#aaa;font-style:italic"'|safe if p.deleted else '' }}>{{ p.name }}</div>
+          <div style="font-size:11px;color:#aaa;margin-top:1px">{{ p.orders_count }} замовлень · {{ p.unit_price }} грн/шт</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div class="top-sold">{{ p.sold }} шт</div>
+          <div style="font-size:11px;color:#aaa">{{ '%.0f'|format(p.total_revenue)|replace(',', ' ') }} грн</div>
+        </div>
+      </li>
+      {% endfor %}
+      {% endif %}
+    </ul>
+  </div>
+</div>
+
+{% if cat_counts %}
+<div style="margin-top:18px">{{ cards.categories_card(staff_stats, cat_counts) }}</div>
+{% endif %}
+{% if staff_stats.gallery_total is defined %}
+<div style="margin-top:14px">{{ cards.content_overview_card(staff_stats) }}</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var canvas = document.getElementById('ordersChart');
+  var chartTabs = document.querySelectorAll('.chart-tab');
+  var dayPicker = document.getElementById('chartDayPicker');
+  var dayPickerWrap = document.getElementById('chartDayPickerWrap');
+
+  var hoursData = {{ hours_data|tojson }};
+  var weekData = {{ week_data|tojson }};
+  var weekLabels = {{ week_labels|tojson }};
+  var monthData = {{ month_data|tojson }};
+  var monthLabels = {{ month_labels|tojson }};
+
+  var animFrame = null, curLabels = null, curValues = null;
+
+  function todayLabels() { var l = []; for (var i = 0; i < 24; i++) l.push(i < 10 ? '0' + i : String(i)); return l; }
+  function measureW() {
+    canvas.style.width = '1px';
+    var par = canvas.parentNode;
+    var cs = window.getComputedStyle(par);
+    return Math.floor(par.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+  }
+  function renderBars(ctx, W, H, labels, values, fixedMax) {
+    var pad = { top:24, right:16, bottom:38, left:40 };
+    var cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+    var max = fixedMax !== undefined ? fixedMax : (Math.max.apply(null, values) || 1);
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = '#f0e8df'; ctx.lineWidth = 1;
+    for (var i = 0; i <= 4; i++) {
+      var gy = pad.top + cH - cH/4*i;
+      ctx.beginPath(); ctx.moveTo(pad.left, gy); ctx.lineTo(pad.left+cW, gy); ctx.stroke();
+      ctx.fillStyle = '#bbb'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(Math.round(max/4*i), pad.left-6, gy+4);
+    }
+    var n = labels.length, gap = labels.length > 14 ? 2 : 4;
+    var bW = Math.max(3, (cW - gap*(n-1)) / n);
+    for (var j = 0; j < n; j++) {
+      var bh = cH * (values[j] / max), bx = pad.left + j*(bW+gap), by = pad.top + cH - bh;
+      if (bh > 0) {
+        var grad = ctx.createLinearGradient(0, by, 0, pad.top+cH);
+        grad.addColorStop(0, '#E8A838'); grad.addColorStop(0.6, '#D4A853'); grad.addColorStop(1, 'rgba(212,168,83,0.18)');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.roundRect(bx, by, bW, Math.max(bh,1), [3,3,0,0]); ctx.fill();
+        if (bh > 16 && values[j] > 0) {
+          ctx.fillStyle = 'rgba(139,69,19,0.7)'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+          ctx.fillText(Math.round(values[j]), bx+bW/2, by-3);
+        }
+      }
+      ctx.fillStyle = '#aaa'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+      var lbl = String(labels[j]);
+      if (n > 12 && j % 3 !== 0) lbl = '';
+      ctx.fillText(lbl, bx+bW/2, H-pad.bottom+13);
+    }
+  }
+  function drawChart(labels, values) {
+    var dpr = window.devicePixelRatio || 1, W = measureW(), H = 220;
+    canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    renderBars(ctx, W, H, labels, values);
+  }
+  function animateChart(labels, values) {
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+    curLabels = labels; curValues = values;
+    var dpr = window.devicePixelRatio || 1, W = measureW(), H = 220;
+    canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var max = Math.max.apply(null, values) || 1;
+    var t0 = null, dur = 450;
+    function ease(t) { return 1 - Math.pow(1-t, 3); }
+    function step(ts) {
+      if (!t0) t0 = ts;
+      var p = Math.min(1, (ts-t0)/dur), e = ease(p);
+      renderBars(ctx, W, H, labels, values.map(function(v){ return v*e; }), max);
+      if (p < 1) animFrame = requestAnimationFrame(step);
+      else { animFrame = null; renderBars(ctx, W, H, labels, values, max); }
+    }
+    animFrame = requestAnimationFrame(step);
+  }
+  function switchChart(labels, values) {
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+    curLabels = labels; curValues = values;
+    canvas.style.opacity = '0.05';
+    setTimeout(function() { canvas.style.opacity = '1'; animateChart(labels, values); }, 130);
+  }
+
+  curLabels = todayLabels(); curValues = hoursData;
+  drawChart(curLabels, curValues);
+
+  chartTabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      chartTabs.forEach(function(t){ t.classList.remove('active'); });
+      this.classList.add('active');
+      var mode = this.dataset.mode;
+      if (mode === 'day') {
+        dayPickerWrap.style.display = '';
+        if (dayPicker.value) loadDayChart(dayPicker.value);
+      } else {
+        dayPickerWrap.style.display = 'none';
+        if (mode === 'week') switchChart(weekLabels, weekData);
+        else if (mode === 'month') switchChart(monthLabels, monthData);
+        else switchChart(todayLabels(), hoursData);
+      }
+    });
+  });
+
+  function loadDayChart(date) {
+    fetch('/admin/get-chart-data?date=' + encodeURIComponent(date))
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d.success) switchChart(todayLabels(), d.data); })
+      .catch(function(){});
+  }
+
+  flatpickr(dayPicker, { locale: 'uk', dateFormat: 'Y-m-d', disableMobile: true, maxDate: 'today', defaultDate: new Date(), onReady: window.fpBuildYearSelect, onChange: function(sel, dateStr) { if (dateStr) loadDayChart(dateStr); } });
+
+  window.addEventListener('resize', function() { if (curLabels && curValues) drawChart(curLabels, curValues); });
+  requestAnimationFrame(function() { requestAnimationFrame(function() { if (curLabels && curValues) drawChart(curLabels, curValues); }); });
+
+  const tabs = document.querySelectorAll('.top-ftab');
+  const list = document.getElementById('topProductsList');
+  const customRow = document.getElementById('customRangeRow');
+  const dateFrom = document.getElementById('topDateFrom');
+  const dateTo = document.getElementById('topDateTo');
+  const applyBtn = document.getElementById('applyCustomRange');
+  if (!tabs.length || !list) return;
+
+  flatpickr(dateFrom, { locale:'uk', dateFormat:'Y-m-d', disableMobile:true, maxDate:'today', onReady: window.fpBuildYearSelect, onChange: function(sel, str) { if (dateTo._flatpickr) dateTo._flatpickr.set('minDate', str||null); } });
+  flatpickr(dateTo, { locale:'uk', dateFormat:'Y-m-d', disableMobile:true, maxDate:'today', onReady: window.fpBuildYearSelect, onChange: function(sel, str) { if (dateFrom._flatpickr) dateFrom._flatpickr.set('maxDate', str||null); } });
+
+  async function loadPeriod(period, from, to) {
+    list.style.opacity = '0.45'; list.style.pointerEvents = 'none';
+    try {
+      let url = '/admin/get-top-products?period=' + encodeURIComponent(period);
+      if (period === 'custom' && from && to) url += '&date_from=' + encodeURIComponent(from) + '&date_to=' + encodeURIComponent(to);
+      const r = await fetch(url);
+      const data = await r.json();
+      if (data.success) renderTopProducts(list, data.products);
+    } catch (_) {}
+    list.style.opacity = '1'; list.style.pointerEvents = 'auto';
+  }
+
+  tabs.forEach(btn => {
+    btn.addEventListener('click', function() {
+      tabs.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      if (this.dataset.period === 'custom') { customRow.style.display = 'flex'; }
+      else { customRow.style.display = 'none'; loadPeriod(this.dataset.period); }
+    });
+  });
+  applyBtn && applyBtn.addEventListener('click', function() { if (!dateFrom.value || !dateTo.value) return; loadPeriod('custom', dateFrom.value, dateTo.value); });
+
+  function renderTopProducts(container, products) {
+    if (!products.length) { container.innerHTML = '<li style="color:#bbb;font-size:13px;padding:16px 0;list-style:none">Даних за цей період немає</li>'; return; }
+    const rankColors = ['#FFC107', '#aaaaaa', '#cd7f32'];
+    container.innerHTML = products.map((p, i) => {
+      const color = rankColors[i] || '#ccc';
+      const firstLtr = (p.name || '?').charAt(0).toUpperCase();
+      const img = p.image ? `<img src="/${p.image}" class="top-thumb" alt="" style="object-fit:cover;border-radius:8px">` : `<div class="top-thumb top-thumb--letter">${firstLtr}</div>`;
+      const nameStyle = p.deleted ? 'color:#aaa;font-style:italic' : '';
+      const liStyle = `animation:rowFadeIn .25s ease ${i * .05}s both${p.deleted ? ';opacity:.55' : ''}`;
+      return `<li class="top-item" style="${liStyle}"><span class="top-rank" style="color:${color}">${i + 1}</span>${img}<div style="flex:1;min-width:0"><div class="top-name" style="${nameStyle}">${p.name}</div><div style="font-size:11px;color:#aaa;margin-top:1px">${p.orders_count} замовлень · ${p.unit_price} грн/шт</div></div><div style="text-align:right;flex-shrink:0"><div class="top-sold">${p.total_qty} шт</div><div style="font-size:11px;color:#aaa">${p.total_revenue_fmt} грн</div></div></li>`;
+    }).join('');
+  }
+})();
+</script>
+{% endblock %}

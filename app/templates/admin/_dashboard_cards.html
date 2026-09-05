@@ -1,0 +1,90 @@
+{# Shared macros used by both dashboard.html (full) and dashboard_staff.html
+   — PHP literally duplicated this markup between the isStaffHome branch
+   and the bottom of the full-dashboard branch; deduped here. #}
+
+{% macro categories_card(staff_stats, cat_counts) %}
+<div class="shc-cat-card" style="grid-column:1/-1">
+  <div class="shc-cat-header">
+    <div class="shc-cat-header__left">
+      <div class="shc-icon" style="background:#fff8e6;width:40px;height:40px;border-radius:10px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFC107" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      </div>
+      <div>
+        <div class="shc-title">Товари по категоріях</div>
+        <div class="shc-sub">Всього {{ staff_stats.products_total }} позицій</div>
+      </div>
+    </div>
+    <a href="/admin/manage-items" class="shc-cat-btn">Управляти →</a>
+  </div>
+  <div class="shc-cat-grid">
+    {% for tbl, info in cat_counts.items() %}
+    <a href="/admin/manage-items?category={{ tbl }}" class="shc-cat-item">
+      <span class="shc-cat-name">{{ info.label }}</span>
+      <span class="shc-cat-count">{{ info.count }}</span>
+    </a>
+    {% endfor %}
+    <a href="/admin/sauces" class="shc-cat-item shc-cat-item--sauces">
+      <span class="shc-cat-name">🫙 Соуси</span>
+      <span class="shc-cat-count shc-cat-count--sauces">{{ staff_stats.sauces_total or 0 }}</span>
+    </a>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro content_overview_card(staff_stats) %}
+{% set gc = staff_stats.gallery_cats or {} %}
+{% set gt = [1, staff_stats.gallery_total or 1]|max %}
+{% set s_total = [1, staff_stats.slides_total or 0]|max %}
+{% set s_active = staff_stats.slides_active or 0 %}
+{% set s_pct = (s_active / s_total * 100)|round|int if s_total > 0 else 0 %}
+<div class="shc-cat-card">
+  <div class="shc-cat-header">
+    <div class="shc-cat-header__left">
+      <div class="shc-icon" style="background:#e3f2fd;width:40px;height:40px;border-radius:10px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      </div>
+      <div><div class="shc-title">Контент сайту</div><div class="shc-sub">Галерея, слайдер та сторінка «Про нас»</div></div>
+    </div>
+  </div>
+  <div class="shc-content-grid">
+    <a href="/admin/gallery" class="shc-content-block">
+      <div class="shc-cb-header">
+        <div class="shc-icon" style="background:#e3f2fd;width:36px;height:36px;border-radius:9px;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+        <div><div class="shc-cb-title">Галерея</div><div class="shc-cb-sub">Фото сайту</div></div>
+        <div class="shc-cb-count">{{ staff_stats.gallery_total or 0 }}</div>
+      </div>
+      <div class="shc-cb-cats">
+        <div class="shc-cb-cat-row"><span class="shc-cb-cat-lbl">Їжа</span><div class="shc-cb-bar"><div class="shc-cb-bar-fill" style="width:{{ ((gc.food or 0) / gt * 100)|round|int }}%;background:#2196F3"></div></div><span class="shc-cb-cat-val">{{ gc.food or 0 }}</span></div>
+        <div class="shc-cb-cat-row"><span class="shc-cb-cat-lbl">Інтер'єр</span><div class="shc-cb-bar"><div class="shc-cb-bar-fill" style="width:{{ ((gc.interior or 0) / gt * 100)|round|int }}%;background:#90CAF9"></div></div><span class="shc-cb-cat-val">{{ gc.interior or 0 }}</span></div>
+      </div>
+    </a>
+    <a href="/admin/hero-slides" class="shc-content-block">
+      <div class="shc-cb-header">
+        <div class="shc-icon" style="background:#e8f5e9;width:36px;height:36px;border-radius:9px;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M17 7V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2"/><polyline points="9 12 12 15 15 12"/></svg></div>
+        <div><div class="shc-cb-title">Хіро слайдер</div><div class="shc-cb-sub">Головний банер</div></div>
+        <div class="shc-cb-count">{{ staff_stats.slides_total or 0 }}</div>
+      </div>
+      <div class="shc-cb-cats">
+        <div class="shc-cb-cat-row"><span class="shc-cb-cat-lbl">Активних</span><div class="shc-cb-bar"><div class="shc-cb-bar-fill" style="width:{{ s_pct }}%;background:#4CAF50"></div></div><span class="shc-cb-cat-val">{{ s_active }} / {{ staff_stats.slides_total or 0 }}</span></div>
+        <div style="margin-top:10px">
+          {% for i in range(staff_stats.slides_total or 0) %}<span class="shc-slide-dot {{ 'shc-slide-dot--on' if i < s_active else '' }}"></span>{% endfor %}
+          {% if not staff_stats.slides_total %}<span style="font-size:12px;color:#bbb">Слайди відсутні</span>{% endif %}
+        </div>
+      </div>
+    </a>
+    <a href="/admin/about-section" class="shc-content-block">
+      <div class="shc-cb-header">
+        <div class="shc-icon" style="background:#f3e5f5;width:36px;height:36px;border-radius:9px;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div><div class="shc-cb-title">Про нас</div><div class="shc-cb-sub">Секція на сайті</div></div>
+        <div class="shc-cb-status {{ 'shc-cb-status--ok' if staff_stats.about_title else 'shc-cb-status--warn' }}">{{ '✓ Налаштовано' if staff_stats.about_title else '! Не заповнено' }}</div>
+      </div>
+      {% if staff_stats.about_title %}
+      <div class="shc-cb-about-preview">
+        <div class="shc-cb-about-title">{{ staff_stats.about_title }}</div>
+        {% if staff_stats.about_text %}<div class="shc-cb-about-text">{{ staff_stats.about_text[:90] }}…</div>{% endif %}
+      </div>
+      {% endif %}
+    </a>
+  </div>
+</div>
+{% endmacro %}

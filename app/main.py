@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.dependencies import AuthRequired
 from app.middleware.session import DBSessionMiddleware
+from app.routers.admin import auth as admin_auth
+from app.routers.admin import dashboard as admin_dashboard
 from app.routers.public import auth as public_auth
 from app.routers.public import cart_forms as public_cart_forms
 from app.routers.public import cart_page as public_cart_page
@@ -47,6 +49,8 @@ app.include_router(public_auth.router)
 app.include_router(public_checkout.router)
 app.include_router(public_payments.router)
 app.include_router(public_profile.router)
+app.include_router(admin_auth.router)
+app.include_router(admin_dashboard.router)
 
 
 @app.exception_handler(CSRFError)

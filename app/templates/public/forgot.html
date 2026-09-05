@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/auth.css">{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card{{ ' js-shake' if error else '' }}">
+    <div class="auth-left">
+      <img src="/static/images/main/logo.svg" alt="Coffee Time" class="auth-logo">
+      <div class="auth-left-middle">
+        <h2 class="auth-left-title">Забули пароль?</h2>
+        <p class="auth-left-sub">Не хвилюйтеся — введіть вашу пошту, і ми надішлемо посилання для відновлення доступу.</p>
+      </div>
+      <div class="auth-features">
+        <div class="auth-feature">{{ icon('clock', 20, 'rgba(255,255,255,0.85)', 'auth-feature-icon') }}<span>Лист надійде протягом хвилини</span></div>
+        <div class="auth-feature">{{ icon('lock', 20, 'rgba(255,255,255,0.85)', 'auth-feature-icon') }}<span>Посилання дійсне 1 годину</span></div>
+        <div class="auth-feature">{{ icon('coffee-cup', 20, 'rgba(255,255,255,0.85)', 'auth-feature-icon') }}<span>Після входу — замовляйте улюблений смак</span></div>
+      </div>
+    </div>
+
+    <div class="auth-right" id="authRight">
+      {% if success %}
+      <div class="auth-success show">
+        <svg class="auth-success-icon" viewBox="0 0 72 72" fill="none">
+          <circle class="check-circle" cx="36" cy="36" r="33" stroke="#4CAF50" stroke-width="3" fill="none"/>
+          <path class="check-mark" d="M22 36l10 10 18-18" stroke="#4CAF50" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="auth-success-text">Лист надіслано!</p>
+        <p class="auth-success-sub">Перевірте вашу пошту та перейдіть за посиланням.</p>
+        <a href="/login" style="margin-top:8px;font-size:13px;color:#8B4513;font-weight:700;text-decoration:none;">← Повернутися до входу</a>
+      </div>
+      {% else %}
+      <p class="auth-form-title">Відновлення пароля</p>
+      {% if error %}<div class="auth-error-block">{{ error }}</div>{% endif %}
+      <form method="post" id="forgotForm" novalidate>
+        <div class="form-field" id="ff-email">
+          <label for="email">Електронна пошта</label>
+          <div class="input-wrap">
+            <input id="email" name="email" type="email" placeholder="your@email.com" value="" autocomplete="email" required>
+            <span class="field-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </div>
+          <span class="field-error">Введіть коректну електронну пошту</span>
+        </div>
+        <button type="submit" class="auth-submit" id="forgotBtn">Надіслати посилання</button>
+      </form>
+      <div class="auth-switch">Згадали пароль? <a href="/login">Увійти</a></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const form = document.getElementById('forgotForm');
+  const btn = document.getElementById('forgotBtn');
+  const ffEmail = document.getElementById('ff-email');
+  if (!form) return;
+  const input = document.getElementById('email');
+
+  const card = document.querySelector('.js-shake');
+  if (card) {
+    card.classList.remove('js-shake');
+    const right = document.getElementById('authRight');
+    if (right) { right.classList.add('shake'); setTimeout(() => right.classList.remove('shake'), 500); }
+  }
+
+  function validateEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  input.addEventListener('blur', () => {
+    if (input.value === '') return;
+    ffEmail.classList.toggle('valid', validateEmail(input.value));
+    ffEmail.classList.toggle('invalid', !validateEmail(input.value));
+  });
+  input.addEventListener('input', () => {
+    if (ffEmail.classList.contains('invalid') && validateEmail(input.value)) { ffEmail.classList.remove('invalid'); ffEmail.classList.add('valid'); }
+  });
+  form.addEventListener('submit', (e) => {
+    if (!validateEmail(input.value)) { e.preventDefault(); ffEmail.classList.add('invalid'); ffEmail.classList.remove('valid'); input.focus(); return; }
+    btn.classList.add('loading');
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+# Coffee Time — FastAPI port
+# Pinned to major-compatible versions available as of early 2026.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+jinja2==3.1.5
+python-multipart==0.0.20
+
+sqlalchemy==2.0.36
+alembic==1.14.0
+pymysql==1.1.1
+cryptography==44.0.0          # required by pymysql for sha256_password/caching_sha2_password auth
+
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+itsdangerous==2.2.0           # signs the session-id cookie
+
+httpx==0.28.1                 # LiqPay/Telegram/Supabase HTTP calls
+python-dotenv==1.0.1
+
+pytest==8.3.4
+pytest-asyncio==0.25.2

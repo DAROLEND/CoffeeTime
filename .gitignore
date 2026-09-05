@@ -29,3 +29,10 @@ migrate_passwords.php
 test.php
 info.php
 phpinfo.php
+
+# ── Python (fastapi-migration branch) ─────────────────────────────────────────
+.venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

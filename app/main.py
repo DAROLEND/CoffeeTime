@@ -22,6 +22,7 @@ from app.routers.public import checkout as public_checkout
 from app.routers.public import menu as public_menu
 from app.routers.public import pages as public_pages
 from app.routers.public import payments as public_payments
+from app.routers.public import profile as public_profile
 from app.routers.public import reviews as public_reviews
 from app.services.csrf import CSRFError
 from app.services.csrf import is_ajax as _is_ajax
@@ -45,6 +46,7 @@ app.include_router(public_cart_page.router)
 app.include_router(public_auth.router)
 app.include_router(public_checkout.router)
 app.include_router(public_payments.router)
+app.include_router(public_profile.router)
 
 
 @app.exception_handler(CSRFError)

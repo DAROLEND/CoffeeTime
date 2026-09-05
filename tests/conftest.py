@@ -33,6 +33,23 @@ from app.db.base import Base
 import app.models  # noqa: F401 — registers all models on Base.metadata
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _fast_bcrypt_for_tests():
+    """Production hashing (app/services/auth.py) intentionally uses
+    passlib's bcrypt default cost (12 rounds) — that's the whole point of
+    bcrypt being slow. But the same cost factor applied ~100+ times across
+    this test suite (every register/login/change-password test hashes at
+    least once) turned a few-second run into several minutes on this
+    sandbox's CPU. Lower the rounds for the test process only; nothing in
+    app/ reads this — it patches the module-level CryptContext instance
+    Auth's hash_password()/verify_password() already call by name."""
+    from passlib.context import CryptContext
+
+    import app.services.auth as auth_module
+
+    auth_module.pwd_context = CryptContext(schemes=["bcrypt"], bcrypt__rounds=4)
+
+
 @pytest.fixture()
 def sqlite_engine():
     # A file-backed (not :memory:) SQLite DB via StaticPool so every

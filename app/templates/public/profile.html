@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/profile.css">{% endblock %}
+
+{% macro pay_tag(o) %}
+  {% if o.is_pending %}<span class="ppay ppay-pending">Не оплачено</span>
+  {% else %}{% set cls, label = o.pay_badge %}<span class="ppay {{ cls }}">{{ label }}</span>{% endif %}
+{% endmacro %}
+
+{% macro order_card(o, idx, delay_step, use_reveal_attr) %}
+{% set order = o.order %}
+{% set names = o.preview_names %}
+{% if names|length >= 2 %}{% set dish_line = names[0] ~ ', ' ~ names[1] %}
+{% elif names|length == 1 %}{% set dish_line = names[0] %}
+{% else %}{% set dish_line = 'Замовлення' %}{% endif %}
+{% set color = 'red' if o.is_pending else ('green' if o.payment_status_value == 'paid' or o.is_done else 'neutral') %}
+<div class="order-card" data-status="{{ o.status_value }}" data-color="{{ color }}" data-date="{{ order.created_at.strftime('%Y-%m-%d') }}"
+     {% if use_reveal_attr %}data-reveal{% endif %} style="--reveal-delay:{{ idx * delay_step }}s">
+  <div class="order-card__top">
+    <div class="order-card__top-left">
+      <div class="order-card__num">#{{ order.order_id }} &middot; {{ o.items_count }} поз.</div>
+      <div class="order-card__dish">{{ dish_line }}</div>
+      {% if o.preview_remaining > 0 %}<div class="order-card__dish-extra">та ще {{ o.preview_remaining }}</div>{% endif %}
+    </div>
+    <div class="order-card__price">{{ '%.0f'|format(order.total)|replace(',', ' ') }} ₴</div>
+  </div>
+
+  <div class="order-card__meta">
+    <div class="order-card__tags">{{ pay_tag(o) }}{% if o.status_label %}<span class="pstat pstat-{{ o.status_value }}">{{ o.status_label }}</span>{% endif %}</div>
+    <div class="order-card__time">
+      {{ order.created_at.strftime('%d.%m.%Y · %H:%M') }}
+      {% if order.ready_time %} · <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> до {{ order.ready_time }}{% endif %}
+    </div>
+  </div>
+
+  <div class="order-card__footer">
+    {% if o.is_done %}
+    <div class="order-card__rating{{ ' order-card__rating--done' if o.rating else '' }}" id="rate-{{ order.order_id }}">
+      {% if o.rating %}
+      <div class="ocr-result"><div class="ocr-stars-static">{{ '★' * o.rating }}<span class="ocr-stars-empty">{{ '★' * (5 - o.rating) }}</span></div></div>
+      {% else %}
+      <div class="ocr-prompt">
+        <span class="ocr-label">Оцінити:</span>
+        <div class="ocr-stars" data-order="{{ order.order_id }}">
+          {% for si in range(1, 6) %}<button type="button" class="ocr-star" data-val="{{ si }}">★</button>{% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    <div class="oc-btn-group">
+      {% if o.is_pending %}
+      <a href="/profile?repay={{ order.order_id }}" class="oc-btn oc-btn--pay">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Оплатити
+      </a>
+      {% endif %}
+      <button class="oc-btn oc-btn--details" data-order-id="{{ order.order_id }}">
+        Деталі
+        <svg class="toggle-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="order-card__details" id="details-{{ order.order_id }}">
+    <div class="order-card__details-inner">
+      {% if order.comment %}<div class="order-card__comment">💬 {{ order.comment }}</div>{% endif %}
+      <div class="oi-loading">Завантаження…</div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}
+{% if saved_flag %}
+<div class="prof-toast prof-toast--success" id="profToast">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+  {{ 'Профіль успішно оновлено' if saved_flag == 'profile' else 'Пароль успішно змінено' }}
+</div>
+{% endif %}
+
+<div class="prof-wrap" id="profWrap">
+  <aside class="prof-sidebar">
+    <div class="prof-avatar">{{ initials }}</div>
+    <div class="prof-name">{{ display_name }}</div>
+    <div class="prof-email">{{ user.email or '' }}</div>
+    {% if user.client_PhoneNumber %}<div class="prof-phone">{{ user.client_PhoneNumber }}</div>{% endif %}
+    <hr class="prof-divider">
+    <div class="prof-stats-grid">
+      <button class="prof-stat-card" id="statOrders" title="Переглянути замовлення">
+        <div class="prof-stat-card__val" data-countup="{{ order_count }}">0</div>
+        <div class="prof-stat-card__label">Замовлень</div>
+      </button>
+      <button class="prof-stat-card" id="statSpent" title="Переглянути замовлення">
+        <div class="prof-stat-card__val" data-countup="{{ total_spent|round|int }}" data-suffix="₴">0</div>
+        <div class="prof-stat-card__label">Витрачено</div>
+      </button>
+    </div>
+    <div class="prof-since-pill"><span class="prof-since-dot"></span>З нами з {{ joined_at }}</div>
+    <hr class="prof-divider">
+    <a href="/logout" class="prof-logout-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Вийти
+    </a>
+  </aside>
+
+  <main class="prof-main">
+    <div class="prof-tabs-wrap">
+      <div class="prof-tabs">
+        <button class="prof-tab {{ 'active' if active_tab == 'orders' else '' }}" data-tab="orders">Мої замовлення</button>
+        <button class="prof-tab {{ 'active' if active_tab == 'settings' else '' }}" data-tab="settings">Налаштування</button>
+      </div>
+    </div>
+
+    <div class="prof-tab-panel {{ 'active' if active_tab == 'orders' else '' }}" id="panel-orders">
+      {% if not has_orders %}
+      <div class="prof-empty">
+        <div class="prof-empty__icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#D4A853" stroke-width="1.4" stroke-linecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg></div>
+        <p class="prof-empty-title">Замовлень ще немає</p>
+        <p class="prof-empty-sub">Додайте щось смачне з нашого меню ☕</p>
+        <a href="/menu" class="prof-empty-btn">Перейти до меню</a>
+      </div>
+      {% else %}
+      <div class="orders-filter-bar" id="ordersFilterBar">
+        <div class="ofilter-quick">
+          <button class="ofilter-btn active" data-filter="all">Усі</button>
+          <button class="ofilter-btn" data-filter="today">Сьогодні</button>
+          <button class="ofilter-btn" data-filter="week">Тиждень</button>
+          <button class="ofilter-btn" data-filter="month">Місяць</button>
+        </div>
+        <div class="ofilter-range">
+          <input type="date" id="filterFrom" class="ofilter-date" title="від">
+          <span class="ofilter-sep">—</span>
+          <input type="date" id="filterTo" class="ofilter-date" title="до">
+        </div>
+        <button class="ofilter-clear" id="filterClearBtn">✕ Скинути</button>
+      </div>
+      <div class="orders-empty-filter" id="ordersEmptyFilter" style="display:none">Замовлень за вибраний період не знайдено</div>
+
+      <div class="orders-grid" id="ordersGrid">
+        {% for group_key in ['today', 'week', 'earlier'] %}
+        {% set group_orders = grouped[group_key] %}
+        {% if group_orders %}
+          {% if group_key == 'earlier' %}
+          <div class="order-group order-group--collapsible" id="groupEarlier">
+            <div class="order-group__label order-group__label--toggle" id="groupEarlierToggle">
+              {{ group_labels[group_key] }}<span class="order-group__count">{{ group_orders|length }}</span>
+              <svg class="order-group__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="order-group__body" id="groupEarlierBody">
+              <div class="orders-grid-inner">
+                {% for o in group_orders %}{{ order_card(o, loop.index0, 0.06, false) }}{% endfor %}
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="order-group">
+            <div class="order-group__label">{{ group_labels[group_key] }}</div>
+            {% for o in group_orders %}{{ order_card(o, loop.index0, 0.05, true) }}{% endfor %}
+          </div>
+          {% endif %}
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="prof-tab-panel {{ 'active' if active_tab == 'settings' else '' }}" id="panel-settings">
+      <div class="prof-section">
+        <div class="prof-section__title">Особисті дані</div>
+        {% if profile_error %}<div class="prof-alert prof-alert--error">{{ profile_error }}</div>{% endif %}
+        <form method="post" id="profileForm" novalidate>
+          {{ csrf_field()|safe }}
+          <input type="hidden" name="action" value="profile">
+          <div class="prof-form-row">
+            <div class="prof-field"><label>Ім'я</label><input type="text" name="first_name" value="{{ user.client_name or '' }}" placeholder="Ім'я"></div>
+            <div class="prof-field"><label>Прізвище</label><input type="text" name="last_name" value="{{ user.client_surname or '' }}" placeholder="Прізвище"></div>
+          </div>
+          <div class="prof-field"><label>Телефон</label><input type="tel" name="phone" value="{{ user.client_PhoneNumber or '' }}" placeholder="+38 (0XX) XXX-XX-XX"></div>
+          <button type="submit" class="prof-btn prof-btn--dark" id="profileSaveBtn">Зберегти зміни</button>
+        </form>
+      </div>
+
+      <div class="prof-section">
+        <div class="prof-section__title">Безпека</div>
+        {% if password_error %}<div class="prof-alert prof-alert--error">{{ password_error }}</div>{% endif %}
+        <form method="post" id="passwordForm" novalidate>
+          {{ csrf_field()|safe }}
+          <input type="hidden" name="action" value="password">
+          <div class="prof-field">
+            <label>Поточний пароль</label>
+            <div class="pw-wrap">
+              <input type="password" name="current_password" id="pwCurrent" placeholder="••••••••" autocomplete="current-password">
+              <button type="button" class="eye-btn" data-target="pwCurrent">
+                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="prof-field">
+            <label>Новий пароль</label>
+            <div class="pw-wrap">
+              <input type="password" name="new_password" id="pwNew" placeholder="••••••••" autocomplete="new-password">
+              <button type="button" class="eye-btn" data-target="pwNew">
+                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            <div class="pw-strength" id="pwStrength" style="display:none">
+              <div class="pw-strength-bar"><span></span><span></span><span></span><span></span></div>
+              <div class="pw-strength-label" id="pwStrengthLabel"></div>
+            </div>
+          </div>
+          <div class="prof-field">
+            <label>Підтвердіть новий пароль</label>
+            <div class="pw-wrap">
+              <input type="password" name="confirm_password" id="pwConfirm" placeholder="••••••••" autocomplete="new-password">
+              <button type="button" class="eye-btn" data-target="pwConfirm">
+                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="prof-btn prof-btn--dark" id="passwordSaveBtn">Змінити пароль</button>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+'use strict';
+
+var toast = document.getElementById('profToast');
+if (toast) {
+  setTimeout(function () { toast.classList.add('prof-toast--out'); }, 3200);
+  setTimeout(function () { toast.remove(); }, 3700);
+}
+
+(function () {
+  var once = function (el) {
+    if (!el) return;
+    el.addEventListener('animationend', function () { el.style.animation = 'none'; }, { once: true });
+  };
+  once(document.querySelector('.prof-sidebar'));
+  once(document.querySelector('.prof-main'));
+})();
+
+function switchTab(target) {
+  document.querySelectorAll('.prof-tab').forEach(function (t) { t.classList.toggle('active', t.dataset.tab === target); });
+  document.querySelectorAll('.prof-tab-panel').forEach(function (p) { p.classList.toggle('active', p.id === 'panel-' + target); });
+  document.body.classList.toggle('tab-settings', target === 'settings');
+  var url = new URL(window.location);
+  url.searchParams.set('tab', target);
+  history.replaceState(null, '', url);
+}
+document.querySelectorAll('.prof-tab').forEach(function (tab) {
+  tab.addEventListener('click', function () { if (!this.classList.contains('active')) switchTab(this.dataset.tab); });
+});
+['statOrders', 'statSpent'].forEach(function (id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('click', function () { switchTab('orders'); });
+});
+
+function countUp(el, target, ms) {
+  var suffix = el.dataset.suffix ? ' ' + el.dataset.suffix : '';
+  if (target === 0) { el.textContent = '0' + suffix; return; }
+  var step = target / (ms / 16);
+  var cur = 0;
+  var timer = setInterval(function () {
+    cur = Math.min(cur + step, target);
+    el.textContent = Math.round(cur).toLocaleString('uk-UA') + suffix;
+    if (cur >= target) clearInterval(timer);
+  }, 16);
+}
+document.querySelectorAll('[data-countup]').forEach(function (el) { countUp(el, parseInt(el.dataset.countup, 10), 900); });
+
+var revealObs = new IntersectionObserver(function (entries) {
+  entries.forEach(function (entry) { if (entry.isIntersecting) { entry.target.classList.add('revealed'); revealObs.unobserve(entry.target); } });
+}, { threshold: 0.05 });
+document.querySelectorAll('[data-reveal]').forEach(function (el) { revealObs.observe(el); });
+
+var groupEarlier = document.getElementById('groupEarlier');
+var groupEarlierToggle = document.getElementById('groupEarlierToggle');
+var groupEarlierBody = document.getElementById('groupEarlierBody');
+if (groupEarlier && groupEarlierToggle && groupEarlierBody) {
+  var otherGroups = document.querySelectorAll('.orders-grid > .order-group:not(.order-group--collapsible)');
+  var otherHasOrders = false;
+  otherGroups.forEach(function (g) { if (g.querySelectorAll('.order-card').length > 0) otherHasOrders = true; });
+  if (!otherHasOrders) {
+    groupEarlier.classList.add('expanded');
+    groupEarlierBody.style.maxHeight = 'none';
+    groupEarlierBody.querySelectorAll('.order-card').forEach(function (c) { c.classList.add('revealed'); });
+  }
+  groupEarlierToggle.addEventListener('click', function () {
+    var isExpanded = groupEarlier.classList.contains('expanded');
+    if (isExpanded) {
+      groupEarlier.classList.remove('expanded');
+      groupEarlierBody.style.maxHeight = groupEarlierBody.scrollHeight + 'px';
+      requestAnimationFrame(function () { groupEarlierBody.style.maxHeight = '0'; });
+    } else {
+      groupEarlier.classList.add('expanded');
+      var cards = groupEarlierBody.querySelectorAll('.order-card');
+      cards.forEach(function (card, i) { card.style.setProperty('--reveal-delay', (i * 0.06) + 's'); });
+      groupEarlierBody.style.maxHeight = 'none';
+      var targetH = groupEarlierBody.scrollHeight;
+      groupEarlierBody.style.maxHeight = '0';
+      requestAnimationFrame(function () {
+        groupEarlierBody.style.maxHeight = targetH + 'px';
+        cards.forEach(function (card) {
+          if (!card.classList.contains('revealed')) requestAnimationFrame(function () { requestAnimationFrame(function () { card.classList.add('revealed'); }); });
+        });
+      });
+      groupEarlierBody.addEventListener('transitionend', function onEnd(e) {
+        if (e.propertyName === 'max-height' && groupEarlier.classList.contains('expanded')) groupEarlierBody.style.maxHeight = 'none';
+        groupEarlierBody.removeEventListener('transitionend', onEnd);
+      });
+    }
+  });
+}
+
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.oc-btn--details');
+  if (!btn) return;
+  var orderId = btn.dataset.orderId;
+  var detailsEl = document.getElementById('details-' + orderId);
+  if (!detailsEl) return;
+  var isOpen = detailsEl.classList.contains('open');
+  var chevron = btn.querySelector('.toggle-chevron');
+  if (isOpen) {
+    detailsEl.classList.remove('open');
+    if (chevron) chevron.style.transform = '';
+    btn.classList.remove('active');
+  } else {
+    detailsEl.classList.add('open');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+    btn.classList.add('active');
+    if (!detailsEl.dataset.loaded) {
+      detailsEl.dataset.loaded = '1';
+      var inner = detailsEl.querySelector('.order-card__details-inner');
+      fetch('/pages/get_order_items.php?order_id=' + orderId)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var loader = inner.querySelector('.oi-loading');
+          if (loader) loader.remove();
+          if (!data.items || !data.items.length) { inner.insertAdjacentHTML('beforeend', '<p class="oi-empty">Товари не знайдено</p>'); return; }
+          var html = data.items.map(function (item) {
+            var total = (item.quantity * item.price).toLocaleString('uk-UA', { maximumFractionDigits: 0 });
+            var letter = (item.name || '?').charAt(0).toUpperCase();
+            var imgHtml = item.image
+              ? '<img class="oi-img" src="/' + item.image + '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">' + '<div class="oi-img-ph" style="display:none">' + letter + '</div>'
+              : '<div class="oi-img-ph">' + letter + '</div>';
+            return '<div class="oi-row"><div class="oi-img-wrap">' + imgHtml + '</div><span class="oi-name">' + item.name + '</span><span class="oi-qty">×' + item.quantity + '</span><span class="oi-price">' + total + ' ₴</span></div>';
+          }).join('');
+          inner.insertAdjacentHTML('beforeend', '<div class="oi-list">' + html + '</div>');
+        })
+        .catch(function () {
+          var loader = detailsEl.querySelector('.oi-loading');
+          if (loader) loader.textContent = 'Помилка завантаження';
+        });
+    }
+  }
+});
+
+document.querySelectorAll('.eye-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var inp = document.getElementById(this.dataset.target);
+    var show = this.querySelector('.eye-show'), hide = this.querySelector('.eye-hide');
+    if (inp.type === 'password') { inp.type = 'text'; show.style.display = 'none'; hide.style.display = 'block'; }
+    else { inp.type = 'password'; show.style.display = 'block'; hide.style.display = 'none'; }
+  });
+});
+
+var pwNew = document.getElementById('pwNew');
+var pwStrengthEl = document.getElementById('pwStrength');
+var pwStrengthLbl = document.getElementById('pwStrengthLabel');
+var pwSegs = pwStrengthEl ? pwStrengthEl.querySelectorAll('.pw-strength-bar span') : [];
+var strengthCfg = [null, { label: 'Слабкий', color: '#f44336' }, { label: 'Середній', color: '#FF9800' }, { label: 'Сильний', color: '#FFC107' }, { label: 'Відмінний', color: '#4CAF50' }];
+function calcStrength(pw) {
+  var s = 0;
+  if (pw.length >= 6) s++;
+  if (pw.length >= 10) s++;
+  if (/[A-ZА-ЯІЇЄҐ]/u.test(pw)) s++;
+  if (/[0-9]/.test(pw)) s++;
+  if (/[^a-zA-Zа-яА-ЯіїєґІЇЄҐ0-9]/u.test(pw)) s++;
+  return Math.min(4, Math.max(1, s));
+}
+if (pwNew) {
+  pwNew.addEventListener('input', function () {
+    if (!this.value) { pwStrengthEl.style.display = 'none'; return; }
+    pwStrengthEl.style.display = 'block';
+    var score = calcStrength(this.value);
+    var cfg = strengthCfg[score];
+    pwSegs.forEach(function (seg, i) { seg.style.background = i < score ? cfg.color : '#e8e0d8'; });
+    pwStrengthLbl.textContent = cfg.label;
+    pwStrengthLbl.style.color = cfg.color;
+  });
+}
+
+document.getElementById('profileForm')?.addEventListener('submit', function () { document.getElementById('profileSaveBtn').classList.add('loading'); });
+document.getElementById('passwordForm')?.addEventListener('submit', function () { document.getElementById('passwordSaveBtn').classList.add('loading'); });
+
+(function () {
+  var filterBtns = document.querySelectorAll('.ofilter-btn');
+  var filterFrom = document.getElementById('filterFrom');
+  var filterTo = document.getElementById('filterTo');
+  var clearBtn = document.getElementById('filterClearBtn');
+  var emptyMsg = document.getElementById('ordersEmptyFilter');
+
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  function daysAgo(n) { var d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+  function firstOfMonth() { var d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); }
+
+  function applyFilter(from, to) {
+    var hasRange = from || to;
+    var anyVisible = false;
+    document.querySelectorAll('.orders-grid > .order-group:not(.order-group--collapsible)').forEach(function (grp) {
+      var label = grp.querySelector('.order-group__label');
+      var cards = grp.querySelectorAll('.order-card');
+      var grpVis = 0;
+      cards.forEach(function (c) {
+        var d = c.dataset.date || '';
+        var ok = !hasRange || ((!from || d >= from) && (!to || d <= to));
+        c.style.display = ok ? '' : 'none';
+        if (ok) { grpVis++; anyVisible = true; }
+      });
+      if (label) label.style.display = grpVis ? '' : 'none';
+    });
+    if (groupEarlier && groupEarlierBody) {
+      var eCards = groupEarlierBody.querySelectorAll('.order-card');
+      var eVis = 0;
+      eCards.forEach(function (c) {
+        var d = c.dataset.date || '';
+        var ok = !hasRange || ((!from || d >= from) && (!to || d <= to));
+        c.style.display = ok ? '' : 'none';
+        if (ok) { eVis++; anyVisible = true; }
+      });
+      groupEarlier.style.display = eVis ? '' : 'none';
+      if (eVis && hasRange && !groupEarlier.classList.contains('expanded')) groupEarlierToggle.click();
+      else if (!hasRange && groupEarlier.classList.contains('expanded')) groupEarlierToggle.click();
+    }
+    if (emptyMsg) emptyMsg.style.display = (!anyVisible && hasRange) ? '' : 'none';
+    if (clearBtn) clearBtn.classList.toggle('visible', !!hasRange);
+  }
+
+  filterBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      filterBtns.forEach(function (b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      var activeFilter = this.dataset.filter;
+      var from = '', to = '';
+      var t = todayStr();
+      if (activeFilter === 'today') { from = t; to = t; }
+      if (activeFilter === 'week') { from = daysAgo(6); to = t; }
+      if (activeFilter === 'month') { from = firstOfMonth(); to = t; }
+      if (filterFrom) filterFrom.value = '';
+      if (filterTo) filterTo.value = '';
+      applyFilter(from, to);
+    });
+  });
+  function onDateInput() { filterBtns.forEach(function (b) { b.classList.remove('active'); }); applyFilter(filterFrom ? filterFrom.value : '', filterTo ? filterTo.value : ''); }
+  if (filterFrom) filterFrom.addEventListener('change', onDateInput);
+  if (filterTo) filterTo.addEventListener('change', onDateInput);
+  if (clearBtn) clearBtn.addEventListener('click', function () {
+    filterBtns.forEach(function (b) { b.classList.remove('active'); });
+    document.querySelector('.ofilter-btn[data-filter="all"]').classList.add('active');
+    if (filterFrom) filterFrom.value = '';
+    if (filterTo) filterTo.value = '';
+    applyFilter('', '');
+  });
+})();
+
+(function () {
+  document.addEventListener('mouseover', function (e) {
+    var star = e.target.closest('.ocr-star');
+    if (!star) return;
+    var wrap = star.closest('.ocr-stars');
+    var val = parseInt(star.dataset.val, 10);
+    wrap.querySelectorAll('.ocr-star').forEach(function (s) { s.classList.toggle('hovered', parseInt(s.dataset.val, 10) <= val); });
+  });
+  document.addEventListener('mouseout', function (e) {
+    var star = e.target.closest('.ocr-star');
+    if (!star) return;
+    var wrap = star.closest('.ocr-stars');
+    var selVal = parseInt(wrap.dataset.selected || '0', 10);
+    wrap.querySelectorAll('.ocr-star').forEach(function (s) { s.classList.remove('hovered'); s.classList.toggle('selected', parseInt(s.dataset.val, 10) <= selVal); });
+  });
+  document.addEventListener('click', function (e) {
+    var star = e.target.closest('.ocr-star');
+    if (!star) return;
+    var wrap = star.closest('.ocr-stars');
+    var ratingDiv = wrap.closest('.order-card__rating');
+    var orderId = wrap.dataset.order;
+    var val = parseInt(star.dataset.val, 10);
+    if (ratingDiv.dataset.saving) return;
+    wrap.dataset.selected = val;
+    wrap.querySelectorAll('.ocr-star').forEach(function (s) { s.classList.toggle('selected', parseInt(s.dataset.val, 10) <= val); s.classList.remove('hovered'); });
+    ratingDiv.dataset.saving = '1';
+    wrap.style.pointerEvents = 'none';
+    wrap.style.opacity = '0.6';
+    var fd = new FormData();
+    fd.append('order_id', orderId);
+    fd.append('rating', val);
+    fetch('/forms/rate_order.php', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.ok) { delete ratingDiv.dataset.saving; wrap.style.pointerEvents = ''; wrap.style.opacity = ''; return; }
+        var stars = strRepeatStars(val) + '<span class="ocr-stars-empty">' + strRepeatStars(5 - val) + '</span>';
+        ratingDiv.innerHTML = '<div class="ocr-result"><div class="ocr-stars-static">' + stars + '</div></div>';
+        ratingDiv.classList.add('order-card__rating--done');
+      })
+      .catch(function () { delete ratingDiv.dataset.saving; wrap.style.pointerEvents = ''; wrap.style.opacity = ''; });
+  });
+  function strRepeatStars(n) { return Array(n + 1).join('★'); }
+})();
+
+})();
+</script>
+{% endblock %}

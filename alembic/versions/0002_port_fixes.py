@@ -62,10 +62,15 @@ def upgrade() -> None:
         batch.alter_column("email", existing_type=sa.String(30), type_=sa.String(255), existing_nullable=False)
 
     # --- New: server-side session store for the FastAPI session middleware ---
+    # Note: `data` has no server_default — MySQL rejects a DEFAULT on a
+    # TEXT/BLOB/JSON column entirely (error 1101). Not needed anyway:
+    # app/middleware/session.py always sets `.data` explicitly before the
+    # first commit of a new row, matching the ORM model's Python-level
+    # (not server-level) `default="{}"` in app/models/session_store.py.
     op.create_table(
         "app_sessions",
         sa.Column("session_id", sa.String(64), primary_key=True),
-        sa.Column("data", sa.Text, nullable=False, server_default="{}"),
+        sa.Column("data", sa.Text, nullable=False),
         sa.Column("last_activity", sa.DateTime, nullable=False),
         sa.Column("expires_at", sa.DateTime, nullable=False),
     )

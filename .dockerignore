@@ -5,3 +5,12 @@
 *.DS_Store
 node_modules
 logs/
+
+# FastAPI stack build context (Dockerfile.fastapi only COPYs specific
+# dirs, but excluding these keeps `docker build`'s context small)
+.venv-fastapi/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+backups/

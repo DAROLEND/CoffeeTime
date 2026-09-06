@@ -7,13 +7,31 @@ import datetime
 import re
 from zoneinfo import ZoneInfo
 
+import pytest
+from freezegun import freeze_time
+
 from app.models.catalog import CoffeeItem
 from app.models.orders import Order, OrderItem, OrderReminder
 from app.services.liqpay import LiqPay, map_liqpay_status, verify_and_decode
 from app.services.reminders import schedule_reminders
-from app.services.schedule import get_next_available_time, is_cafe_open_at
 
 _KYIV_TZ = ZoneInfo("Europe/Kyiv")
+
+# A same-day ready_time comfortably clears checkout's own
+# prep_minutes+travel_minutes buffer (up to ~150 min for the heaviest
+# cart) only when "now" is well inside cafe hours with room to spare —
+# real wall-clock time can be anywhere (including within ~2h of closing,
+# where no same-day slot can possibly satisfy that buffer, a fundamental
+# fact about the business rule being tested, not a test bug). Freezing
+# "now" to a fixed, safe weekday mid-morning makes every test in this
+# file deterministic regardless of when the suite actually runs.
+_FROZEN_NOW = "2026-09-08T10:00:00+03:00"  # a Tuesday, well inside 08:00-20:00
+
+
+@pytest.fixture(autouse=True)
+def _frozen_clock():
+    with freeze_time(_FROZEN_NOW):
+        yield
 
 
 def _csrf_token(html: str) -> str:
@@ -23,19 +41,13 @@ def _csrf_token(html: str) -> str:
 
 
 def _future_ready_time_str() -> str:
-    """A same-day ready_time comfortably past checkout's own
-    prep_minutes+travel_minutes buffer (up to ~150 min for the heaviest
-    cart) — not just get_next_available_time()'s ~15-minute UI-picker
-    suggestion, which checkout's stricter server-side validation can
-    reject as "already passed" depending on the cart's estimated prep
-    time. Falls back to the next available day (a full day of buffer)
-    if +2h would land outside today's cafe hours."""
+    """A same-day ready_time, safely inside frozen "now" + cafe hours —
+    not just get_next_available_time()'s ~15-minute UI-picker suggestion,
+    which checkout's stricter server-side validation (prep_minutes +
+    travel_minutes, up to ~150 min for the heaviest cart) can reject as
+    "already passed"."""
     candidate = (datetime.datetime.now(_KYIV_TZ) + datetime.timedelta(hours=2)).replace(second=0, microsecond=0)
-    if is_cafe_open_at(candidate):
-        return candidate.strftime("%Y-%m-%d %H:%M")
-    slot = get_next_available_time()
-    assert slot is not None
-    return slot["datetime"].strftime("%Y-%m-%d %H:%M")
+    return candidate.strftime("%Y-%m-%d %H:%M")
 
 
 def _add_coffee_to_cart(client, db_session, price=60):

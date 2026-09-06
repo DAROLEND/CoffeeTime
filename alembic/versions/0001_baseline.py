@@ -213,7 +213,7 @@ def upgrade() -> None:
     op.create_table(
         "orders",
         sa.Column("order_id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.client_id", ondelete="CASCADE")),  # fixed to SET NULL in 0002
+        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.client_id", ondelete="CASCADE", name="fk_orders_user")),  # fixed to SET NULL in 0002
         sa.Column("total", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
         sa.Column("delivery_address", sa.String(255), server_default=""),
         sa.Column("phone", sa.String(20)),
@@ -233,7 +233,7 @@ def upgrade() -> None:
     op.create_table(
         "order_items",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("order_id", sa.Integer, sa.ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False),
+        sa.Column("order_id", sa.Integer, sa.ForeignKey("orders.order_id", ondelete="CASCADE", name="fk_order_items_order"), nullable=False),
         sa.Column("product_id", sa.Integer, nullable=False),
         sa.Column("quantity", sa.Integer, nullable=False, server_default="1"),
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
@@ -255,7 +255,7 @@ def upgrade() -> None:
     op.create_table(
         "order_reminders",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("order_id", sa.Integer, sa.ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False),
+        sa.Column("order_id", sa.Integer, sa.ForeignKey("orders.order_id", ondelete="CASCADE", name="fk_reminders_order"), nullable=False),
         sa.Column("type", sa.Enum("email_customer", "telegram_admin", name="reminder_type"), nullable=False),
         sa.Column("send_at", sa.DateTime, nullable=False),
         sa.Column("sent_at", sa.DateTime),
@@ -267,7 +267,7 @@ def upgrade() -> None:
     op.create_table(
         "reservations",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.client_id", ondelete="CASCADE"), nullable=False),
+        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.client_id", ondelete="CASCADE", name="fk_reservations_user"), nullable=False),
         sa.Column("table_number", sa.Integer, nullable=False),
         sa.Column("location", sa.Enum("indoor", "terrace", name="reservation_location"), nullable=False),
         sa.Column("reservation_datetime", sa.DateTime, nullable=False),

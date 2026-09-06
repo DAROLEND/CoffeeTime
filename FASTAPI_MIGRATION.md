@@ -127,16 +127,43 @@ notably. Tests that would hit that path instead seed a
 is only verified to compile via `alembic upgrade head --sql` and by
 manual testing against real MySQL.
 
-## Remaining before cutover (Phase 10)
+## Docker
 
-- **Docker/deploy mechanism** — `main` has a working `Dockerfile` +
-  `docker-compose.yml` for the PHP+Apache+MySQL stack. Decide (with the
-  project owner) whether/how to build an equivalent for this app
-  (e.g. a `uvicorn`/`gunicorn` image, updating `docker-compose.yml`'s
-  `app` service, whether to add a `/health` endpoint) before this
-  becomes the primary deployed version.
-- A final click-through against a copy of **real** production data over
-  real MySQL (everything above was verified against SQLite fixtures in
-  tests, plus an in-process full-session click-through of every route —
-  see the migration plan's Phase 10 notes — but not yet against the real
-  database engine end to end).
+`Dockerfile.fastapi` + `docker-compose.fastapi.yml` (`main`'s PHP+Apache
+`Dockerfile`/`docker-compose.yml` are untouched — separate files so both
+stacks coexist). Three services: `app` (uvicorn, runs `alembic upgrade
+head` on startup via `docker/entrypoint.sh`), `db` (mysql:8.0, fresh —
+no `CoffeeTime.sql` import; Alembic builds the schema instead), `cron`
+(runs `cron/send_reminders.py` every 15 minutes).
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.fastapi.yml up --build
+# app on http://localhost:8000
+```
+
+This was actually built and run end-to-end against real MySQL in Docker
+(not just SQLite) during Phase 10, which caught two real bugs invisible
+to the SQLite-based pytest suite (fixed, see git history):
+
+1. `0001_baseline`'s 4 inline foreign keys had no explicit constraint
+   `name=` — MySQL auto-names unnamed FKs itself, so `0002_port_fixes`'s
+   `DROP FOREIGN KEY fk_orders_user` (etc.) failed against a freshly
+   `alembic upgrade head`-migrated DB. Fixed by naming all 4 to match
+   the real constraint names already in `CoffeeTime.sql`.
+2. `app_sessions.data` (`TEXT`) had a `server_default="{}"` — MySQL
+   rejects any DEFAULT on a TEXT/BLOB/JSON column outright (error 1101).
+   Dropped; the app already always sets `.data` explicitly before every
+   insert (see `app/middleware/session.py`), so no default was needed.
+
+After both fixes: a full migration + admin login + dashboard/orders/
+products navigation + the cron job's own due-reminders query all ran
+successfully against a real containerized MySQL 8.0.
+
+## Remaining before cutover
+
+- Real production **data** hasn't been rehearsed through yet — the
+  Docker MySQL above starts empty (schema-only, via Alembic). Cutting
+  over an existing PHP-managed database uses the `alembic stamp
+  0001_baseline` path documented above instead, which hasn't been
+  exercised against a full data copy end to end.

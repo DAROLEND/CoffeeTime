@@ -1,0 +1,277 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="admin-page-header">
+  <div>
+    <div class="aph-title">Соуси</div>
+    <div class="aph-sub">Управління соусами до страв</div>
+  </div>
+  <button class="btn-primary" id="btnAddSauce" onclick="openAddForm()">+ Додати соус</button>
+</div>
+
+<!-- Add / Edit form -->
+<div class="admin-card sauce-panel" id="sauceFormPanel">
+  <div class="sauce-panel__title" id="sfpTitle">Новий соус</div>
+  <form id="sauceForm" onsubmit="saveForm(event)" enctype="multipart/form-data">
+    <input type="hidden" id="sfId" name="id">
+    <div class="sauce-panel__row">
+      <div class="sauce-panel__field sauce-panel__field--grow">
+        <label>Назва</label>
+        <input type="text" id="sfName" name="name" placeholder="Кетчуп" required>
+      </div>
+      <div class="sauce-panel__field">
+        <label>Ціна (₴)</label>
+        <input type="number" id="sfPrice" name="price" placeholder="15" step="1" min="0" required>
+      </div>
+      <div class="sauce-panel__field sauce-panel__field--check">
+        <label class="sauce-check">
+          <input type="checkbox" id="sfActive" name="active" checked>
+          <span>Активний</span>
+        </label>
+      </div>
+    </div>
+    <div class="sauce-panel__row" style="margin-top:10px;align-items:center">
+      <div class="sauce-panel__field" style="flex:1">
+        <label>Фото <small style="font-weight:400;text-transform:none;letter-spacing:0">(JPG/PNG/WEBP · до 2 MB · залиш порожнім щоб не міняти)</small></label>
+        <input type="file" id="sfImage" name="sauce_image" accept="image/jpeg,image/png,image/webp" style="padding:6px 10px">
+      </div>
+      <div id="sfImgPreview" style="width:52px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;display:none;background:#f5f0eb">
+        <img id="sfImgPreviewImg" src="" style="width:100%;height:100%;object-fit:cover">
+      </div>
+    </div>
+    <div class="sauce-panel__actions">
+      <button type="submit" class="btn-primary">Зберегти</button>
+      <button type="button" class="btn btn-ghost" onclick="closeForm()">Скасувати</button>
+    </div>
+  </form>
+</div>
+
+<!-- Table -->
+<div class="admin-card" style="overflow:hidden">
+  {% if not sauces %}
+    <div style="padding:48px;text-align:center;color:#bbb;font-size:14px">Соусів ще немає. Додайте перший!</div>
+  {% else %}
+  <div class="table-wrap">
+    <table class="admin-table" id="saucesTable">
+      <thead>
+        <tr>
+          <th style="width:52px">#</th>
+          <th style="width:60px">Фото</th>
+          <th>Назва</th>
+          <th style="width:130px">Ціна</th>
+          <th style="width:130px">Статус</th>
+          <th style="width:180px"></th>
+        </tr>
+      </thead>
+      <tbody id="saucesBody">
+        {% for entry in sauces %}
+          {% set s = entry.row %}
+        <tr data-id="{{ s.id }}">
+          <td style="color:#bbb;font-size:13px">{{ loop.index }}</td>
+          <td>
+            {% if entry.has_photo %}
+              <img src="/{{ s.image }}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;display:block">
+            {% else %}
+              <div style="width:40px;height:40px;border-radius:8px;background:#f5f0eb;display:flex;align-items:center;justify-content:center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c8b9a8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+            {% endif %}
+          </td>
+          <td style="font-weight:600;color:#2c2c2a">{{ s.name }}</td>
+          <td><strong style="color:#5a2d0c">{{ '%.0f'|format(s.price or 0) }} ₴</strong></td>
+          <td>
+            <button class="sauce-toggle {{ 'sauce-toggle--on' if s.active else 'sauce-toggle--off' }}"
+                    data-id="{{ s.id }}" data-active="{{ 1 if s.active else 0 }}"
+                    onclick="toggleSauce(this)">
+              {{ 'Активний' if s.active else 'Вимкнено' }}
+            </button>
+          </td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <button class="btn-ghost btn-sm"
+                      onclick='openEditForm({{ s.id }}, {{ entry.json|safe }})'>
+                Редагувати
+              </button>
+              <button class="sauce-del-btn btn-sm"
+                      onclick="deleteSauce({{ s.id }}, this)">
+                Видалити
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+
+.sauce-panel {
+  display: none;
+  margin-bottom: 16px;
+  padding: 22px 24px;
+  animation: sfpIn .18s ease;
+}
+.sauce-panel.visible { display: block; }
+@keyframes sfpIn {
+  from { opacity:0; transform:translateY(-6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.sauce-panel__title {
+  font-size: 15px; font-weight: 700; color: #5a2d0c; margin-bottom: 18px;
+}
+.sauce-panel__row {
+  display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+}
+.sauce-panel__field { display: flex; flex-direction: column; gap: 5px; }
+.sauce-panel__field--grow { flex: 1; min-width: 180px; }
+.sauce-panel__field label {
+  font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: .04em;
+}
+.sauce-panel__field input[type=text],
+.sauce-panel__field input[type=number] {
+  padding: 8px 11px; border: 1.5px solid #e0d8d0; border-radius: 9px;
+  font-size: 13.5px; outline: none; transition: border-color .15s;
+  font-family: inherit; width: 100%; box-sizing: border-box;
+}
+.sauce-panel__field input:focus { border-color: #8B4513; }
+.sauce-panel__field--check { justify-content: flex-end; padding-bottom: 2px; }
+.sauce-check {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; color: #555; cursor: pointer; user-select: none;
+}
+.sauce-check input { accent-color: #8B4513; width: 15px; height: 15px; cursor: pointer; }
+.sauce-panel__actions { display: flex; gap: 8px; margin-top: 16px; }
+
+.sauce-toggle {
+  display: inline-flex; align-items: center;
+  padding: 4px 12px; border-radius: 20px; border: none;
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: .15s;
+}
+.sauce-toggle--on  { background: #e6f9ee; color: #2e7d32; }
+.sauce-toggle--off { background: #fdecea; color: #c62828; }
+
+.sauce-del-btn {
+  padding: 5px 12px; border-radius: 8px;
+  background: none; border: 1.5px solid #f5c6c6;
+  color: #c62828; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.sauce-del-btn:hover { background: #fdecea; border-color: #e57373; }
+
+.btn-primary {
+  padding: 9px 20px; background: #8B4513; color: #fff; border: none;
+  border-radius: 10px; font-size: 13.5px; font-weight: 600;
+  cursor: pointer; transition: background .15s; font-family: inherit;
+}
+.btn-primary:hover { background: #6b3410; }
+</style>
+
+<script>
+var formPanel = document.getElementById('sauceFormPanel');
+var editMode  = false;
+
+var sfImageInput   = document.getElementById('sfImage');
+var sfImgPreview   = document.getElementById('sfImgPreview');
+var sfImgPreviewImg = document.getElementById('sfImgPreviewImg');
+
+sfImageInput && sfImageInput.addEventListener('change', function () {
+  if (!this.files || !this.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    sfImgPreviewImg.src = e.target.result;
+    sfImgPreview.style.display = 'block';
+  };
+  reader.readAsDataURL(this.files[0]);
+});
+
+function openAddForm() {
+  editMode = false;
+  document.getElementById('sfpTitle').textContent = 'Новий соус';
+  document.getElementById('sfId').value    = '';
+  document.getElementById('sfName').value  = '';
+  document.getElementById('sfPrice').value = '';
+  document.getElementById('sfActive').checked = true;
+  sfImageInput.value = '';
+  sfImgPreview.style.display = 'none';
+  formPanel.classList.add('visible');
+  setTimeout(function(){ document.getElementById('sfName').focus(); }, 50);
+}
+
+function openEditForm(id, data) {
+  editMode = true;
+  document.getElementById('sfpTitle').textContent = 'Редагування: ' + (data.name || '');
+  document.getElementById('sfId').value    = id;
+  document.getElementById('sfName').value  = data.name  || '';
+  document.getElementById('sfPrice').value = data.price || '';
+  document.getElementById('sfActive').checked = (data.active == 1);
+  sfImageInput.value = '';
+  if (data.image) {
+    sfImgPreviewImg.src = '/' + data.image;
+    sfImgPreview.style.display = 'block';
+  } else {
+    sfImgPreview.style.display = 'none';
+  }
+  formPanel.classList.add('visible');
+  formPanel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function closeForm() {
+  formPanel.classList.remove('visible');
+}
+
+function saveForm(e) {
+  e.preventDefault();
+  var form = document.getElementById('sauceForm');
+  var data = new FormData(form);
+  data.append('action', editMode ? 'update' : 'add');
+  if (document.getElementById('sfActive').checked) data.set('active','1');
+  else data.delete('active');
+
+  fetch('/admin/sauces', {
+    method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:data
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res) {
+    if (res.success) { closeForm(); location.reload(); }
+    else alert(res.error || 'Помилка збереження');
+  });
+}
+
+function toggleSauce(btn) {
+  var id     = parseInt(btn.dataset.id);
+  var active = parseInt(btn.dataset.active);
+  var newVal = active ? 0 : 1;
+  fetch('/admin/sauces', {
+    method:'POST',
+    headers:{'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'},
+    body:'action=toggle&id='+id+'&active='+newVal
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res) {
+    if (res.success) {
+      btn.dataset.active = newVal;
+      btn.className = 'sauce-toggle ' + (newVal ? 'sauce-toggle--on' : 'sauce-toggle--off');
+      btn.textContent = newVal ? 'Активний' : 'Вимкнено';
+    }
+  });
+}
+
+function deleteSauce(id, btn) {
+  if (!confirm('Видалити цей соус?')) return;
+  fetch('/admin/sauces', {
+    method:'POST',
+    headers:{'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'},
+    body:'action=delete&id='+id
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res) {
+    if (res.success) {
+      var row = btn.closest('tr');
+      if (row) { row.style.transition='opacity .25s'; row.style.opacity='0'; setTimeout(function(){ row.remove(); },250); }
+    }
+  });
+}
+</script>
+{% endblock %}

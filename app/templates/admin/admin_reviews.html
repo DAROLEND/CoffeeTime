@@ -1,0 +1,289 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<!-- Tab switcher -->
+<div style="display:flex;gap:6px;margin-bottom:22px">
+  <a href="/admin/reviews?tab=site_reviews"
+     style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;
+            {{ 'background:#8B4513;color:#fff;box-shadow:0 2px 8px rgba(139,69,19,.25)' if admin_tab == 'site_reviews' else 'background:#f5f0ea;color:#8B6040' }}">
+    Відгуки сайту
+  </a>
+  <a href="/admin/reviews?tab=order_ratings"
+     style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;
+            {{ 'background:#8B4513;color:#fff;box-shadow:0 2px 8px rgba(139,69,19,.25)' if admin_tab == 'order_ratings' else 'background:#f5f0ea;color:#8B6040' }}">
+    Оцінки замовлень
+  </a>
+</div>
+
+{% if admin_tab == 'order_ratings' %}
+<!-- ═══ Order ratings tab ═══ -->
+<div class="stats-grid stats-grid--three" style="margin-bottom:20px">
+  <div class="stat-card">
+    <div class="stat-icon-box" style="background:#fce4ec">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E91E63" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </div>
+    <div class="stat-text"><div class="stat-label">Середній рейтинг</div><div class="stat-value">{{ '%.1f'|format(or_avg) }}</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-box" style="background:#e3f2fd">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+    </div>
+    <div class="stat-text"><div class="stat-label">Оцінок всього</div><div class="stat-value">{{ or_total }}</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-box" style="background:#e8f5e9">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="stat-text"><div class="stat-label">За цей тиждень</div>
+      <div class="stat-value">{{ or_week }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Замовлення</th>
+        <th>Клієнт</th>
+        <th>Оцінка</th>
+        <th class="col-hide-mobile">Дата</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for or in order_ratings %}
+      <tr>
+        <td><a href="/admin/orders/{{ or.order_id }}" style="color:#8B4513;font-weight:700;text-decoration:none">#{{ or.order_id }}</a></td>
+        <td style="font-size:13px">
+          {{ or.uname }}
+          {% if or.email %}<div style="font-size:11px;color:#aaa">{{ or.email }}</div>{% endif %}
+        </td>
+        <td><span style="color:#FFC107;letter-spacing:1px;font-size:15px">{{ '★' * or.rating }}</span><span style="color:#ddd;letter-spacing:1px;font-size:15px">{{ '★' * (5 - or.rating) }}</span></td>
+        <td class="col-hide-mobile" style="font-size:12px;color:#999;white-space:nowrap">{{ or.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+      </tr>
+    {% endfor %}
+    {% if not order_ratings %}
+      <tr><td colspan="4" style="text-align:center;color:#bbb;padding:32px">Оцінок ще немає</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+
+{% if or_pages > 1 %}
+<div class="pagination">
+  {% if or_page > 1 %}<a href="?tab=order_ratings&p={{ or_page - 1 }}" class="page-btn">‹</a>{% endif %}
+  {% for i in range([1, or_page - 2]|max, [or_pages, or_page + 2]|min + 1) %}
+    <a href="?tab=order_ratings&p={{ i }}" class="page-btn {{ 'active' if i == or_page else '' }}">{{ i }}</a>
+  {% endfor %}
+  {% if or_page < or_pages %}<a href="?tab=order_ratings&p={{ or_page + 1 }}" class="page-btn">›</a>{% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<!-- ═══ Site reviews tab ═══ -->
+<!-- Stats row -->
+<div class="stats-grid stats-grid--three">
+  <div class="stat-card">
+    <div class="stat-icon-box" style="background:#fce4ec">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E91E63" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </div>
+    <div class="stat-text">
+      <div class="stat-label">Середній рейтинг</div>
+      <div class="stat-value">{{ '%.1f'|format(avg_rating) }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-box" style="background:#e3f2fd">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="stat-text">
+      <div class="stat-label">Всього відгуків</div>
+      <div class="stat-value" data-count="{{ total_count }}">{{ total_count }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-box" style="background:#e8f5e9">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="stat-text">
+      <div class="stat-label">За цей тиждень</div>
+      <div class="stat-value" data-count="{{ this_week }}">{{ this_week }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Rating distribution -->
+<div class="dash-section" style="margin-bottom:20px">
+  <h3 class="section-title" style="margin-bottom:14px">Розподіл оцінок</h3>
+  <div class="rating-dist">
+    {% for s in [5, 4, 3, 2, 1] %}
+      {% set cnt = rating_dist.get(s, 0) %}
+      {% set pct = (cnt / total_count * 100)|round|int if total_count > 0 else 0 %}
+    <div class="rating-dist-row">
+      <span class="rating-star-label">{{ s }}★</span>
+      <div class="rating-bar-bg">
+        <div class="rating-bar-fill" style="width:{{ pct }}%"></div>
+      </div>
+      <span class="rating-bar-count">{{ cnt }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="orders-toolbar">
+  <div class="toolbar-chips">
+
+    <!-- Rating chips -->
+    <div class="chip-group">
+      {% for val, lbl in [(0, 'Всі оцінки'), (5, '★★★★★'), (4, '★★★★'), (3, '★★★'), (2, '★★'), (1, '★')] %}
+        <a href="{{ pagination_url(rating=val, tab=admin_tab) }}" class="fchip {{ 'fchip--on' if filter_rating == val else '' }}">{{ lbl }}</a>
+      {% endfor %}
+    </div>
+
+    <span class="chip-sep"></span>
+
+    <!-- Status chips -->
+    <div class="chip-group">
+      {% for val, lbl in [('', 'Всі статуси'), ('approved', 'Схвалені'), ('pending', 'Очікують'), ('declined', 'Відхилені')] %}
+        <a href="{{ pagination_url(status=val, tab=admin_tab) }}" class="fchip {{ 'fchip--on' if filter_status == val else '' }}">{{ lbl }}</a>
+      {% endfor %}
+    </div>
+
+    {% if filter_rating or filter_status %}
+      <a href="/admin/reviews?tab={{ admin_tab }}" class="fchip fchip--reset">✕ Скинути</a>
+    {% endif %}
+
+    <span style="margin-left:auto;font-size:12px;color:#bbb;white-space:nowrap;align-self:center">
+      Знайдено: <strong>{{ total_rows }}</strong>
+    </span>
+  </div>
+</div>
+
+{% if deleted %}
+  <div class="alert alert-success" style="margin-bottom:14px">Відгук видалено.</div>
+{% endif %}
+
+<!-- Reviews table -->
+<div class="table-wrap">
+  <table class="admin-table" id="reviewsTable">
+    <thead>
+      <tr>
+        <th>Автор</th>
+        <th>Оцінка</th>
+        <th>Текст</th>
+        <th>Дата</th>
+        <th>Статус</th>
+        <th>Дії</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rv in reviews %}
+      <tr id="rv-row-{{ rv.id }}">
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="review-avatar" style="background:{{ rv.color }};width:34px;height:34px;font-size:13px;flex-shrink:0">
+              {{ rv.initial }}
+            </div>
+            <span style="font-weight:600;font-size:13px">{{ rv.author }}</span>
+          </div>
+        </td>
+        <td>
+          <span style="color:#FFC107;letter-spacing:1px">
+            {{ '★' * rv.rating }}<span style="color:#ddd">{{ '★' * (5 - rv.rating) }}</span>
+          </span>
+        </td>
+        <td style="max-width:280px;font-size:13px;color:#555">
+          {{ rv.text[:100] }}{{ '…' if rv.text|length > 100 else '' }}
+        </td>
+        <td style="font-size:12px;color:#999">{{ rv.created_at.strftime('%d.%m.%Y') }}</td>
+        <td>
+          {% if rv.status == 'approved' %}
+            <span class="order-badge badge-ready">Схвалено</span>
+          {% elif rv.status == 'declined' %}
+            <span class="order-badge badge-cancelled">Відхилено</span>
+          {% else %}
+            <span class="order-badge badge-new">На модерації</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            {% if rv.status != 'approved' %}
+            <button class="rv-btn-approve" onclick="reviewAction({{ rv.id }},'approved',this)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Схвалити
+            </button>
+            {% endif %}
+            {% if rv.status != 'declined' %}
+            <button class="rv-btn-decline" onclick="reviewAction({{ rv.id }},'declined',this)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Відхилити
+            </button>
+            {% endif %}
+            <button class="rv-btn-delete" onclick="reviewAction({{ rv.id }},'delete',this)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Видалити
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not reviews %}
+        <tr><td colspan="6" style="text-align:center;color:#bbb;padding:32px">Відгуків не знайдено</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+    <a href="{{ pagination_url(p=page-1, tab=admin_tab) }}" class="page-btn">‹</a>
+  {% endif %}
+  {% for i in range([1, page - 2]|max, [total_pages, page + 2]|min + 1) %}
+    <a href="{{ pagination_url(p=i, tab=admin_tab) }}"
+       class="page-btn {{ 'active' if i == page else '' }}">{{ i }}</a>
+  {% endfor %}
+  {% if page < total_pages %}
+    <a href="{{ pagination_url(p=page+1, tab=admin_tab) }}" class="page-btn">›</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+function reviewAction(id, action, btn) {
+  if (action === 'delete' && !confirm('Видалити цей відгук?')) return;
+  var row = document.getElementById('rv-row-' + id);
+  var fd = new FormData();
+  fd.append('action', action);
+  fd.append('id',     id);
+  fetch('/admin/reviews', {
+    method: 'POST',
+    headers: {'X-Requested-With': 'XMLHttpRequest'},
+    body: fd
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if (!data.success) return;
+    if (action === 'delete') {
+      row.classList.add('deleting');
+      setTimeout(function(){ row.remove(); }, 350);
+      if (typeof showAdminToast === 'function') showAdminToast('Відгук видалено', 'success');
+    } else if (action === 'approved') {
+      row.querySelector('td:nth-child(5)').innerHTML = '<span class="order-badge badge-ready">Схвалено</span>';
+      var decBtn = row.querySelector('.rv-btn-approve');
+      if (decBtn) decBtn.remove();
+      if (typeof showAdminToast === 'function') showAdminToast('Відгук схвалено', 'success');
+    } else if (action === 'declined') {
+      row.querySelector('td:nth-child(5)').innerHTML = '<span class="order-badge badge-cancelled">Відхилено</span>';
+      var decBtn = row.querySelector('.rv-btn-decline');
+      if (decBtn) decBtn.remove();
+      if (typeof showAdminToast === 'function') showAdminToast('Відгук відхилено', 'info');
+    }
+  })
+  .catch(function(){ if (typeof showAdminToast === 'function') showAdminToast('Помилка запиту', 'error'); });
+}
+</script>
+
+{% endif %}
+{% endblock %}

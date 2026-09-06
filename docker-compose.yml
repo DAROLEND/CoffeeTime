@@ -1,0 +1,71 @@
+# Coffee Time — FastAPI stack. Run with:
+#   docker compose up --build
+name: coffeetime-fastapi
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      APP_ENV: production
+      DB_HOST: db          # overrides DB_HOST from .env — always use the db service in Docker
+    volumes:
+      - images:/app/static/images   # uploaded images survive container restarts
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme}
+      MYSQL_DATABASE: ${DB_NAME:-coffeetime}
+      MYSQL_USER: ${DB_USER:-coffeetime}
+      MYSQL_PASSWORD: ${DB_PASS:-secret}
+    volumes:
+      - db_data:/var/lib/mysql
+      # The app container's entrypoint runs `alembic upgrade head`
+      # against a fresh DB, which creates the full schema
+      # (0001_baseline + the 3 confirmed fixes in 0002_port_fixes) —
+      # see MIGRATION_NOTES.md for cutting this over onto an existing
+      # production database instead.
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 10s
+      retries: 15
+    restart: unless-stopped
+
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      APP_ENV: production
+      DB_HOST: db
+    volumes:
+      - images:/app/static/images
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    # Overrides the image's ENTRYPOINT (which runs `alembic upgrade
+    # head`) — only the app service should own schema migrations. This
+    # container just runs the reminders job every 15 minutes. The
+    # initial sleep gives the app service's own `alembic upgrade head`
+    # a head start on a completely fresh DB; a still-in-progress
+    # migration on the first tick just means one failed+retried
+    # iteration, not a crash loop.
+    entrypoint: ["/bin/sh", "-c", "sleep 15; while true; do python cron/send_reminders.py; sleep 900; done"]
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  images:

@@ -4,7 +4,7 @@ place of the configured MySQL engine, plus a TestClient.
 
 This is a template/route-rendering smoke test, not a MySQL-fidelity
 check — MySQL-specific SQL (e.g. `func.rand()`) is exercised separately
-by `alembic upgrade head --sql` (see FASTAPI_MIGRATION.md) since SQLite
+by `alembic upgrade head --sql` (see MIGRATION_NOTES.md) since SQLite
 doesn't understand MySQL's RAND(). Tests here seed around that instead of
 avoiding real routes.
 """

@@ -1,8 +1,8 @@
 """
-FastAPI application entrypoint — the full port of the PHP app (see
-FASTAPI_MIGRATION.md): session/CSRF/permission middleware and exception
-handlers, static asset mounting, and every public storefront + admin
-panel router.
+FastAPI application entrypoint — the full port of the original PHP app
+(see MIGRATION_NOTES.md): session/CSRF/permission middleware and
+exception handlers, static asset mounting, and every public storefront
++ admin panel router.
 """
 from __future__ import annotations
 

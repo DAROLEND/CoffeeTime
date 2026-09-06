@@ -60,7 +60,7 @@ def dessert_banner_page(request: Request, db: Session = Depends(get_db)):
         # (used in tests) doesn't understand RAND(); tests seed a custom
         # dessert_banner_image to skip this branch instead of exercising
         # it — a documented MySQL-vs-SQLite test-environment limitation,
-        # not a code bug (see FASTAPI_MIGRATION.md).
+        # not a code bug (see MIGRATION_NOTES.md).
         random_row = db.execute(select(DessertItem.image).order_by(func.rand()).limit(1)).first()
         random_img = "/" + random_row[0].lstrip("/") if random_row else None
 

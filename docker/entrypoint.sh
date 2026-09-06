@@ -1,7 +1,7 @@
 #!/bin/sh
 # Coffee Time (FastAPI) — container entrypoint.
 # Waits for MySQL, brings the schema up to date via Alembic, then execs
-# the real command (uvicorn by default — see Dockerfile.fastapi's CMD).
+# the real command (uvicorn by default — see Dockerfile's CMD).
 # POSIX sh (not bash) — plain Debian slim images aren't guaranteed to
 # have bash, so the TCP wait below uses Python's socket module instead
 # of a bash `/dev/tcp` redirect.
@@ -28,8 +28,8 @@ print('[entrypoint] MySQL not reachable after 30 attempts — starting anyway.')
 echo "[entrypoint] Running Alembic migrations (alembic upgrade head)..."
 # On a genuinely fresh DB this creates the full schema (0001_baseline)
 # plus the 3 confirmed fixes (0002_port_fixes). Cutting over an existing
-# PHP-managed database instead? Run `alembic stamp 0001_baseline` once
-# by hand first (see FASTAPI_MIGRATION.md) — this image doesn't guess
+# production database instead? Run `alembic stamp 0001_baseline` once
+# by hand first (see MIGRATION_NOTES.md) — this image doesn't guess
 # that for you, to avoid silently reinterpreting a database it didn't
 # create.
 alembic upgrade head

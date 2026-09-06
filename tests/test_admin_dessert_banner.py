@@ -31,7 +31,7 @@ def test_dessert_banner_requires_content_permission(client, db_session):
 # branch runs `ORDER BY RAND()` (func.rand(), matching
 # app/routers/public/pages.py's identical query), which SQLite doesn't
 # understand — a documented MySQL-vs-SQLite test-environment limitation
-# (see FASTAPI_MIGRATION.md), not a code bug. Every test here seeds a
+# (see MIGRATION_NOTES.md), not a code bug. Every test here seeds a
 # dessert_banner_image setting to skip that code path, same as
 # tests/test_public_pages_smoke.py does for the public-facing banner.
 

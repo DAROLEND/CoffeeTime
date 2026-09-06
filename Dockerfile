@@ -1,9 +1,4 @@
-# Coffee Time — FastAPI port (fastapi-migration branch).
-#
-# The PHP+Apache stack's Dockerfile/docker-compose.yml are left exactly
-# as they are (this branch never touches files it doesn't need to port);
-# this is a new, separate image for the FastAPI app, built the same way
-# a future standalone repo for it would be.
+# Coffee Time — FastAPI app image.
 FROM python:3.12-slim-bookworm
 
 # No system MySQL client libs needed — the app uses PyMySQL (pure

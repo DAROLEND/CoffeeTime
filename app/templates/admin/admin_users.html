@@ -1,0 +1,255 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="panel" style="margin-bottom:28px">
+  <div class="panel-head"><h2 class="panel-title">Мій акаунт</h2></div>
+  <form method="post" class="au-form">
+    {{ csrf_field()|safe }}
+    <input type="hidden" name="action" value="my_account">
+    <div class="au-row2">
+      <div class="au-field"><label>Логін</label><input type="text" value="{{ current_username }}" disabled style="background:#f5f5f5;color:#aaa"></div>
+      <div class="au-field"><label>Відображуване імʼя</label><input type="text" name="display_name" value="{{ current_display }}" placeholder="Як вас показувати в адмінці"></div>
+    </div>
+    <div class="au-row2">
+      <div class="au-field">
+        <label>Поточний пароль <span style="color:#e53935">*</span></label>
+        <div class="pw-wrap"><input type="password" name="current_password" id="curPass" required placeholder="введіть поточний пароль"><button type="button" class="eye-btn" data-target="curPass">👁</button></div>
+      </div>
+      <div class="au-field">
+        <label>Новий пароль <small>(залиш порожнім щоб не міняти)</small></label>
+        <div class="pw-wrap"><input type="password" name="new_password" id="newPass" placeholder="мінімум 6 символів" minlength="6"><button type="button" class="eye-btn" data-target="newPass">👁</button></div>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">💾 Зберегти</button>
+  </form>
+</div>
+
+<div class="panel" style="margin-bottom:28px">
+  <div class="panel-head"><h2 class="panel-title">Додати акаунт персоналу</h2></div>
+  <form method="post" class="au-form" id="createForm">
+    {{ csrf_field()|safe }}
+    <input type="hidden" name="action" value="create">
+    <div class="au-row2">
+      <div class="au-field"><label>Логін <span style="color:#e53935">*</span></label><input type="text" name="username" placeholder="login123" minlength="3" required></div>
+      <div class="au-field"><label>Відображуване імʼя</label><input type="text" name="display_name" placeholder="Марія К."></div>
+    </div>
+    <div class="au-row2">
+      <div class="au-field"><label>Пароль <span style="color:#e53935">*</span></label><input type="password" name="password" placeholder="мінімум 6 символів" minlength="6" required></div>
+    </div>
+    <div class="au-field">
+      <label>Права доступу <span style="color:#e53935">*</span></label>
+      <div class="perm-grid">
+        {% for key, label in all_perms.items() %}
+        <label class="perm-check"><input type="checkbox" name="perms[{{ key }}]" value="1"><span>{{ label }}</span></label>
+        {% endfor %}
+      </div>
+      <div id="createPermError" class="perm-error" style="display:none">Оберіть принаймні одне право доступу</div>
+    </div>
+    <button type="submit" class="btn btn-primary">+ Створити акаунт</button>
+  </form>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2 class="panel-title">Акаунти ({{ users|length }})</h2></div>
+  <div class="au-list">
+    {% for entry in users %}
+    {% set u = entry.row %}
+    {% set is_self = u.username == current_username %}
+    {% set is_super_user = u.role|enum_value == 'super' %}
+    <div class="au-row">
+      <div class="au-avatar {{ 'au-avatar--super' if is_super_user else '' }}">{{ (u.display_name or u.username)[:1]|upper }}</div>
+      <div class="au-info">
+        <div class="au-name">
+          {{ u.display_name or u.username }}
+          {% if u.display_name %}<span class="au-login">@{{ u.username }}</span>{% endif %}
+          {% if is_self %}<span class="au-badge au-badge--you">Це ви</span>{% endif %}
+          <span class="au-badge {{ 'au-badge--super' if is_super_user else 'au-badge--staff' }}">{{ 'Super' if is_super_user else 'Staff' }}</span>
+        </div>
+        {% if not is_super_user %}
+        <div class="au-perms">
+          {% if not entry.perms_arr %}<span class="au-perm-none">Немає прав</span>
+          {% else %}{% for p in entry.perms_arr %}<span class="au-perm-tag">{{ all_perms.get(p, p) }}</span>{% endfor %}{% endif %}
+        </div>
+        {% else %}
+        <div class="au-perms"><span class="au-perm-tag au-perm-tag--all">Повний доступ</span></div>
+        {% endif %}
+      </div>
+      <div class="au-actions">
+        {% if not is_super_user %}
+        <button class="btn btn-sm btn-outline" onclick='openEditModal({{ {"id": u.id, "username": u.username, "display_name": u.display_name, "perms_arr": entry.perms_arr}|tojson }})'>✏️ Редагувати</button>
+        <form method="post" onsubmit="return confirm('Видалити акаунт «{{ u.username }}»?')">
+          {{ csrf_field()|safe }}
+          <input type="hidden" name="action" value="delete">
+          <input type="hidden" name="id" value="{{ u.id }}">
+          <button type="submit" class="btn btn-sm btn-danger">🗑</button>
+        </form>
+        {% elif is_self %}
+        <span style="font-size:12px;color:#bbb">Ваш акаунт</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box" style="max-width:520px">
+    <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    <h3 style="font-size:16px;font-weight:700;color:#2c2c2a;margin-bottom:20px">Редагувати акаунт</h3>
+    <form method="post" class="au-form" id="editModalForm">
+      {{ csrf_field()|safe }}
+      <input type="hidden" name="action" value="edit">
+      <input type="hidden" name="id" id="editUserId">
+      <div class="au-row2">
+        <div class="au-field"><label>Логін</label><input type="text" id="editUsername" disabled style="background:#f5f5f5;color:#aaa"></div>
+        <div class="au-field"><label>Відображуване імʼя</label><input type="text" name="display_name" id="editDisplayName"></div>
+      </div>
+      <div class="au-field"><label>Новий пароль <small>(залиш порожнім щоб не міняти)</small></label><input type="password" name="new_password" placeholder="мінімум 6 символів" minlength="6"></div>
+      <div class="au-field">
+        <label>Права доступу <span style="color:#e53935">*</span></label>
+        <div class="perm-grid" id="editPermGrid">
+          {% for key, label in all_perms.items() %}
+          <label class="perm-check"><input type="checkbox" name="perms[{{ key }}]" value="1" data-perm="{{ key }}"><span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+        <div id="editPermError" class="perm-error" style="display:none">Оберіть принаймні одне право доступу</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button type="submit" class="btn btn-primary">Зберегти</button>
+        <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">Скасувати</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+.panel { background:#fff; border-radius:14px; border:1px solid #f0e8df; overflow:hidden; }
+.panel-head { padding:18px 24px 0; }
+.panel-title { font-size:15px; font-weight:700; color:#2c2c2a; margin-bottom:14px; }
+.au-form { padding: 4px 24px 24px; display:flex; flex-direction:column; gap:16px; }
+.au-row2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:600px) { .au-row2 { grid-template-columns:1fr; } }
+.au-field label { display:block; font-size:13px; font-weight:600; color:#555; margin-bottom:6px; }
+.au-field input[type="text"], .au-field input[type="password"] { width:100%; padding:10px 14px; font-size:14px; border:1.5px solid #e0d8d0; border-radius:10px; outline:none; font-family:inherit; transition:border-color .2s; }
+.au-field input:focus { border-color:#8B4513; }
+.perm-error { font-size:12px; color:#e53935; margin-top:8px; }
+.perm-grid { display:flex; flex-direction:column; gap:8px; margin-top:2px; }
+.perm-check { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:10px; border:1.5px solid #e0d8d0; cursor:pointer; transition:border-color .15s, background .15s; user-select:none; }
+.perm-check:hover { border-color:#8B4513; background:#fdf8f4; }
+.perm-check input[type="checkbox"] { width:16px; height:16px; accent-color:#8B4513; flex-shrink:0; }
+.perm-check span { font-size:13px; color:#444; }
+.au-list { padding: 0 24px 20px; }
+.au-row { display:flex; align-items:center; gap:16px; padding:14px 0; border-bottom:1px solid #f5ede6; }
+.au-row:last-child { border-bottom:none; }
+.au-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#c2855a,#e8b88a); color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.au-avatar--super { background:linear-gradient(135deg,#8B4513,#d4a96a); }
+.au-info { flex:1; min-width:0; }
+.au-name { font-size:14px; font-weight:700; color:#2c2c2a; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.au-login { font-size:12px; color:#aaa; font-weight:400; }
+.au-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; }
+.au-badge--you { background:#fff8e1; color:#f57f17; }
+.au-badge--super { background:#fff3e0; color:#e65100; }
+.au-badge--staff { background:#f3e5f5; color:#6a1b9a; }
+.au-perms { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+.au-perm-tag { font-size:11px; padding:2px 8px; border-radius:10px; background:#f0e8df; color:#8B4513; white-space:nowrap; }
+.au-perm-tag--all { background:#e8f5e9; color:#2e7d32; }
+.au-perm-none { font-size:12px; color:#bbb; }
+.au-actions { display:flex; gap:8px; flex-shrink:0; align-items:center; }
+@media (max-width: 600px) {
+  .au-row { flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+  .au-info { flex-basis: calc(100% - 56px); }
+  .au-actions { width: 100%; padding-left: 50px; margin-top: 2px; }
+  .au-field input[type="text"], .au-field input[type="password"], .pw-wrap input { font-size: 16px; }
+  .modal-box { width: 92vw; padding: 20px 16px; }
+}
+.pw-wrap { position:relative; }
+.pw-wrap input { width:100%; padding:10px 40px 10px 14px; font-size:14px; border:1.5px solid #e0d8d0; border-radius:10px; outline:none; font-family:inherit; transition:border-color .2s; }
+.pw-wrap input:focus { border-color:#8B4513; }
+.eye-btn { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:15px; opacity:.5; line-height:1; padding:2px; }
+.eye-btn:hover { opacity:1; }
+.btn { display:inline-block; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:all .2s; font-family:inherit; }
+.btn-primary { background:#8B4513; color:#fff; }
+.btn-primary:hover { background:#6d3410; }
+.btn-outline { background:#fff; border:1.5px solid #e0d8d0; color:#555; }
+.btn-outline:hover { border-color:#8B4513; color:#8B4513; }
+.btn-danger { background:#ffebee; color:#c62828; border:none; }
+.btn-danger:hover { background:#ffcdd2; }
+.btn-sm { padding:6px 12px; font-size:12px; }
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:500; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:#fff; border-radius:16px; padding:28px; position:relative; max-height:90vh; overflow-y:auto; }
+.modal-close { position:absolute; top:14px; right:14px; background:none; border:none; font-size:18px; cursor:pointer; color:#aaa; }
+.modal-close:hover { color:#333; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.eye-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var inp = document.getElementById(this.dataset.target);
+    if (!inp) return;
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    this.style.opacity = inp.type === 'text' ? '1' : '.5';
+  });
+});
+
+function wirePermDeps(container) {
+  var editCb = container.querySelector('input[name="perms[orders_edit]"]');
+  var viewCb = container.querySelector('input[name="perms[orders_view]"]');
+  if (!editCb || !viewCb) return;
+  function syncView() {
+    if (editCb.checked) {
+      viewCb.checked = true; viewCb.disabled = true;
+      viewCb.closest('.perm-check').title = 'Автоматично увімкнено разом із «Змінювати статус»';
+      viewCb.closest('.perm-check').style.opacity = '0.6';
+    } else {
+      viewCb.disabled = false;
+      viewCb.closest('.perm-check').title = '';
+      viewCb.closest('.perm-check').style.opacity = '';
+    }
+  }
+  editCb.addEventListener('change', syncView);
+  syncView();
+}
+
+function validatePerms(form, errorId) {
+  var grid = form.querySelector('.perm-grid');
+  var enabledChecked = 0;
+  grid && grid.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { if (cb.checked) enabledChecked++; });
+  var errEl = document.getElementById(errorId);
+  if (enabledChecked === 0) {
+    if (errEl) errEl.style.display = 'block';
+    grid && (grid.style.outline = '2px solid #e53935', grid.style.borderRadius = '8px');
+    return false;
+  }
+  if (errEl) errEl.style.display = 'none';
+  grid && (grid.style.outline = '');
+  return true;
+}
+
+(function() {
+  var form = document.getElementById('createForm');
+  if (!form) return;
+  wirePermDeps(form);
+  form.addEventListener('submit', function(e) { if (!validatePerms(form, 'createPermError')) e.preventDefault(); });
+})();
+(function() {
+  var form = document.getElementById('editModalForm');
+  if (!form) return;
+  form.addEventListener('submit', function(e) { if (!validatePerms(form, 'editPermError')) e.preventDefault(); });
+})();
+
+function openEditModal(u) {
+  document.getElementById('editUserId').value = u.id;
+  document.getElementById('editUsername').value = u.username;
+  document.getElementById('editDisplayName').value = u.display_name || '';
+  var grid = document.getElementById('editPermGrid');
+  grid.querySelectorAll('input[data-perm]').forEach(function(cb) {
+    cb.checked = (u.perms_arr || []).indexOf(cb.dataset.perm) !== -1;
+    cb.disabled = false;
+  });
+  wirePermDeps(grid.closest('form') || document.getElementById('editModalForm'));
+  openModal('editModal');
+}
+</script>
+{% endblock %}

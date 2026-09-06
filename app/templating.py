@@ -15,6 +15,7 @@ from starlette.responses import HTMLResponse
 
 from app.config import get_settings
 from app.services.csrf import csrf_field as _csrf_field
+from app.services.enum_utils import enum_value as _enum_value_filter
 from app.services.icons import icon
 from app.services.menu import fmt_price
 
@@ -24,9 +25,9 @@ templates.env.filters["fmt_price"] = fmt_price
 # SQLAlchemy's Enum columns come back as Python enum members when read
 # fresh from the DB, but a plain string when a route already normalized
 # it (or when an in-memory object was constructed without a DB round
-# trip — see app/services/profile.py's _enum_value for the same issue).
-# This filter lets templates handle both shapes uniformly.
-templates.env.filters["enum_value"] = lambda x: x.value if hasattr(x, "value") else (x or "")
+# trip — see app/services/enum_utils.py for the same issue). This filter
+# lets templates handle both shapes uniformly.
+templates.env.filters["enum_value"] = _enum_value_filter
 
 
 def _cart_badge_count(session) -> int:
@@ -52,6 +53,11 @@ def render(request: Request, template_name: str, status_code: int = 200, **conte
 def admin_render(request: Request, db, template_name: str, status_code: int = 200, **context) -> HTMLResponse:
     from app.services.admin_common import admin_layout_context
 
-    base_context = {"request": request, **admin_layout_context(request, db)}
+    session = request.state.session
+    base_context = {
+        "request": request,
+        "csrf_field": lambda: _csrf_field(session),
+        **admin_layout_context(request, db),
+    }
     base_context.update(context)
     return templates.TemplateResponse(request, template_name, base_context, status_code=status_code)

@@ -11,17 +11,9 @@ from sqlalchemy.orm import Session
 
 from app.constants.categories import CATEGORY_MODEL_MAP, ProductCategory
 from app.models.orders import Order, OrderItem, OrderRating
+from app.services.enum_utils import enum_value as _enum_value
 
 _STATUS_LABELS = {"processing": "В обробці", "ready": "Готово", "done": "Виконано"}
-
-
-def _enum_value(x) -> str:
-    """SQLAlchemy's Enum type converts DB values back to the Python enum on
-    read, but an object still attached to the session with a plain string
-    assigned in Python (e.g. `Order(status="done")`, common in tests and
-    any in-memory-only construction) keeps that literal string until the
-    row is expired/refreshed. Guard against both shapes uniformly."""
-    return x.value if hasattr(x, "value") else (x or "")
 
 # profile.php's own whitelist for resolving order_items -> product name previews
 PREVIEW_CATEGORIES = {

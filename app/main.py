@@ -1,10 +1,8 @@
 """
-FastAPI application entrypoint.
-
-Phase 1 (foundations) scope only: session/CSRF/permission wiring, static
-asset mounting, and a couple of debug routes used to verify the session
-middleware round-trips correctly (see the migration plan's Phase 1
-verification step). Public/admin page routers are added in later phases.
+FastAPI application entrypoint — the full port of the PHP app (see
+FASTAPI_MIGRATION.md): session/CSRF/permission middleware and exception
+handlers, static asset mounting, and every public storefront + admin
+panel router.
 """
 from __future__ import annotations
 
@@ -12,7 +10,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.config import get_settings
 from app.dependencies import AuthRequired
 from app.middleware.session import DBSessionMiddleware
 from app.routers.admin import auth as admin_auth
@@ -39,8 +36,6 @@ from app.routers.public import reviews as public_reviews
 from app.services.csrf import CSRFError
 from app.services.csrf import is_ajax as _is_ajax
 from app.services.permissions import AdminAccessDenied
-
-settings = get_settings()
 
 app = FastAPI(title="Coffee Time")
 
@@ -101,18 +96,3 @@ async def auth_required_handler(request: Request, exc: AuthRequired):
     if _is_ajax(request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     return RedirectResponse("/login", status_code=303)
-
-
-# --- Phase 1 verification routes (debug only, remove before Phase 10) ---
-
-
-@app.get("/debug/session-test")
-async def session_test(request: Request):
-    count = request.state.session.get("hits", 0) + 1
-    request.state.session["hits"] = count
-    return {"hits": count}
-
-
-@app.get("/debug/health")
-async def health():
-    return {"status": "ok", "env": settings.APP_ENV}

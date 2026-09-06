@@ -1,0 +1,418 @@
+{% extends "admin/admin_base.html" %}
+
+{% block content %}
+<div class="orders-toolbar">
+  <div class="toolbar-chips">
+    <div class="chip-group">
+      {% for val, lbl, cnt in [('', 'Всі', all_count), ('paid', 'Оплачені', paid_count), ('unpaid', 'Не оплачені', unpaid_count), ('cash', 'Готівка', cash_count)] %}
+      <a href="#" class="fchip {{ 'fchip--on' if filters.payment == val else '' }}" data-fkey="payment" data-fval="{{ val }}">{{ lbl }}{% if cnt > 0 %}<span class="fchip-cnt">{{ cnt }}</span>{% endif %}</a>
+      {% endfor %}
+    </div>
+    <span class="chip-sep"></span>
+    <div class="chip-group">
+      {% for val, lbl in [('cash', 'Готівка'), ('liqpay', 'Картка онлайн')] %}
+      <a href="#" class="fchip {{ 'fchip--on' if filters.method == val else '' }}" data-fkey="method" data-fval="{{ val }}" data-toggle="1">{{ lbl }}</a>
+      {% endfor %}
+    </div>
+    <span class="chip-sep"></span>
+    <div class="chip-group">
+      {% for val, lbl in [('takeout', 'З собою'), ('hall', 'В залі')] %}
+      <a href="#" class="fchip {{ 'fchip--on' if filters.type == val else '' }}" data-fkey="type" data-fval="{{ val }}" data-toggle="1">{{ lbl }}</a>
+      {% endfor %}
+    </div>
+    {% if filters.payment or filters.method or filters.type or filters.status or filters.search or filters.date_from or filters.date_to or filters.time_from or filters.time_to %}
+    <a href="#" class="fchip fchip--reset" data-reset="1">✕ Скинути</a>
+    {% endif %}
+    <span id="ordersCount" style="margin-left:auto;font-size:12px;color:#bbb;white-space:nowrap;align-self:center">{{ total_rows }} замовлень</span>
+  </div>
+
+  <form class="toolbar-search" method="get">
+    {% if filters.payment %}<input type="hidden" name="payment" value="{{ filters.payment }}">{% endif %}
+    {% if filters.method %}<input type="hidden" name="method" value="{{ filters.method }}">{% endif %}
+    {% if filters.type %}<input type="hidden" name="type" value="{{ filters.type }}">{% endif %}
+    <div class="ts-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" name="search" placeholder="Ім'я, телефон або #ID" value="{{ filters.search }}">
+    </div>
+    <select name="status" class="ts-select">
+      <option value="">Всі статуси</option>
+      {% for st, lbl in status_labels.items() %}
+      {% set cnt = status_counts.get(st, 0) %}
+      <option value="{{ st }}" {{ 'selected' if filters.status == st else '' }}>{{ lbl }}{{ ' (' ~ cnt ~ ')' if cnt > 0 else '' }}</option>
+      {% endfor %}
+    </select>
+    <div class="ts-date-group {{ 'ts-date-group--active' if (filters.date_from or filters.date_to) else '' }}">
+      {% for r_key, r_label in [('today','Сьогодні'),('yesterday','Вчора'),('week','Тиждень'),('month','Місяць'),('all','Весь час')] %}
+      <button type="button" class="fchip fchip--sm" data-range="{{ r_key }}">{{ r_label }}</button>
+      {% endfor %}
+      <input type="text" name="date_from" id="filterDateFrom" class="ts-date-input" value="{{ filters.date_from }}" placeholder="Від" autocomplete="off" readonly>
+      <span class="ts-sep">—</span>
+      <input type="text" name="date_to" id="filterDateTo" class="ts-date-input" value="{{ filters.date_to }}" placeholder="До" autocomplete="off" readonly>
+      {% if filters.date_from or filters.date_to %}<a href="#" class="ts-time-clear" data-clear-keys="date_from,date_to" title="Скинути фільтр дат">✕</a>{% endif %}
+    </div>
+    <div class="ts-time-group {{ 'ts-time-group--active' if (filters.time_from or filters.time_to) else '' }}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{ '#FFC107' if (filters.time_from or filters.time_to) else '#bbb' }}" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <select name="time_from" class="ts-time-select">
+        <option value="">00</option>
+        {% for h in range(1, 24) %}<option value="{{ h }}" {{ 'selected' if filters.time_from|string == h|string else '' }}>{{ '%02d'|format(h) }}</option>{% endfor %}
+      </select>
+      <span class="ts-sep">—</span>
+      <select name="time_to" class="ts-time-select">
+        <option value="">23</option>
+        {% for h in range(0, 23) %}<option value="{{ h }}" {{ 'selected' if filters.time_to|string == h|string else '' }}>{{ '%02d'|format(h) }}</option>{% endfor %}
+      </select>
+      {% if filters.time_from or filters.time_to %}<a href="#" class="ts-time-clear" data-clear-keys="time_from,time_to" title="Скинути фільтр годин">✕</a>{% endif %}
+    </div>
+    <button type="submit" class="ts-submit">Знайти</button>
+  </form>
+</div>
+
+<div id="ordersResults">
+{% include "admin/_orders_results.html" %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+  var TRANSITIONS = {
+    new: { label: 'Нове', next: ['processing', 'done', 'cancelled'] },
+    processing: { label: 'В обробці', next: ['ready', 'done', 'cancelled'] },
+    ready: { label: 'Готово', next: ['done'] },
+    done: { label: 'Виконано', next: [] },
+    cancelled: { label: 'Скасовано', next: [] },
+  };
+  var NEXT_LABELS = { processing: '→ В обробці', ready: '→ Готово', done: '✓ Виконано', cancelled: '✕ Скасувати' };
+
+  function showToast(msg, type) {
+    var el = document.querySelector('.admin-toast');
+    if (el) el.remove();
+    el = document.createElement('div');
+    el.className = 'admin-toast ' + (type || 'success');
+    el.textContent = msg;
+    document.body.appendChild(el);
+    requestAnimationFrame(function() { el.classList.add('show'); });
+    setTimeout(function() { el.classList.remove('show'); setTimeout(function() { el.remove(); }, 300); }, 3000);
+  }
+
+  function renderStatusCell(orderId, status) {
+    var t = TRANSITIONS[status] || TRANSITIONS['new'];
+    var html = '<div class="status-cell"><span class="order-status-badge badge-' + status + '">' + t.label + '</span>';
+    if (t.next.length) {
+      t.next.forEach(function(ns) {
+        var lbl = NEXT_LABELS[ns] || ('→ ' + (TRANSITIONS[ns] ? TRANSITIONS[ns].label : ns));
+        html += '<button class="status-pill-btn pill-' + ns + '" data-order="' + orderId + '" data-status="' + ns + '">' + lbl + '</button>';
+      });
+    }
+    return html + '</div>';
+  }
+
+  function updateSidebarBadge(n) {
+    document.querySelectorAll('.orders-badge').forEach(function(b) { b.textContent = n > 0 ? n : ''; b.style.display = n > 0 ? '' : 'none'; });
+  }
+
+  function updateTabCounts() {
+    fetch('/admin/get-order-counts')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        document.querySelectorAll('.payment-tab').forEach(function(tab) {
+          var badge = tab.querySelector('.pay-tab-count');
+          if (!badge) return;
+          var href = tab.getAttribute('href') || '';
+          if (href.includes('payment=paid')) badge.textContent = data.paid ?? badge.textContent;
+          else if (href.includes('payment=unpaid')) badge.textContent = data.unpaid ?? badge.textContent;
+          else if (href.includes('payment=cash')) badge.textContent = data.cash ?? badge.textContent;
+          else badge.textContent = data.all ?? badge.textContent;
+        });
+        if (data.new !== undefined) updateSidebarBadge(data.new);
+      })
+      .catch(function() {});
+  }
+
+  var _delRow = null, _delOrderId = null;
+  var delEl = document.createElement('div');
+  delEl.id = 'deleteConfirmPopup';
+  delEl.className = 'scp scp--danger';
+  delEl.style.display = 'none';
+  delEl.innerHTML = '<p class="scp-text">Видалити замовлення назавжди?</p><div class="scp-btns"><button class="scp-yes scp-yes--danger">Видалити</button><button class="scp-no">Скасувати</button></div>';
+  document.body.appendChild(delEl);
+
+  delEl.querySelector('.scp-no').onclick = function() { delEl.style.display = 'none'; };
+  document.addEventListener('click', function(e) {
+    if (delEl.style.display !== 'none' && !delEl.contains(e.target) && !e.target.closest('.btn-delete-order')) delEl.style.display = 'none';
+  });
+
+  delEl.querySelector('.scp-yes').onclick = async function() {
+    var row = _delRow, orderId = _delOrderId;
+    if (!row || !orderId) return;
+    delEl.querySelector('.scp-text').textContent = 'Видалення…';
+    delEl.querySelector('.scp-btns').style.display = 'none';
+    try {
+      var r = await fetch('/admin/orders/' + orderId + '/delete', { method: 'POST' });
+      var data = await r.json();
+      delEl.style.display = 'none';
+      delEl.querySelector('.scp-text').textContent = 'Видалити замовлення назавжди?';
+      delEl.querySelector('.scp-btns').style.display = '';
+      if (data.success) {
+        row.style.animation = 'rowDelete .35s ease forwards';
+        var detRow = document.getElementById('details-' + orderId);
+        setTimeout(function() { row.remove(); if (detRow) detRow.remove(); }, 380);
+        showToast('Замовлення #' + orderId + ' видалено', 'info');
+        updateTabCounts();
+      } else { showToast('Помилка видалення', 'error'); }
+    } catch(ex) { delEl.style.display = 'none'; showToast("Помилка з'єднання", 'error'); }
+  };
+
+  function getCheckedIds() { return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(function(cb) { return parseInt(cb.value); }); }
+
+  function updateBulkBar() {
+    var bb = document.getElementById('bulkBar'), bc = document.getElementById('bulkCount'), sa = document.getElementById('selectAll');
+    var ids = getCheckedIds(), all = document.querySelectorAll('.row-checkbox');
+    if (!bb) return;
+    bb.classList.toggle('bulk-bar--visible', ids.length > 0);
+    if (bc) bc.textContent = ids.length;
+    if (sa) { sa.indeterminate = ids.length > 0 && ids.length < all.length; sa.checked = ids.length > 0 && ids.length === all.length; }
+  }
+
+  async function bulkAction(status) {
+    var ids = getCheckedIds();
+    if (!ids.length) return;
+    var labelMap = { processing:'В обробку', done:'Виконано', cancelled:'Скасовано' };
+    if (!confirm('Змінити статус ' + ids.length + ' замовлень → «' + (labelMap[status] || status) + '»?')) return;
+    try {
+      var r = await fetch('/admin/orders/bulk-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({order_ids: ids, status: status}) });
+      var data = await r.json();
+      if (data.updated > 0) {
+        showToast('Оновлено: ' + data.updated + (data.skipped ? ', пропущено: ' + data.skipped : ''), 'success');
+        setTimeout(function() { ajaxLoad(location.search.replace(/^\?/, ''), false); }, 400);
+      } else { showToast('Жодне замовлення не оновлено (недозволені переходи)', 'error'); }
+    } catch(ex) { showToast("Помилка з'єднання", 'error'); }
+  }
+
+  async function bulkDelete() {
+    var ids = getCheckedIds();
+    if (!ids.length) return;
+    if (!confirm('Видалити ' + ids.length + ' замовлень назавжди?')) return;
+    var ok = 0;
+    for (var i = 0; i < ids.length; i++) {
+      try {
+        var r = await fetch('/admin/orders/' + ids[i] + '/delete', { method:'POST' });
+        var d = await r.json();
+        if (d.success) ok++;
+      } catch(ex) {}
+    }
+    showToast('Видалено: ' + ok + ' з ' + ids.length, ok > 0 ? 'success' : 'error');
+    setTimeout(function() { ajaxLoad(location.search.replace(/^\?/, ''), false); }, 400);
+  }
+
+  function rebindBulkButtons() {
+    var bb = document.getElementById('bulkProcessing'), bd = document.getElementById('bulkDone');
+    var bc = document.getElementById('bulkCancel'), bx = document.getElementById('bulkDelete');
+    if (bb) bb.onclick = function() { bulkAction('processing'); };
+    if (bd) bd.onclick = function() { bulkAction('done'); };
+    if (bc) bc.onclick = function() { bulkAction('cancelled'); };
+    if (bx) bx.onclick = function() { bulkDelete(); };
+  }
+  rebindBulkButtons();
+
+  function syncRangeButtons(qs) {
+    var now = new Date(), td = fmtDate(now);
+    var yd = new Date(now); yd.setDate(yd.getDate() - 1); var ydStr = fmtDate(yd);
+    var wk = new Date(now); wk.setDate(wk.getDate() - 6); var wkStr = fmtDate(wk);
+    var mo = new Date(now); mo.setDate(mo.getDate() - 29); var moStr = fmtDate(mo);
+    var p = new URLSearchParams(qs);
+    var from = p.get('date_from') || '', to = p.get('date_to') || '';
+    var active = '';
+    if (from === '' && to === '') active = 'all';
+    else if (from === td && to === td) active = 'today';
+    else if (from === ydStr && to === ydStr) active = 'yesterday';
+    else if (from === wkStr && to === td) active = 'week';
+    else if (from === moStr && to === td) active = 'month';
+    document.querySelectorAll('[data-range]').forEach(function(btn) { btn.classList.toggle('fchip--on', btn.dataset.range === active); });
+  }
+
+  function ajaxLoad(params, pushUrl) {
+    var qs = typeof params === 'string' ? params : new URLSearchParams(params).toString();
+    if (pushUrl !== false) history.pushState(null, '', qs ? '?' + qs : location.pathname);
+    syncRangeButtons(qs);
+    var target = document.getElementById('ordersResults');
+    target.style.opacity = '0.45'; target.style.pointerEvents = 'none';
+    fetch('/admin/orders?' + qs + '&ajax=1')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        target.innerHTML = data.html;
+        target.style.opacity = ''; target.style.pointerEvents = '';
+        var countEl = document.getElementById('ordersCount');
+        if (countEl) countEl.textContent = data.total + ' замовлень';
+        rebindResults(); rebindBulkButtons();
+      })
+      .catch(function() { target.style.opacity = ''; target.style.pointerEvents = ''; });
+  }
+
+  function rebindResults() {
+    var tbl = document.getElementById('ordersTable');
+    if (!tbl) return;
+    tbl.addEventListener('click', function(e) {
+      var btn = e.target.closest('.status-pill-btn');
+      if (!btn) return;
+      e.stopPropagation();
+      var row = btn.closest('tr.order-row');
+      var orderId = parseInt(btn.dataset.order), newStatus = btn.dataset.status;
+      var tLabel = (TRANSITIONS[newStatus] || {}).label || newStatus;
+      if (!confirm('Змінити статус на «' + tLabel + '»?')) return;
+      btn.disabled = true;
+      fetch('/admin/orders/' + orderId + '/status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status: newStatus}) })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.success) { showToast(data.error || 'Помилка оновлення', 'error'); btn.disabled = false; return; }
+          row.setAttribute('data-status', newStatus);
+          var cell = row.querySelector('.status-cell');
+          if (cell) cell.outerHTML = renderStatusCell(orderId, newStatus);
+          showToast('Статус: ' + tLabel, 'success');
+          updateTabCounts();
+        })
+        .catch(function() { showToast("Помилка з'єднання", 'error'); btn.disabled = false; });
+    });
+
+    tbl.addEventListener('click', function(e) {
+      var btn = e.target.closest('.btn-delete-order');
+      if (!btn) return;
+      e.stopPropagation();
+      _delRow = btn.closest('tr.order-row'); _delOrderId = parseInt(btn.dataset.order);
+      delEl.style.display = 'block';
+      var rect = btn.getBoundingClientRect();
+      delEl.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+      delEl.style.left = Math.max(8, rect.right - delEl.offsetWidth) + 'px';
+    });
+
+    tbl.addEventListener('click', function(e) {
+      var btn = e.target.closest('.expand-btn');
+      if (!btn) return;
+      var row = btn.closest('.order-row');
+      var orderId = row.dataset.orderId;
+      var detRow = document.getElementById('details-' + orderId);
+      var inner = detRow.querySelector('.order-details-inner');
+      var isOpen = detRow.classList.contains('open');
+      document.querySelectorAll('.order-details-row.open').forEach(function(r) {
+        r.classList.remove('open');
+        var oId = r.id.replace('details-', '');
+        var eb = document.querySelector('.order-row[data-order-id="' + oId + '"] .expand-btn');
+        if (eb) eb.classList.remove('rotated');
+      });
+      if (!isOpen) {
+        detRow.classList.add('open'); btn.classList.add('rotated');
+        if (!inner.dataset.loaded) {
+          inner.innerHTML = '<div class="order-details-loading">Завантаження…</div>';
+          fetch('/admin/orders/' + orderId + '/details')
+            .then(function(r) { return r.text(); })
+            .then(function(html) { inner.innerHTML = html; inner.dataset.loaded = '1'; });
+        }
+      }
+    });
+
+    var selectAllNew = document.getElementById('selectAll');
+    if (selectAllNew) selectAllNew.addEventListener('change', function() { document.querySelectorAll('.row-checkbox').forEach(function(cb) { cb.checked = selectAllNew.checked; }); updateBulkBar(); });
+    tbl.addEventListener('change', function(e) { if (e.target.classList.contains('row-checkbox')) updateBulkBar(); });
+
+    document.querySelectorAll('.pagination .page-btn').forEach(function(a) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        var qs = (this.getAttribute('href') || '').replace(/^\?/, '');
+        ajaxLoad(qs);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  }
+
+  var currentFilter = {};
+  (new URLSearchParams(location.search)).forEach(function(v, k) { if (k !== 'p' && v !== '') currentFilter[k] = v; });
+
+  function doFilter(updates) {
+    if (updates) Object.assign(currentFilter, updates);
+    Object.keys(currentFilter).forEach(function(k) { if (currentFilter[k] === '' || currentFilter[k] === undefined) delete currentFilter[k]; });
+    var qs = new URLSearchParams(Object.assign({}, currentFilter, { p: 1 })).toString();
+    var df = currentFilter.date_from || null, dt = currentFilter.date_to || null;
+    if (fpFrom) { fpFrom.setDate(df, false); filterDateFrom.value = df || ''; }
+    if (fpTo) { fpTo.setDate(dt, false); filterDateTo.value = dt || ''; }
+    var sel = document.querySelector('.toolbar-search select[name="status"]');
+    if (sel) sel.value = currentFilter.status || '';
+    var srch = document.querySelector('.toolbar-search input[name="search"]');
+    if (srch) srch.value = currentFilter.search || '';
+    document.querySelectorAll('.toolbar-chips a.fchip[data-fkey]').forEach(function(a) {
+      var key = a.dataset.fkey, val = a.dataset.fval;
+      a.classList.toggle('fchip--on', (currentFilter[key] || '') === val);
+    });
+    syncRangeButtons(qs);
+    ajaxLoad(qs);
+  }
+
+  var searchForm = document.querySelector('.toolbar-search');
+  searchForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var fd = new FormData(this);
+    currentFilter.search = fd.get('search') || '';
+    currentFilter.status = fd.get('status') || '';
+    currentFilter.date_from = fd.get('date_from') || '';
+    currentFilter.date_to = fd.get('date_to') || '';
+    currentFilter.time_from = fd.get('time_from') || '';
+    currentFilter.time_to = fd.get('time_to') || '';
+    doFilter();
+  });
+
+  document.querySelector('.orders-toolbar').addEventListener('click', function(e) {
+    var link = e.target.closest('a.fchip[data-fkey], a.fchip[data-reset], a.ts-time-clear[data-clear-keys]');
+    if (!link) return;
+    e.preventDefault();
+    if (link.dataset.reset) {
+      currentFilter = {};
+      if (fpFrom) { fpFrom.clear(); filterDateFrom.value = ''; }
+      if (fpTo) { fpTo.clear(); filterDateTo.value = ''; }
+      ajaxLoad(''); syncRangeButtons('');
+      document.querySelectorAll('.toolbar-chips a.fchip[data-fkey]').forEach(function(a) {
+        if (a.dataset.fkey === 'payment') a.classList.toggle('fchip--on', a.dataset.fval === '');
+        else a.classList.remove('fchip--on');
+      });
+      return;
+    }
+    if (link.dataset.clearKeys) {
+      var upd = {};
+      link.dataset.clearKeys.split(',').forEach(function(k) { upd[k.trim()] = ''; });
+      doFilter(upd);
+      return;
+    }
+    var key = link.dataset.fkey, val = link.dataset.fval;
+    if (link.dataset.toggle && (currentFilter[key] || '') === val) val = '';
+    var upd = {}; upd[key] = val;
+    doFilter(upd);
+  });
+
+  var filterDateFrom = document.getElementById('filterDateFrom');
+  var filterDateTo = document.getElementById('filterDateTo');
+  var fpFrom = flatpickr(filterDateFrom, { locale: 'uk', dateFormat: 'Y-m-d', disableMobile: true, defaultDate: filterDateFrom.value || null, onReady: window.fpBuildYearSelect, onChange: function(sel, str) { filterDateTo._flatpickr.set('minDate', str || null); } });
+  var fpTo = flatpickr(filterDateTo, { locale: 'uk', dateFormat: 'Y-m-d', disableMobile: true, defaultDate: filterDateTo.value || null, onReady: window.fpBuildYearSelect, onChange: function(sel, str) { filterDateFrom._flatpickr.set('maxDate', str || null); } });
+
+  function fmtDate(d) { var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0'); return y + '-' + m + '-' + dd; }
+  document.querySelectorAll('[data-range]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var now = new Date(), today = fmtDate(now), range = this.dataset.range, from, to;
+      if (range === 'all') { doFilter({ date_from: '', date_to: '' }); return; }
+      else if (range === 'today') { from = today; to = today; }
+      else if (range === 'yesterday') { var yy = new Date(now); yy.setDate(yy.getDate() - 1); from = to = fmtDate(yy); }
+      else if (range === 'week') { var w = new Date(now); w.setDate(w.getDate() - 6); from = fmtDate(w); to = today; }
+      else if (range === 'month') { var mo = new Date(now); mo.setDate(mo.getDate() - 29); from = fmtDate(mo); to = today; }
+      doFilter({ date_from: from, date_to: to });
+    });
+  });
+
+  rebindResults();
+
+  window.addEventListener('popstate', function() {
+    currentFilter = {};
+    (new URLSearchParams(location.search)).forEach(function(v, k) { if (k !== 'p' && v !== '') currentFilter[k] = v; });
+    ajaxLoad(location.search.replace(/^\?/, ''), false);
+    syncRangeButtons(location.search.replace(/^\?/, ''));
+  });
+})();
+</script>
+{% endblock %}

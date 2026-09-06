@@ -1,0 +1,125 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+{% set status = order.status|enum_value %}
+{% set status_badge = {'new': 'badge-new', 'done': 'badge-ready', 'cancelled': 'badge-cancelled'}.get(status, 'badge-new') %}
+{% set status_label = {'new': 'Нове', 'done': 'Виконано', 'cancelled': 'Скасовано'}.get(status, status) %}
+{% set pm = order.payment_method or '' %}
+{% if 'cash' in pm %}{% set pm_label = 'При отриманні' %}
+{% elif pm == 'card_online' %}{% set pm_label = 'Картка онлайн (LiqPay)' %}
+{% elif pm == 'card_on_pickup' %}{% set pm_label = 'Картка у кафе' %}
+{% else %}{% set pm_label = pm %}{% endif %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#b09070">
+    <a href="/admin/orders" style="color:#8B4513;text-decoration:none;font-weight:600">Замовлення</a>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+    <span>#{{ order.order_id }}</span>
+  </div>
+  <a href="/admin/orders" class="action-btn action-btn--ghost" style="font-size:12px;padding:6px 14px">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Назад до списку
+  </a>
+</div>
+
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap">
+  <h1 style="font-size:22px;font-weight:700;color:#2c1810;margin:0">Замовлення #{{ order.order_id }}</h1>
+  <span class="order-badge {{ status_badge }}" style="font-size:13px;padding:5px 14px">{{ status_label }}</span>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+  <div class="dash-section" style="padding:22px 24px">
+    <div style="font-size:10px;font-weight:700;color:#b09070;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">Клієнт</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#8B4513,#d4a96a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">{{ client_name[:1]|upper }}</div>
+      <div>
+        <div style="font-weight:700;color:#2c1810;font-size:15px">{{ client_name }}</div>
+        {% if client_email %}<div style="font-size:12px;color:#aaa">{{ client_email }}</div>{% endif %}
+      </div>
+    </div>
+    {% if order.phone %}
+    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555;padding:8px 0;border-top:1px solid #f0e8df">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B4513" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.58 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      {{ order.phone }}
+    </div>
+    {% endif %}
+    {% if order.user_id %}<div style="margin-top:10px"><span style="font-size:12px;color:#8B4513">ID клієнта: #{{ order.user_id }}</span></div>{% endif %}
+  </div>
+
+  <div class="dash-section" style="padding:22px 24px">
+    <div style="font-size:10px;font-weight:700;color:#b09070;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">Деталі замовлення</div>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid #f0e8df">
+        <span style="color:#aaa">Дата</span><span style="font-weight:600;color:#2c1810">{{ order.created_at.strftime('%d.%m.%Y · %H:%M') }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid #f0e8df">
+        <span style="color:#aaa">Сума</span><span style="font-weight:700;color:#8B4513;font-size:16px">{{ '%.0f'|format(order.total)|replace(',', ' ') }} ₴</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid #f0e8df">
+        <span style="color:#aaa">Оплата</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:#555">{{ pm_label }}</span>
+          {% if pm == 'card_online' %}
+          {% set ps = order.payment_status|enum_value %}
+          {% set pay_map = {'paid': ('Оплачено', 'badge-ready'), 'pending': ('Не оплачено', 'badge-new'), '': ('Не оплачено', 'badge-new')} %}
+          {% set pay_label, pay_cls = pay_map.get(ps, (ps, 'badge-new')) %}
+          <span class="order-badge {{ pay_cls }}" style="font-size:10px;padding:2px 8px">{{ pay_label }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if order.ready_time %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid #f0e8df">
+        <span style="color:#aaa">Час готовності</span>
+        <span style="font-weight:600;color:#2c1810"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {{ order.ready_time }}</span>
+      </div>
+      {% endif %}
+      {% if order.comment %}
+      <div style="padding-top:2px">
+        <div style="color:#aaa;margin-bottom:4px">Коментар</div>
+        <div style="background:#fdf6ee;border-radius:8px;padding:10px 12px;font-size:12px;color:#555;font-style:italic;line-height:1.5">💬 {{ order.comment }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="dash-section" style="padding:22px 24px;margin-bottom:20px">
+  <div style="font-size:10px;font-weight:700;color:#b09070;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">
+    Позиції замовлення <span style="background:#f0e8df;color:#8B6040;padding:2px 8px;border-radius:10px;margin-left:8px;font-size:10px">{{ items|length }}</span>
+  </div>
+  <table class="admin-table">
+    <thead><tr><th>Назва</th><th style="text-align:center">Кількість</th><th style="text-align:right">Ціна</th><th style="text-align:right">Сума</th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>
+          <div style="font-weight:600;color:#2c1810">{{ item.product_name }}</div>
+          {% if item.opts %}<div style="font-size:11px;color:#8B6040;margin-top:2px">{{ item.opts|join(' · ') }}</div>{% endif %}
+        </td>
+        <td style="text-align:center">×{{ item.quantity }}</td>
+        <td style="text-align:right;color:#555">{{ '%.0f'|format(item.price)|replace(',', ' ') }} ₴</td>
+        <td style="text-align:right;font-weight:700;color:#8B4513">{{ '%.0f'|format(item.price * item.quantity)|replace(',', ' ') }} ₴</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3" style="text-align:right;font-weight:700;color:#555;border-top:2px solid #f0e8df;padding-top:12px">Разом:</td>
+        <td style="text-align:right;font-weight:700;font-size:16px;color:#8B4513;border-top:2px solid #f0e8df;padding-top:12px">{{ '%.0f'|format(order.total)|replace(',', ' ') }} ₴</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+{% if rating %}
+<div class="dash-section" style="padding:22px 24px;margin-bottom:20px">
+  <div style="font-size:10px;font-weight:700;color:#b09070;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Оцінка клієнта</div>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <div style="font-size:22px;letter-spacing:2px;font-family:serif;line-height:1">
+      <span style="color:#FFC107">{{ '★' * rating.rating }}</span><span style="color:#e0d5c9">{{ '★' * (5 - rating.rating) }}</span>
+    </div>
+    <div style="font-size:13px;font-weight:700;color:#8B4513">{{ rating.rating }}/5</div>
+    <div style="font-size:12px;color:#bbb;margin-left:auto">{{ rating.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

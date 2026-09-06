@@ -21,6 +21,12 @@ from app.services.menu import fmt_price
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["icon"] = icon
 templates.env.filters["fmt_price"] = fmt_price
+# SQLAlchemy's Enum columns come back as Python enum members when read
+# fresh from the DB, but a plain string when a route already normalized
+# it (or when an in-memory object was constructed without a DB round
+# trip — see app/services/profile.py's _enum_value for the same issue).
+# This filter lets templates handle both shapes uniformly.
+templates.env.filters["enum_value"] = lambda x: x.value if hasattr(x, "value") else (x or "")
 
 
 def _cart_badge_count(session) -> int:

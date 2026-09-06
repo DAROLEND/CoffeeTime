@@ -1,0 +1,51 @@
+{# Shared by the pre-loaded expandable rows in orders.html and the
+   /admin/orders/{id}/details AJAX fragment used by view_order.php's
+   equivalent — both render the exact same od-wrap markup. #}
+{% set pm = order.payment_method or '' %}
+{% if 'cash' in pm %}{% set pay_method_label = 'При отриманні' %}
+{% elif pm == 'card_online' %}{% set pay_method_label = 'Картка онлайн (LiqPay)' %}
+{% elif pm == 'card_on_pickup' %}{% set pay_method_label = 'Картка у кафе' %}
+{% else %}{% set pay_method_label = pm or '—' %}{% endif %}
+{% set is_cash = 'cash' in pm %}
+{% set ps = order.payment_status|enum_value %}
+<div class="od-wrap">
+  <div class="od-info">
+    <div class="od-block-title">Клієнт</div>
+    <div class="od-row"><span class="od-key">Ім'я</span><span class="od-val">{{ ((order.customer_name or '') ~ ' ' ~ (order.customer_surname or '')).strip() or '—' }}</span></div>
+    <div class="od-row"><span class="od-key">Телефон</span><span class="od-val">{{ order.phone or '—' }}</span></div>
+    <div class="od-row"><span class="od-key">Оплата</span><span class="od-val">{{ pay_method_label }}</span></div>
+    {% if not is_cash and ps %}
+    <div class="od-row"><span class="od-key">Статус оплати</span><span class="od-val">
+      {% if ps == 'paid' %}<span style="color:#2e7d32;font-weight:700">✓ Оплачено</span>
+      {% elif ps == 'pending' %}<span style="color:#e65100">⏳ Очікує оплати</span>
+      {% elif ps == 'failed' %}<span style="color:#c62828">✗ Не оплачено</span>
+      {% endif %}
+    </span></div>
+    {% endif %}
+    {% if order.ready_time %}<div class="od-row"><span class="od-key">Час готовності</span><span class="od-val">⏰ {{ order.ready_time }}</span></div>{% endif %}
+    {% if order.comment %}<div class="od-row"><span class="od-key">Коментар</span><span class="od-val">{{ order.comment }}</span></div>{% endif %}
+    <div class="od-row"><span class="od-key">Сума</span><span class="od-val" style="font-weight:700;color:#8B4513;font-size:15px">{{ '%.0f'|format(order.total)|replace(',', ' ') }} ₴</span></div>
+  </div>
+  <div class="od-items-wrap">
+    <div class="od-block-title">Склад замовлення ({{ items|length }})</div>
+    {% if items %}
+    <div class="od-cards">
+      {% for it in items %}
+      <div class="od-card">
+        <div class="od-card__img">
+          {% if it.product_image %}<img src="/{{ it.product_image }}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:8px;display:block">
+          {% else %}<div class="od-card__placeholder">{{ it.product_name[:1]|upper }}</div>{% endif %}
+        </div>
+        <div class="od-card__body">
+          <div class="od-card__name">{{ it.product_name }}</div>
+          {% if it.opts %}<div class="od-card__opts">{{ it.opts|join(' · ') }}</div>{% endif %}
+          <div class="od-card__price">{{ '%.0f'|format(it.price)|replace(',', ' ') }} ₴ × {{ it.quantity }} = <strong>{{ '%.0f'|format(it.price * it.quantity)|replace(',', ' ') }} ₴</strong></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:#aaa;font-size:13px;padding:8px 0">Товари не знайдено</p>
+    {% endif %}
+  </div>
+</div>

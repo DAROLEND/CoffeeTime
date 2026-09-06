@@ -1,0 +1,82 @@
+{# The AJAX-swappable half of orders.html: bulk bar + table + pagination.
+   Returned standalone for ?ajax=1 and included inline for the first
+   full-page render — matches orders.php's ob_start()/ob_get_clean() split. #}
+<div class="bulk-bar" id="bulkBar">
+  <span class="bulk-bar__count">Обрано: <strong id="bulkCount">0</strong></span>
+  <div class="bulk-bar__actions">
+    <button class="bulk-btn bulk-btn--process" id="bulkProcessing">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.47"/></svg>
+      В обробку
+    </button>
+    <button class="bulk-btn bulk-btn--done" id="bulkDone">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Виконано
+    </button>
+    <button class="bulk-btn bulk-btn--cancel" id="bulkCancel">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Скасувати
+    </button>
+    <button class="bulk-btn bulk-btn--delete" id="bulkDelete">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      Видалити
+    </button>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="admin-table" id="ordersTable">
+    <thead>
+      <tr>
+        <th style="width:32px;padding-left:16px"><input type="checkbox" id="selectAll" class="order-checkbox" title="Виділити всі"></th>
+        <th style="width:28px"></th>
+        <th>#</th><th>Клієнт</th><th>Телефон</th><th>К-ть</th><th>Сума</th><th>Оплата</th>
+        <th style="min-width:230px">Статус</th><th>Дата</th><th style="width:48px">Дії</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      {% set pay_cls, pay_icon, pay_label = payment_badge(o) %}
+      {% set trans = transitions.get(o.status, []) %}
+      <tr class="order-row" data-order-id="{{ o.order_id }}" data-status="{{ o.status }}">
+        <td style="padding-left:16px"><input type="checkbox" class="order-checkbox row-checkbox" value="{{ o.order_id }}"></td>
+        <td><button class="expand-btn" title="Деталі"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button></td>
+        <td><a href="/admin/orders/{{ o.order_id }}" style="font-weight:700;color:#8B4513;text-decoration:none">#{{ o.order_id }}</a></td>
+        <td>{{ o.full_name }}</td>
+        <td style="font-size:12px;color:#666">{{ o.phone }}</td>
+        <td style="color:#888">{{ o.items_count }}</td>
+        <td><strong>{{ '%.0f'|format(o.total)|replace(',', ' ') }} ₴</strong></td>
+        <td><span class="pay-tag {{ pay_cls }}">{{ icon(pay_icon, 13, '#2e7d32' if pay_cls == 'pay-paid' else ('#f57f17' if pay_cls == 'pay-cash' else '#9e9e9e')) }} {{ pay_label }}</span></td>
+        <td>
+          <div class="status-cell">
+            <span class="order-status-badge badge-{{ o.status }}">{{ status_labels.get(o.status, o.status) }}</span>
+            {% for ns in trans %}
+            <button class="status-pill-btn pill-{{ ns }}" data-order="{{ o.order_id }}" data-status="{{ ns }}">{{ next_labels.get(ns, '→ ' ~ status_labels.get(ns, ns)) }}</button>
+            {% endfor %}
+          </div>
+        </td>
+        <td style="font-size:12px;color:#999;white-space:nowrap">{{ o.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+        <td><button class="btn-delete-order" data-order="{{ o.order_id }}" title="Видалити замовлення"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></td>
+      </tr>
+      <tr class="order-details-row" id="details-{{ o.order_id }}">
+        <td colspan="11">
+          <div class="order-details-inner" data-loaded="1">
+            {% with order=o, items=o.line_items %}{% include "admin/_order_details.html" %}{% endwith %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11" style="text-align:center;color:#bbb;padding:36px">Замовлень не знайдено</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}<a href="{{ page_url(page - 1) }}" class="page-btn">‹</a>{% endif %}
+  {% for i in range([1, page - 2]|max, [total_pages, page + 2]|min + 1) %}
+  <a href="{{ page_url(i) }}" class="page-btn {{ 'active' if i == page else '' }}">{{ i }}</a>
+  {% endfor %}
+  {% if page < total_pages %}<a href="{{ page_url(page + 1) }}" class="page-btn">›</a>{% endif %}
+</div>
+{% endif %}

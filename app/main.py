@@ -20,6 +20,8 @@ from app.routers.admin import dashboard as admin_dashboard
 from app.routers.admin import admin_users as admin_admin_users
 from app.routers.admin import orders as admin_orders
 from app.routers.admin import products as admin_products
+from app.routers.admin import about_section as admin_about_section
+from app.routers.admin import dessert_banner as admin_dessert_banner
 from app.routers.admin import gallery as admin_gallery
 from app.routers.admin import hero_slides as admin_hero_slides
 from app.routers.admin import reviews as admin_reviews
@@ -65,6 +67,8 @@ app.include_router(admin_sauces.router)
 app.include_router(admin_gallery.router)
 app.include_router(admin_reviews.router)
 app.include_router(admin_hero_slides.router)
+app.include_router(admin_about_section.router)
+app.include_router(admin_dessert_banner.router)
 
 
 @app.exception_handler(CSRFError)

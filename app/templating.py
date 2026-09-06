@@ -57,6 +57,7 @@ def admin_render(request: Request, db, template_name: str, status_code: int = 20
     base_context = {
         "request": request,
         "csrf_field": lambda: _csrf_field(session),
+        "current_year": datetime.datetime.now().year,
         **admin_layout_context(request, db),
     }
     base_context.update(context)

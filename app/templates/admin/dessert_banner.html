@@ -1,0 +1,312 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="db-grid">
+
+  <!-- ── Form ── -->
+  <div class="panel">
+    <div class="panel-head"><h2 class="panel-title">Редагування банера</h2></div>
+    <form method="post" enctype="multipart/form-data" class="db-form" id="dbForm">
+
+      <div class="db-fields-row">
+        <div class="db-field">
+          <label>Мітка над заголовком</label>
+          <input type="text" name="dessert_banner_label" value="{{ settings.dessert_banner_label }}" maxlength="60">
+        </div>
+        <div class="db-field">
+          <label>Заголовок</label>
+          <input type="text" name="dessert_banner_title" value="{{ settings.dessert_banner_title }}" maxlength="80" required>
+        </div>
+        <div class="db-field">
+          <label>Текст кнопки</label>
+          <input type="text" name="dessert_banner_btn" value="{{ settings.dessert_banner_btn }}" maxlength="60">
+        </div>
+      </div>
+
+      <div class="db-field">
+        <label>Опис</label>
+        <textarea name="dessert_banner_desc" id="dbDesc" maxlength="300">{{ settings.dessert_banner_desc }}</textarea>
+        <div class="db-char-counter"><span id="dbCharCount">0</span> / 300</div>
+      </div>
+
+      <div class="db-field">
+        <label>Фото банера <small>(залиш порожнім щоб не міняти · JPG, PNG, WEBP · до 4 MB)</small></label>
+        {% if has_custom_image %}
+          <div class="db-current-img">
+            <img src="/{{ settings.dessert_banner_image }}?v={{ photo_version }}" alt="">
+            <div class="db-current-img-meta">
+              <span>Поточне фото</span>
+              <button type="submit" name="clear_image" value="1" class="db-btn-clear" onclick="return confirm('Видалити фото? Буде показуватись рандомний десерт.')">
+                ✕ Видалити (показувати рандомний)
+              </button>
+            </div>
+          </div>
+        {% else %}
+          <div class="db-hint-random">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B4513" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Зараз відображається <strong>рандомний десерт із меню</strong>. Завантаж фото щоб зафіксувати конкретне.
+          </div>
+        {% endif %}
+        <input type="hidden" name="dessert_banner_image_b64" id="dessert_banner_image_b64">
+        <div class="upload-zone" id="uploadZone" data-live-preview="#prevPhoto">
+          <input type="file" name="dessert_banner_image" accept="image/jpeg,image/png,image/webp" id="imgInput" data-crop-hidden="dessert_banner_image_b64">
+          <div class="upload-zone__placeholder">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Оберіть або перетягніть фото</span>
+          </div>
+          <div class="upload-preview" id="uploadPreview" style="display:none"></div>
+        </div>
+      </div>
+
+      <div style="padding:0 0 4px">
+        <button type="submit" class="btn btn-primary">Зберегти зміни</button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+
+<!-- ── Full-width live preview ── -->
+<div class="panel db-preview-panel">
+  <div class="panel-head">
+    <h2 class="panel-title">Прев'ю — як виглядає на сайті</h2>
+    {% if not has_custom_image %}
+      <p class="db-preview-note">* Фото — рандомний десерт, міняється при кожному завантаженні</p>
+    {% endif %}
+  </div>
+  <div class="db-preview-wrap">
+    <div class="db-preview">
+      <div class="db-prev-text">
+        <p class="db-prev-label" id="prevLabel">{{ settings.dessert_banner_label }}</p>
+        <h3 class="db-prev-title" id="prevTitle">{{ settings.dessert_banner_title }}</h3>
+        <p class="db-prev-desc"   id="prevDesc">{{ settings.dessert_banner_desc|replace('\n', '<br>')|safe }}</p>
+        <span class="db-prev-btn" id="prevBtn">{{ settings.dessert_banner_btn }}</span>
+      </div>
+      <div class="db-prev-photo">
+        <img id="prevPhoto"
+             src="{{ ('/' + settings.dessert_banner_image + '?v=' + photo_version|string) if has_custom_image else (random_img or '') }}"
+             alt=""
+             style="{{ 'display:none' if (not has_custom_image and not random_img) else '' }}">
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Layout */
+.db-grid { display:flex; flex-direction:column; gap:24px; }
+
+.panel { background:#fff; border-radius:14px; border:1px solid #f0e8df; overflow:hidden; }
+.panel-head { padding:18px 24px 0; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+.panel-title { font-size:15px; font-weight:700; color:#2c2c2a; margin-bottom:12px; }
+
+.db-form { padding:4px 24px 24px; display:flex; flex-direction:column; gap:18px; }
+
+/* 3-column row for short text inputs */
+.db-fields-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+@media (max-width:760px) { .db-fields-row { grid-template-columns:1fr; } }
+
+.db-field label { display:block; font-size:13px; font-weight:600; color:#555; margin-bottom:6px; }
+.db-field small { font-size:11px; color:#aaa; }
+.db-field input[type="text"],
+.db-field textarea {
+  width:100%; padding:10px 14px; font-size:14px;
+  border:1.5px solid #e0d8d0; border-radius:10px;
+  outline:none; font-family:inherit; resize:none;
+  transition:border-color .2s;
+  box-sizing:border-box;
+}
+.db-field textarea { min-height:72px; overflow:hidden; line-height:1.6; }
+.db-field input:focus, .db-field textarea:focus { border-color:#8B4513; }
+
+.db-char-counter { font-size:11px; color:#bbb; text-align:right; margin-top:4px; }
+.db-char-counter.near { color:#e67e22; }
+.db-char-counter.full { color:#e53935; }
+
+.db-hint-random {
+  display:flex; align-items:center; gap:8px;
+  background:#fdf8f2; border:1px solid #f0e0c8; border-radius:10px;
+  padding:10px 14px; font-size:13px; color:#7a4f28; margin-bottom:10px;
+}
+
+.db-current-img { display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+.db-current-img img { width:90px; height:60px; object-fit:cover; border-radius:8px; border:1px solid #f0e8df; }
+.db-current-img-meta { display:flex; flex-direction:column; gap:6px; }
+.db-current-img-meta span { font-size:12px; color:#888; }
+.db-btn-clear { background:none; border:1px solid #e0d0c0; border-radius:8px; padding:5px 12px; font-size:12px; color:#a05a2c; cursor:pointer; transition:all .2s; }
+.db-btn-clear:hover { background:#fff3ec; border-color:#c0704a; color:#c0704a; }
+
+.upload-zone {
+  position:relative; border:2px dashed #e0d8d0; border-radius:12px;
+  padding:20px; text-align:center; cursor:pointer; min-height:90px;
+  display:flex; align-items:center; justify-content:center;
+  transition:border-color .2s, background .2s;
+}
+.upload-zone:hover { border-color:#8B4513; background:#fdf8f4; }
+.upload-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; z-index:2; }
+.upload-zone__placeholder svg  { margin:0 auto 6px; display:block; }
+.upload-zone__placeholder span { display:block; font-size:13px; color:#888; }
+.upload-preview img { max-height:90px; border-radius:8px; object-fit:cover; }
+
+.btn { display:inline-block; padding:10px 22px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:all .2s; font-family:inherit; }
+.btn-primary { background:#8B4513; color:#fff; }
+.btn-primary:hover { background:#6d3410; }
+
+.admin-alert { padding:12px 18px; border-radius:10px; font-size:14px; margin-bottom:20px; }
+.admin-alert--success { background:#e8f5e9; color:#2e7d32; }
+.admin-alert--error   { background:#ffebee; color:#c62828; }
+
+.db-preview-panel { margin-top:0; }
+.db-preview-note  { font-size:12px; color:#aaa; margin:0 0 12px; }
+.db-preview-wrap  { padding:0 24px 24px; }
+
+.db-preview {
+  display:grid;
+  grid-template-columns: 54fr 46fr;
+  height: 500px;
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow: 0 4px 24px rgba(61,31,7,.18);
+}
+
+/* Text side — mirrors real banner */
+.db-prev-text {
+  background: linear-gradient(160deg, #2a1205 0%, #3d1f07 50%, #4a2509 100%);
+  padding: 88px 80px 88px 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+}
+.db-prev-text::before {
+  content:'';
+  position:absolute;
+  left:0; top:15%; bottom:15%;
+  width:3px;
+  background: linear-gradient(to bottom, transparent, #FFC107 30%, #FFC107 70%, transparent);
+  border-radius:0 2px 2px 0;
+}
+.db-prev-label {
+  font-size:11px; font-weight:700; color:#FFC107;
+  text-transform:uppercase; letter-spacing:.14em;
+  margin:0 0 14px;
+  display:flex; align-items:center; gap:7px;
+}
+.db-prev-label::before {
+  content:''; display:inline-block;
+  width:7px; height:7px;
+  background:#FFC107; border-radius:50%; flex-shrink:0;
+}
+.db-prev-title {
+  font-family:'Playfair Display', Georgia, serif;
+  font-size:clamp(1.6rem, 2.6vw, 2.8rem);
+  font-weight:700; color:#fff;
+  margin:0 0 18px; line-height:1.1;
+  letter-spacing:-.02em;
+}
+.db-prev-desc {
+  font-size:15px;
+  color:rgba(255,255,255,.68);
+  margin:0 0 32px;
+  line-height:1.8;
+  max-width:360px;
+}
+.db-prev-btn {
+  display:inline-flex; align-items:center;
+  background:#FFC107; color:#3d1f07;
+  font-weight:700; font-size:0.9rem;
+  padding:13px 32px; border-radius:50px;
+  align-self:flex-start;
+  box-shadow:0 6px 20px rgba(255,193,7,.38);
+  white-space:nowrap;
+}
+
+/* Photo side */
+.db-prev-photo { overflow:hidden; position:relative; background:linear-gradient(135deg,rgba(196,149,106,.88) 0%,rgba(61,31,7,.92) 100%); }
+.db-prev-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+
+@media (max-width: 700px) {
+  .db-preview {
+    grid-template-columns: 1fr 1fr;
+    height: 280px;
+  }
+  .db-prev-text {
+    padding: 20px 14px 20px 18px;
+    gap: 0;
+  }
+  .db-prev-title {
+    font-size: clamp(1rem, 5vw, 1.4rem);
+    margin-bottom: 8px;
+  }
+  .db-prev-desc {
+    font-size: 11px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    max-width: 100%;
+  }
+  .db-prev-label { font-size: 9px; margin-bottom: 8px; }
+  .db-prev-btn { font-size: 10px; padding: 8px 14px; }
+  .db-preview-wrap { padding: 0 14px 20px; }
+}
+
+@media (max-width: 480px) {
+  .db-preview {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .db-prev-text { padding: 22px 20px; min-height: 200px; }
+  .db-prev-photo { height: 180px; }
+  .db-prev-title { font-size: 1.4rem; }
+  .db-prev-desc { font-size: 13px; }
+}
+</style>
+
+<script>
+/* Textarea auto-resize + counter */
+const desc      = document.getElementById('dbDesc');
+const charCount = document.getElementById('dbCharCount');
+const counter   = charCount?.closest('.db-char-counter');
+function resize() { desc.style.height='auto'; desc.style.height=desc.scrollHeight+'px'; }
+function updateCount() {
+  const l = desc.value.length;
+  charCount.textContent = l;
+  counter.classList.toggle('near', l >= 220 && l < 270);
+  counter.classList.toggle('full', l >= 270);
+}
+desc.addEventListener('input', () => { resize(); updateCount(); updatePreview(); });
+resize(); updateCount();
+
+/* Live preview */
+const inpLabel = document.querySelector('[name="dessert_banner_label"]');
+const inpTitle = document.querySelector('[name="dessert_banner_title"]');
+const inpBtn   = document.querySelector('[name="dessert_banner_btn"]');
+
+const pLabel = document.getElementById('prevLabel');
+const pTitle = document.getElementById('prevTitle');
+const pDesc  = document.getElementById('prevDesc');
+const pBtn   = document.getElementById('prevBtn');
+const pPhoto = document.getElementById('prevPhoto');
+
+inpLabel.addEventListener('input', () => pLabel.textContent = inpLabel.value);
+inpTitle.addEventListener('input', () => pTitle.textContent = inpTitle.value);
+inpBtn.addEventListener('input',   () => pBtn.textContent   = inpBtn.value);
+
+function updatePreview() {
+  pDesc.innerHTML = desc.value.replace(/\n/g, '<br>');
+}
+
+/* Live preview — update the banner photo on right when file is selected.
+   Upload-zone preview (with crop button) is handled by bindUploadZones in layout_bottom. */
+document.getElementById('imgInput').addEventListener('change', function() {
+  if (!this.files?.[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pPhoto.src = e.target.result;
+    pPhoto.style.display = '';
+  };
+  reader.readAsDataURL(this.files[0]);
+});
+</script>
+{% endblock %}

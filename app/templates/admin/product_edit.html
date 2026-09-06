@@ -1,0 +1,84 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="form-card">
+  <div class="form-card-header">
+    <h2>Редагувати — {{ cat_title }}</h2>
+    <a href="/admin/manage-items?category={{ category }}" class="btn-ghost">← Назад до списку</a>
+  </div>
+
+  {% for e in errors %}
+    <div class="alert alert-error">{{ e }}</div>
+  {% endfor %}
+
+  <form method="post" enctype="multipart/form-data" class="admin-form">
+    <div class="form-row">
+      <div class="form-col">
+        <label class="form-label" for="name">Назва товару *</label>
+        <input class="form-control" type="text" id="name" name="name"
+               value="{{ product.name or '' }}" required>
+      </div>
+      <div class="form-col">
+        <label class="form-label" for="price">Ціна (₴) *</label>
+        <input class="form-control" type="number" id="price" name="price" step="0.01" min="0"
+               value="{{ product.price }}" required>
+      </div>
+    </div>
+
+    {% if category == 'sushi_sets' %}
+    <div class="form-group">
+      <label class="form-label" for="pieces_count">Кількість штук у сеті</label>
+      <input class="form-control" type="number" id="pieces_count" name="pieces_count"
+             min="0" step="1" style="max-width:160px"
+             value="{{ product.pieces_count or 0 }}">
+      <small style="color:#999;font-size:12px">Використовується для розрахунку часу приготування</small>
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+      <label class="form-label" for="description">Опис</label>
+      <textarea class="form-control" id="description" name="description" rows="3">{{ product.description or '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Поточне фото</label>
+      {% if product.image %}
+        <img src="/{{ product.image }}"
+             alt="Поточне зображення"
+             style="display:block;width:140px;height:140px;object-fit:cover;border-radius:10px;margin-bottom:12px;border:2px solid #e8ddd5">
+      {% else %}
+        <p style="color:#999;font-size:13px;margin:0 0 12px">Зображення відсутнє</p>
+      {% endif %}
+      <label class="form-label">Замінити фото</label>
+      <input type="hidden" name="image_b64" id="image_b64">
+      <div class="upload-zone">
+        <input type="file" name="image" accept="image/*" data-crop-hidden="image_b64">
+        <div class="upload-hint">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c49a6c" stroke-width="1.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Клікніть або перетягніть нове фото</span>
+        </div>
+        <div class="upload-preview" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Зберегти зміни</button>
+      <a href="/admin/manage-items?category={{ category }}" class="btn-secondary">Скасувати</a>
+      <button type="button" class="btn-danger" style="margin-left:auto" onclick="deleteProduct()">Видалити товар</button>
+    </div>
+  </form>
+</div>
+
+<script>
+function deleteProduct() {
+  if (!confirm('Видалити цей товар назавжди?')) return;
+  fetch('/admin/manage-items/delete', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({id: {{ product.id }}, category: '{{ category }}'})
+  })
+  .finally(function(){
+    window.location.href = '/admin/manage-items?category={{ category }}';
+  });
+}
+</script>
+{% endblock %}

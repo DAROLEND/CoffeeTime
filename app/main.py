@@ -19,6 +19,7 @@ from app.routers.admin import auth as admin_auth
 from app.routers.admin import dashboard as admin_dashboard
 from app.routers.admin import admin_users as admin_admin_users
 from app.routers.admin import orders as admin_orders
+from app.routers.admin import products as admin_products
 from app.routers.public import auth as public_auth
 from app.routers.public import cart_forms as public_cart_forms
 from app.routers.public import cart_page as public_cart_page
@@ -55,6 +56,7 @@ app.include_router(admin_auth.router)
 app.include_router(admin_dashboard.router)
 app.include_router(admin_orders.router)
 app.include_router(admin_admin_users.router)
+app.include_router(admin_products.router)
 
 
 @app.exception_handler(CSRFError)

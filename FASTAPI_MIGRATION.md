@@ -46,6 +46,18 @@ needed, live data already has real hero_slides rows),
 "Temporary preview — delete after review" dev tool, never wired into any
 real flow).
 
+Found during a final completeness audit at the end of Phase 10 (grepped
+every remaining PHP page/form/include against the routes above — no
+functional gaps, just these two more genuinely-unreferenced files):
+`pages/clear_cart.php` (a full-page-redirect variant that nothing links
+to or fetches — the site only ever calls the JSON-returning
+`forms/clear_cart.php`, which is ported) and `includes/validate.php`
+(a sanitize/validate helper library — `sanitize_string`, `validate_email`,
+`validate_phone`, `validate_price`, `validate_int`, `safe_int` — never
+`require_once`'d anywhere in the codebase; every form that validates
+input does so with its own inline logic instead, which is what got
+ported route-by-route).
+
 ### What's here
 
 - `app/models/` — SQLAlchemy 2.0 models for all 25 existing tables, 1:1

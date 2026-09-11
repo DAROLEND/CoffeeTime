@@ -47,7 +47,7 @@
 ## Запуск через Docker
 
 ```bash
-git clone <repo> coffee-time-fastapi && cd coffee-time-fastapi
+git clone https://github.com/DAROLEND/CoffeeTime.git && cd CoffeeTime
 cp .env.example .env
 # відредагувати .env (DB_NAME, DB_USER, DB_PASS, APP_URL, TELEGRAM_*, LIQPAY_*, MAIL_* тощо)
 
@@ -71,6 +71,13 @@ uvicorn app.main:app --reload
 # reminders cron-джоба (окремим процесом, кожні 15 хв):
 python cron/send_reminders.py
 ```
+
+## Деплой
+
+Конфіг для безкоштовного хостингу на [Render](https://render.com) — `render.yaml`
+(web-сервіс + cron-джоба нагадувань, БД лишається на своєму MySQL-хості).
+Перед першим деплоєм на вже наповнену базу дивись примітку про
+`alembic stamp` на початку файлу.
 
 ## Тести
 

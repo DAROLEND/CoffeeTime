@@ -1,0 +1,144 @@
+# Render Blueprint — deploy Coffee Time (FastAPI) for free.
+#
+# What this deploys:
+#   - a free Web Service running the existing Dockerfile (uvicorn)
+#   - a Cron Job running cron/send_reminders.py every 15 minutes
+# What it does NOT deploy:
+#   - the database — it stays on Railway (already set up, already free).
+#     Both services below just connect to it over the network via DB_*.
+#
+# ── BEFORE THE FIRST DEPLOY, READ THIS ──────────────────────────────
+# The Docker image's entrypoint (docker/entrypoint.sh) runs
+# `alembic upgrade head` automatically on every boot. Our Railway DB
+# already has the full production schema and data (25 tables, no
+# alembic_version table) — it was never created BY Alembic. If the web
+# service's first boot hits that database and just runs `alembic
+# upgrade head` blind, Alembic will try to CREATE TABLE on tables that
+# already exist and the deploy will fail (best case) or, if the
+# migration order ever changes, could try to alter live data (worst
+# case).
+#
+# So before enabling this blueprint, stamp the Railway DB once by hand
+# so Alembic knows it's already at the pre-fix baseline — see
+# MIGRATION_NOTES.md ("cutting over an EXISTING database"):
+#
+#   # from your machine, with .env pointed at the real Railway DB_*:
+#   alembic stamp 0001_baseline
+#   alembic upgrade head   # applies only the 0002 fixes, once
+#
+# Do this exactly once, before the first deploy. After that, every
+# future deploy's automatic `alembic upgrade head` is a safe no-op
+# unless a new migration is actually added.
+# ─────────────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: coffeetime-fastapi
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_URL
+        sync: false # set to the *.onrender.com URL Render gives this service (or a custom domain)
+      - key: DB_HOST
+        sync: false # Railway's public proxy host, e.g. acela.proxy.rlwy.net
+      - key: DB_PORT
+        sync: false # Railway's public proxy port, NOT 3306
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_CHARSET
+        value: utf8mb4
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: LIQPAY_PUBLIC_KEY
+        sync: false
+      - key: LIQPAY_PRIVATE_KEY
+        sync: false
+      - key: LIQPAY_SANDBOX
+        value: "1"
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: Coffee Time
+      - key: SESSION_LIFETIME
+        value: "3600"
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_PLACE_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: media
+      - key: CAFE_PHONE
+        sync: false
+      - key: CAFE_INSTAGRAM
+        sync: false
+      - key: GA_ID
+        sync: false
+
+  # NOTE: as of writing, Render's free tier covers Web Services; Cron
+  # Jobs may require a paid plan on your account — check Render's
+  # current pricing page before relying on this. If it turns out not
+  # free, drop this block and run cron/send_reminders.py on a free
+  # scheduler elsewhere (e.g. GitHub Actions on a schedule, calling a
+  # small authenticated endpoint, or cron-job.org hitting one).
+  - type: cron
+    name: coffeetime-reminders
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    schedule: "*/15 * * * *"
+    dockerCommand: python cron/send_reminders.py
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_CHARSET
+        value: utf8mb4
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: Coffee Time
+      - key: CAFE_PHONE
+        sync: false
+      - key: CAFE_INSTAGRAM
+        sync: false

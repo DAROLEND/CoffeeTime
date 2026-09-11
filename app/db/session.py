@@ -1,5 +1,4 @@
-"""Per-request DB session dependency (FastAPI equivalent of `$conn` being
-available to every PHP page via `require_once 'db/db.php'`)."""
+"""Per-request DB session dependency."""
 from collections.abc import Generator
 
 from sqlalchemy.orm import Session

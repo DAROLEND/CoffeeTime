@@ -1,6 +1,5 @@
-"""Phase 7 verification (part 2): admin orders list/filter/pagination,
-view_order, order-details fragment, status transitions (single + bulk),
-and delete."""
+"""Tests for admin orders: list/filter/pagination, view_order,
+order-details fragment, status transitions (single + bulk), and delete."""
 from __future__ import annotations
 
 import re
@@ -83,8 +82,7 @@ def test_view_order_shows_items(client, db_session):
 
 
 def test_view_order_fixed_permission_key_allows_orders_view_staff(client, db_session):
-    """Confirmed fix: view_order.php used the invalid permission key
-    'orders' (effectively super-only); the port uses 'orders_view'."""
+    """Staff with only 'orders_view' can view individual orders."""
     _login_admin(client, db_session, username="staffer", role="staff", perms='["orders_view"]')
     order = Order(total=10, status="new")
     db_session.add(order)

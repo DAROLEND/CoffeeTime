@@ -1,6 +1,5 @@
 """
-FastAPI application entrypoint — the full port of the original PHP app
-(see MIGRATION_NOTES.md): session/CSRF/permission middleware and
+FastAPI application entrypoint: session/CSRF/permission middleware and
 exception handlers, static asset mounting, and every public storefront
 + admin panel router.
 """
@@ -41,8 +40,6 @@ app = FastAPI(title="Coffee Time")
 
 app.add_middleware(DBSessionMiddleware)
 
-# The existing static/ directory (CSS/JS/images) is reused unchanged —
-# no asset was touched or renamed for this port.
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(public_pages.router)
@@ -70,8 +67,7 @@ app.include_router(admin_backup.router)
 
 @app.exception_handler(CSRFError)
 async def csrf_error_handler(request: Request, exc: CSRFError):
-    # Mirrors includes/helpers.php::verify_csrf() exactly: AJAX requests
-    # get a JSON 403, full-page requests get a flash + redirect back.
+    # AJAX requests get a JSON 403; full-page requests get a flash + redirect back.
     if _is_ajax(request):
         return JSONResponse({"error": exc.message}, status_code=403)
     request.state.session["flash_error"] = exc.message
@@ -81,11 +77,7 @@ async def csrf_error_handler(request: Request, exc: CSRFError):
 
 @app.exception_handler(AdminAccessDenied)
 async def admin_access_denied_handler(request: Request, exc: AdminAccessDenied):
-    # Mirrors admin/includes/perm.php's require_perm()/require_super():
-    # flash + redirect to the admin dashboard. Unlike the PHP version
-    # (where dashboard.php never actually rendered admin_flash), the
-    # Jinja2 admin_base.html template added in Phase 7 renders this
-    # unconditionally, so the message is no longer silently lost.
+    # Flash + redirect to the admin dashboard, which always renders admin_flash.
     request.state.session["admin_flash"] = exc.message
     request.state.session["admin_flash_type"] = "error"
     return RedirectResponse("/admin/dashboard", status_code=303)

@@ -1,4 +1,5 @@
-"""Port of pages/profile.php, forms/rate_order.php, pages/get_order_items.php."""
+"""Customer profile page (order history, settings) plus its order-items
+and order-rating AJAX endpoints."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request

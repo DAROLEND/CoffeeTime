@@ -1,7 +1,5 @@
-"""1:1 port of includes/icons.php's icon() helper — same SVG strings, same
-wrapper markup, same size/color/class parameterization and same
-empty-fallback for an unknown name (call sites across the templates rely
-on all of that)."""
+"""Inline SVG icon library, rendered via `icon()` with size/color/class
+parameters and an empty fallback for unknown names."""
 from __future__ import annotations
 
 from html import escape

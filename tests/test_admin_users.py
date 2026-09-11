@@ -1,7 +1,7 @@
-"""Phase 8 verification (part 1): admin_users.php port — super-only
-access, CSRF now enforced (confirmed fix; PHP had none here), and the
-create/edit/delete business rules (can't touch other supers, can't
-delete/edit self incorrectly, orders_edit implies orders_view)."""
+"""Tests for admin staff-account management: super-only access, CSRF
+enforcement, and the create/edit/delete business rules (can't touch
+other supers, can't delete/edit self incorrectly, orders_edit implies
+orders_view)."""
 from __future__ import annotations
 
 import re
@@ -34,7 +34,7 @@ def test_admin_users_requires_super(client, db_session):
 
 
 def test_admin_users_post_requires_csrf(client, db_session):
-    """Confirmed fix: PHP's admin_users.php had NO CSRF check at all."""
+    """Mutating requests without a CSRF token are rejected."""
     _login_admin(client, db_session)
     resp = client.post("/admin/users", data={"action": "create", "username": "newstaff", "password": "secret1", "perms[products]": "1"}, follow_redirects=False)
     assert resp.status_code == 303

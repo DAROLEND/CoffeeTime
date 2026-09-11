@@ -1,6 +1,5 @@
-"""Phase 9 verification: cron/send_reminders.php's sending logic, ported
-to app/services/reminders.py's process_due_reminders() (invoked by the
-thin cron/send_reminders.py entry point)."""
+"""Tests for app/services/reminders.py's process_due_reminders(),
+invoked by the thin cron/send_reminders.py entry point."""
 from __future__ import annotations
 
 import datetime

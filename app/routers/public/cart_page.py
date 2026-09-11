@@ -1,6 +1,6 @@
-"""Port of pages/cart.php: the full cart page (quick-add via GET, item
-list grouped by category, summary panel). Cart *mutation* AJAX endpoints
-live in cart_forms.py; this module only renders."""
+"""The full cart page: quick-add via GET, item list grouped by category,
+summary panel. Cart *mutation* AJAX endpoints live in cart_forms.py;
+this module only renders."""
 from __future__ import annotations
 
 import json

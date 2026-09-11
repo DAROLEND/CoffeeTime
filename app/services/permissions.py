@@ -1,21 +1,7 @@
 """
-Port of admin/includes/perm.php.
-
-Exact 5 permission keys confirmed via all_perms(): orders_view,
-orders_edit, products, content, reviews. `super` short-circuits every
-check; `staff` permissions are the explicit JSON array on admin_users.
-
-Per the confirmed migration decisions, this port also FIXES two bug
-classes found in the PHP admin panel rather than reproducing them:
-  1. admin/view_order.php called `require_perm('orders')` — not a real
-     key from all_perms() — making it effectively super-only. The FastAPI
-     route uses `require_perm('orders_view')` instead.
-  2. Product-mutation routes (add/edit/delete item) and the DB backup
-     route checked only "logged in as some admin" in PHP, with no
-     `require_perm('products')`/`require_super()` — meaning any staff
-     account could hit them directly by URL regardless of assigned
-     permissions. The FastAPI routes apply the same permission dependency
-     their listing pages already implied.
+Admin permission model: 5 permission keys (orders_view, orders_edit,
+products, content, reviews). `super` short-circuits every check; `staff`
+permissions are the explicit JSON array on admin_users.
 """
 from __future__ import annotations
 
@@ -34,12 +20,9 @@ ALL_PERMS: dict[str, str] = {
 
 
 class AdminAccessDenied(Exception):
-    """Raised on a failed require_perm()/require_super() check. PHP set a
-    session flash and redirected to dashboard.php; the FastAPI exception
-    handler (app/main.py) reproduces that — and, unlike PHP's
-    admin/includes/layout_top.php, the flash is guaranteed to render
-    because admin_base.html reads it unconditionally (see Phase 7 notes:
-    today's dashboard.php never displayed it)."""
+    """Raised on a failed require_perm()/require_super() check. The
+    exception handler in app/main.py sets a session flash and redirects
+    to the dashboard, which renders it unconditionally."""
 
     def __init__(self, message: str):
         self.message = message

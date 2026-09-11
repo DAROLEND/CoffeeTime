@@ -1,5 +1,5 @@
-"""Port of admin/orders.php, view_order.php, get_order_details.php,
-update_order_status.php, bulk_order_status.php, delete_order.php."""
+"""Admin order management: list/filter, detail view, status
+transitions (single and bulk), and deletion."""
 from __future__ import annotations
 
 import math
@@ -171,7 +171,7 @@ async def bulk_order_status(request: Request, db: Session = Depends(get_db), _pe
 @router.post("/{order_id}/delete")
 def delete_order(order_id: int, db: Session = Depends(get_db), _perm=Depends(require_perm("orders_edit"))):
     # order_items.order_id has ON DELETE CASCADE, so the explicit item
-    # delete below is redundant but kept to mirror the PHP exactly.
+    # delete below is redundant but harmless — kept for clarity.
     db.execute(delete(OrderItem).where(OrderItem.order_id == order_id))
     result = db.execute(delete(Order).where(Order.order_id == order_id))
     db.commit()

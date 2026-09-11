@@ -1,9 +1,7 @@
-"""1:1 port of the schedule helpers in includes/helpers.php:
-get_cafe_schedule(), get_next_available_time(), is_cafe_open_at().
-
-Used by pages/checkout.php's time picker validation and (duplicated as
-static markup in includes/footer.php — kept as a single source of truth
-here) the footer's "Години роботи" listing.
+"""
+Cafe opening-hours schedule, next-available-pickup-time calculation, and
+open/closed checks. Single source of truth for both checkout's time
+picker validation and the footer's "Години роботи" listing.
 """
 from __future__ import annotations
 
@@ -14,7 +12,7 @@ KYIV_TZ = ZoneInfo("Europe/Kyiv")
 
 
 def get_cafe_schedule() -> dict[int, dict[str, str]]:
-    """1=Mon ... 7=Sun (ISO weekday, matches PHP DateTime::format('N'))."""
+    """1=Mon ... 7=Sun (ISO weekday)."""
     return {
         1: {"open": "08:00", "close": "20:00"},
         2: {"open": "08:00", "close": "20:00"},

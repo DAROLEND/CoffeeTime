@@ -1,5 +1,4 @@
-"""Phase 8 (8/n) verification: admin/dessert_banner.php port. No permission
-fix needed here — PHP already had require_perm('content')."""
+"""Tests for the admin dessert-banner editor."""
 from __future__ import annotations
 
 import re

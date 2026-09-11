@@ -1,7 +1,5 @@
-"""Phase 2 verification: render every new public read-only route against
-a seeded SQLite DB and confirm it returns 200 with no Jinja/template
-errors — this is the closest thing to the plan's "side-by-side HTML diff"
-check that's possible without a live MySQL server in this environment.
+"""Renders every public read-only route against a seeded SQLite DB and
+confirms it returns 200 with no Jinja/template errors.
 """
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
-"""Port of pages/checkout.php: order creation, cash-vs-card branching,
-working-hours/lead-time validation for the pickup time."""
+"""Checkout: order creation, cash-vs-card branching, working-hours/
+lead-time validation for the pickup time."""
 from __future__ import annotations
 
 import datetime

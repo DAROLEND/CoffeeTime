@@ -23,17 +23,12 @@ class User(Base):
 
     client_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     login: Mapped[str] = mapped_column(String(60))
-    # PHP schema had `varchar(30)` here — too short, truncates real emails
-    # (already close to the limit for some seeded rows). Confirmed decision:
-    # widen it; this fixes a latent bug without changing any current
-    # behavior for existing data (every existing email already fits).
     email: Mapped[str] = mapped_column(String(255))
-    # bcrypt hash, exactly 60 chars — PHP's `varchar(60)` fit this exactly,
-    # kept as-is (passlib/bcrypt hashes are also 60 chars).
+    # bcrypt hashes are always exactly 60 chars.
     password: Mapped[str] = mapped_column(String(60))
     client_name: Mapped[str | None] = mapped_column(String(255), default=None)
     client_surname: Mapped[str | None] = mapped_column(String(255), default=None)
-    client_PhoneNumber: Mapped[str | None] = mapped_column(String(20), default=None)  # noqa: N815 (matches existing DB column name)
+    client_PhoneNumber: Mapped[str | None] = mapped_column(String(20), default=None)  # noqa: N815
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -46,15 +41,14 @@ class AdminUser(Base):
     role: Mapped[AdminRole] = mapped_column(
         SAEnum(AdminRole, name="admin_role", values_callable=lambda e: [m.value for m in e]), default=AdminRole.STAFF
     )
-    # JSON array of permission keys from all_perms(): orders_view, orders_edit,
-    # products, content, reviews. Stored as text (not a JSON column type) to
-    # match the existing column exactly; encode/decode explicitly in services.
+    # JSON array of permission keys: orders_view, orders_edit, products,
+    # content, reviews. Stored as text; encode/decode explicitly in services.
     permissions: Mapped[str] = mapped_column(Text, default="[]")
     display_name: Mapped[str] = mapped_column(String(100), default="")
 
 
 class LoginAttempt(Base):
-    """Backs the 5-attempts/15-minutes IP lockout in forms/login.php."""
+    """Backs the 5-attempts/15-minutes IP lockout on login."""
 
     __tablename__ = "login_attempts"
 

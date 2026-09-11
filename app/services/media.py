@@ -1,6 +1,5 @@
-"""Port of includes/helpers.php's item_img() (image-path resolution) and
-save_cropped_image() (base64 data-URI decoder used by the admin upload
-pipeline, wired up fully in Phase 8)."""
+"""Image-path resolution (item_img) and a base64 data-URI decoder for the
+admin upload pipeline (save_cropped_image)."""
 from __future__ import annotations
 
 import base64
@@ -16,7 +15,7 @@ def item_img(raw: str | None, prefix: str = "/") -> str:
     """Resolve a DB-stored image path/URL for use in an <img src>.
 
     Empty/default-placeholder paths return '' so templates can do
-    `{% if item.image_url %}` exactly like the PHP `if ($src)` pattern.
+    `{% if item.image_url %}`.
     Absolute http(s) URLs (Supabase-hosted images) pass through unchanged.
     Everything else is treated as root-relative to the app's static tree.
     """
@@ -31,7 +30,7 @@ def item_img(raw: str | None, prefix: str = "/") -> str:
 def save_cropped_image(b64: str, dest_path: str | Path) -> str:
     """Decode a cropper.js data-URI and write it to dest_path (extension
     corrected to match the actual image type). Returns the extension used,
-    or '' on any validation failure — same contract as the PHP version."""
+    or '' on any validation failure."""
     match = _DATA_URI_RE.match(b64)
     if not match:
         return ""

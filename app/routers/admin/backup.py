@@ -1,20 +1,11 @@
-"""Port of admin/backup.php.
+"""
+Admin database backup download. Restricted to super-admins.
 
-Confirmed fixes applied:
-1. require_super() added — PHP checked only auth_check.php (any logged-in
-   admin), meaning any staff account could trigger a full DB dump/download
-   by hitting this URL directly.
-2. DB credentials: PHP hardcoded 'localhost'/'root'/''/'CoffeeTime',
-   completely disconnected from the real db/db.php config — broken
-   against any real deployment. Reimplemented against the actual
-   app/config.py settings (the same DB_* values the app itself connects
-   with), and passed to pg_dump as an argv list (not a shell string)
-   so there's no shell-escaping to get wrong.
-3. pg_dump, not mysqldump — the app moved from MySQL to Postgres, and
-   the image installs postgresql-client (see Dockerfile) so the binary
-   is actually present. The password goes through PGPASSWORD in the
-   child env rather than the command line, which would otherwise expose
-   it in the container's process list."""
+pg_dump is invoked with an argv list rather than a shell string, so there
+is no shell-escaping to get wrong; the password is passed via PGPASSWORD
+in the child env rather than the command line, which would otherwise
+expose it in the container's process list.
+"""
 from __future__ import annotations
 
 import datetime

@@ -1,7 +1,6 @@
-"""Port of pages/menu.php: the full catalog page with category tabs,
-client-side filter bar, and per-item detail modal (the modal/filter
-JS itself is static/js/menu.js, reused unchanged — this route's job is to
-emit the exact same data-* attributes that script depends on)."""
+"""The full menu catalog page: category tabs, client-side filter bar, and
+per-item detail modal. The modal/filter JS itself is static/js/menu.js;
+this route's job is to emit the data-* attributes that script depends on."""
 from __future__ import annotations
 
 import json
@@ -128,7 +127,7 @@ def menu_page(request: Request, category: str | None = None, scroll_to: int = 0,
             current_group = gid
             break
 
-    # Build render-ready card contexts per section (mirrors renderCard() loop)
+    # Build render-ready card contexts per section
     cards_by_tbl: dict[str, list[dict]] = {}
     card_idx = 0
     for tbl, label in TABLES.items():

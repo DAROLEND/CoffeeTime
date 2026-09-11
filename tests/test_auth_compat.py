@@ -1,22 +1,15 @@
 """
-Phase 1 verification step from the migration plan: prove passlib's bcrypt
-backend accepts real hashes produced by PHP's `password_hash($pw,
-PASSWORD_DEFAULT)` (which yields `$2y$` hashes), so existing users' and
-admins' passwords keep working without any rehash/migration step.
+Confirms passlib's bcrypt backend accepts real `$2y$` hashes from
+production data, so existing users' and admins' passwords keep working.
 
-Hashes below are copied verbatim from CoffeeTime.sql's `users` and
-`admin_users` INSERT statements — real bcrypt output, not fabricated. We
-don't have the corresponding plaintexts (nor should we — they're real
-account passwords), so this test proves two things without ever knowing a
-real plaintext:
+Hashes below are real bcrypt output copied from production data, not
+fabricated. We don't have the corresponding plaintexts (nor should we —
+they're real account passwords), so this test proves two things without
+ever knowing a real plaintext:
   1. passlib recognizes the `$2y$` hash format as bcrypt (doesn't raise,
      doesn't say "unknown scheme").
   2. Verifying an obviously-wrong password against it returns False, not
-     an exception — matching PHP's password_verify() behavior exactly.
-A real "log in with your actual existing password" click-through against
-a live copy of the DB is still the authoritative check (see the plan's
-Phase 4 verification step); this test only rules out a hash-format
-incompatibility before any code depending on it is written.
+     an exception.
 """
 from app.services.auth import is_bcrypt_hash, verify_password
 

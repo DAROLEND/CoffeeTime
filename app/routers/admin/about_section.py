@@ -1,12 +1,7 @@
-"""Port of admin/about_section.php. Already had require_perm('content')
-in PHP — no permission-check fix needed.
-
-The CREATE TABLE IF NOT EXISTS site_settings DDL is not reproduced — the
-table is part of the Alembic baseline. The "INSERT IGNORE the defaults"
-seeding IS reproduced (mirrors app/routers/public/pages.py's own
-_ABOUT_DEFAULTS fallback, which reads with the same defaults merged in
-memory rather than ever requiring these rows to physically exist — but
-PHP unconditionally seeds them here, so this does too for parity)."""
+"""Admin editor for the homepage About section. Seeds default
+site_settings rows on first access (see also app/routers/public/pages.py,
+which merges the same defaults in memory without requiring the rows to
+exist)."""
 from __future__ import annotations
 
 import datetime

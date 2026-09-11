@@ -1,5 +1,4 @@
-"""Phase 8 (4/n) verification: admin/admin_gallery.php port. No permission
-fix needed here — PHP already had require_perm('content')."""
+"""Tests for the admin gallery management endpoints."""
 from __future__ import annotations
 
 import re

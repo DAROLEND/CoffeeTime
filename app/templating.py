@@ -1,9 +1,7 @@
 """
-Jinja2 setup + a `render()` helper that injects the same "ambient" context
-every PHP page got for free via includes/header.php: the cart badge count,
-the logged-in user (or None), and the csrf_field()/icon() helpers as
-template globals (mirrors PHP calling icon(...)/csrf_field() directly in
-markup).
+Jinja2 setup + a `render()` helper that injects ambient context shared by
+every page: the cart badge count, the logged-in user (or None), and the
+csrf_field()/icon() helpers as template globals.
 """
 from __future__ import annotations
 

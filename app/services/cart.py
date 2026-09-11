@@ -1,23 +1,17 @@
 """
-Cart business logic — ports of forms/add_to_cart.php, update_cart.php,
-update_cart_item.php, update_cart_variant.php, remove_from_cart.php,
-get_cart_item.php, get_cart_preview.php, and the item-resolution half of
-pages/cart.php.
+Cart business logic: add/update/remove cart lines, price recomputation,
+and cart-page item resolution.
 
-Session cart shape (unchanged from PHP): `session["cart"]` is a flat list
-of dicts:
+`session["cart"]` is a flat list of dicts:
     {category, id, quantity,
      [price_override], [weight], [selected_size], [cheese_crust],
      [takeaway], [selected_variant: JSON string]}
 
-Per-category whitelist sets below are intentionally NOT unified into one
-constant — they reproduce the ~15 slightly different ad-hoc PHP arrays
-faithfully (see app/constants/categories.py's module docstring), each
-named after the endpoint whose exact membership it preserves. This
-includes one confirmed-harmless PHP quirk: get_cart_item.php's whitelist
-omits `sauces` (a real inconsistency vs. every other cart endpoint), but
-sauces never reach the "edit" UI flow in cart.php in the first place, so
-it's dead-path behavior, not a bug worth silently correcting.
+Per-category whitelist sets below are intentionally separate rather than
+one shared constant, each scoped to the endpoint whose exact membership
+it governs. Note: CART_ITEM_LOOKUP_CATEGORIES omits `sauces` — sauces
+never reach the cart "edit" UI flow, so this is harmless dead-path
+behavior rather than a bug worth correcting.
 """
 from __future__ import annotations
 
@@ -32,12 +26,12 @@ from app.models.catalog import CakeItem, IceCreamItem, MiniPizzaItem, PizzaItem,
 from app.services.media import item_img
 
 ALL_CATEGORIES = {c.value for c in ProductCategory}  # 12
-QTY_STEPPER_CATEGORIES = {  # update_cart.php
+QTY_STEPPER_CATEGORIES = {
     "coffee_items", "fast_food_items", "pizza_items",
     "mini_pizza_items", "cold_drink_items", "dessert_items",
 }
-VARIANT_UPDATE_CATEGORIES = ALL_CATEGORIES - {"ice_cream_items", "sauces"}  # update_cart_variant.php
-CART_ITEM_LOOKUP_CATEGORIES = ALL_CATEGORIES - {"sauces"}  # get_cart_item.php
+VARIANT_UPDATE_CATEGORIES = ALL_CATEGORIES - {"ice_cream_items", "sauces"}
+CART_ITEM_LOOKUP_CATEGORIES = ALL_CATEGORIES - {"sauces"}
 
 
 def _total_qty(cart: list[dict]) -> int:
@@ -52,10 +46,9 @@ def _get_cart(session: SessionData) -> list[dict]:
 
 
 def get_price(db: Session, category: str, item_id: int) -> float | None:
-    """Generic `SELECT price FROM \\`$cat\\` WHERE id=?` — every one of the
-    12 category models has a plain `price` column (cake_items keeps one
-    alongside price_per_kg), so this single helper replaces the dynamic
-    per-file query used throughout the PHP cart endpoints."""
+    """Looks up the current price for a category/item, since every one of
+    the 12 category models has a plain `price` column (cake_items keeps
+    one alongside price_per_kg)."""
     try:
         model = CATEGORY_MODEL_MAP[ProductCategory(category)]
     except ValueError:
@@ -263,7 +256,7 @@ def update_cart_item(session: SessionData, db: Session, index: int, form: dict) 
     item = cart[index]
     table = item.get("category", "")
     item_id = int(item.get("id", 0))
-    if table not in ALL_CATEGORIES:  # update_cart_item.php's own whitelist is the full 12
+    if table not in ALL_CATEGORIES:
         return {"ok": False}
 
     existing_qty = int(item.get("quantity", 1))
@@ -344,7 +337,7 @@ def update_cart_variant(session: SessionData, category: str, item_id: int, varia
     found = None
     for i, it in enumerate(cart):
         if it.get("category") == category and int(it.get("id", -1)) == item_id:
-            found = i  # keep scanning — PHP keeps the LAST match
+            found = i  # keep scanning — the last match wins
     if found is None:
         return {"ok": False}
     cart[found]["selected_variant"] = variant
@@ -464,10 +457,10 @@ def get_cart_item(session: SessionData, db: Session, index: int | None, category
 
 
 def resolve_cart_items_full(db: Session, cart: list[dict]) -> list[dict]:
-    """Port of pages/cart.php's per-category resolution loop: fetch the
-    category-specific column set for each line, overlay session-stored
-    overrides (price_override/weight/selected_size/etc.), and compute the
-    per-line subtotal. Used by the full /cart page."""
+    """Fetches the category-specific column set for each cart line,
+    overlays session-stored overrides (price_override/weight/
+    selected_size/etc.), and computes the per-line subtotal. Used by the
+    full /cart page."""
     items: list[dict] = []
     for si, it in enumerate(cart):
         category, item_id = it.get("category"), it.get("id")

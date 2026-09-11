@@ -1,26 +1,19 @@
-"""Applies the 3 schema decisions confirmed with the user before the port
-started (see /Users/daro/.claude/plans/foamy-launching-axolotl.md), plus
-adds the new app_sessions table needed by the FastAPI session middleware
-(not a PHP table — pure new infrastructure, additive only).
+"""Applies 3 schema fixes, plus adds the new app_sessions table needed by
+the session middleware (pure new infrastructure, additive only).
 
-1. orders.user_id: ON DELETE CASCADE -> SET NULL. No PHP admin feature
+1. orders.user_id: ON DELETE CASCADE -> SET NULL. No admin feature
    deletes user accounts today, so this changes no currently-reachable
    behavior; it only stops a future user-deletion feature from silently
    wiping the deleted user's entire order/financial history.
 
 2. sushi_sets: consolidate the two overlapping "piece count" columns.
-   `pieces` (tinyint) was populated only by the one-off db/migrate_menu.php
-   seed script and read by pages/menu.php's display; `pieces_count`
-   (smallint) is the one admin/edit_item.php actually writes on every edit
-   and pages/checkout.php reads for prep-time estimation — they had
-   silently drifted apart (an admin edit to piece count never showed up on
-   the public menu, confirmed by grep during Phase 0). Backfill
+   `pieces` and `pieces_count` had silently drifted apart (an admin edit
+   to piece count never showed up on the public menu). Backfill
    `pieces_count` from `pieces` wherever `pieces_count` is still 0 (i.e.
    never edited since seeding), then drop the unused `pieces` column.
 
-3. users.email: varchar(30) -> varchar(255). Confirmed too short for
-   real-world addresses (already close to the limit on seeded data); widening
-   is backward-compatible with every existing row.
+3. users.email: varchar(30) -> varchar(255), too short for real-world
+   addresses; widening is backward-compatible with every existing row.
 
 Revision ID: 0002_port_fixes
 Revises: 0001_baseline
@@ -61,12 +54,11 @@ def upgrade() -> None:
     with op.batch_alter_table("users") as batch:
         batch.alter_column("email", existing_type=sa.String(30), type_=sa.String(255), existing_nullable=False)
 
-    # --- New: server-side session store for the FastAPI session middleware ---
-    # Note: `data` has no server_default — MySQL rejects a DEFAULT on a
-    # TEXT/BLOB/JSON column entirely (error 1101). Not needed anyway:
-    # app/middleware/session.py always sets `.data` explicitly before the
-    # first commit of a new row, matching the ORM model's Python-level
-    # (not server-level) `default="{}"` in app/models/session_store.py.
+    # --- New: server-side session store for the session middleware ---
+    # `data` has no server_default: app/middleware/session.py always sets
+    # `.data` explicitly before the first commit of a new row, matching
+    # the ORM model's Python-level `default="{}"` in
+    # app/models/session_store.py.
     op.create_table(
         "app_sessions",
         sa.Column("session_id", sa.String(64), primary_key=True),

@@ -1,12 +1,11 @@
 """
-Port of includes/helpers.php's csrf_token()/csrf_field()/verify_csrf().
+CSRF token generation and verification.
 
-PHP's verify_csrf() does double duty: it validates *and* immediately
-terminates the request (JSON 403 for AJAX, flash+redirect otherwise) on
-failure. FastAPI dependencies can't "exit early" with a custom response
-the same way, so verify_csrf() here raises `CSRFError`, and
-app.main installs an exception handler that reproduces the exact two
-branches (see app/main.py::csrf_error_handler).
+`verify_csrf` raises `CSRFError` on failure rather than building a
+response itself, since a FastAPI dependency can't "exit early" with a
+custom response; app.main installs an exception handler
+(csrf_error_handler) that returns a JSON 403 for AJAX requests or a
+flash + redirect otherwise.
 """
 from __future__ import annotations
 
@@ -46,8 +45,7 @@ def is_ajax(request: Request) -> bool:
 
 async def verify_csrf(request: Request) -> None:
     """Raise CSRFError on failure; call explicitly (as a FastAPI
-    dependency) on every state-mutating route, exactly where PHP called
-    verify_csrf() at the top of its POST branch."""
+    dependency) on every state-mutating route."""
     if request.method != "POST":
         return
 
@@ -62,7 +60,7 @@ async def verify_csrf(request: Request) -> None:
         submitted = form.get("csrf_token") or request.headers.get("x-csrf-token", "")
 
     if not expected:
-        csrf_token(session)  # seed one for the retry, matching PHP behavior
+        csrf_token(session)  # seed one for the retry
         raise CSRFError("Сесія закінчилась. Спробуйте ще раз.", session_expired=True)
 
     if not submitted or not hmac.compare_digest(str(expected), str(submitted)):

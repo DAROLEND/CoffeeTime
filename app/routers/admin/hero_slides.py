@@ -1,13 +1,6 @@
-"""Port of admin/hero_slides.php. Already had require_perm('content') in
-PHP — no permission-check fix needed.
-
-The CREATE TABLE IF NOT EXISTS / ADD COLUMN self-healing DDL is not
-reproduced here — the table (with its final `label` column) is part of
-the Alembic baseline (Phase 0). The runtime "seed 3 default slides if the
-table is empty" fallback IS reproduced (see _ensure_seed_data): real
-production data already has its own 3 rows (from CoffeeTime.sql), so
-this only ever fires against a genuinely empty table — same as in PHP —
-but is kept for exact behavioral parity on a fresh install."""
+"""Admin hero-slider management: add/edit/delete/reorder/toggle slides.
+Seeds 3 default slides on a genuinely empty table (see _ensure_seed_data),
+so a fresh install always has something to show."""
 from __future__ import annotations
 
 import secrets
@@ -50,7 +43,6 @@ def _ensure_seed_data(db: Session) -> None:
 
 
 def _unique_name() -> str:
-    # PHP: 'slide_' . time() . '_' . bin2hex(random_bytes(4))
     return f"slide_{secrets.token_hex(4)}"
 
 
@@ -153,7 +145,7 @@ async def hero_slides_action(request: Request, db: Session = Depends(get_db)):
                 slide.subtitle = subtitle
                 db.commit()
             flash = "Збережено."
-        # else: PHP silently no-ops here (no flash set) — preserved as-is.
+        # else: silently no-op (no flash set) if id/title are missing.
 
     elif action == "delete":
         slide_id = int(form.get("id") or 0)

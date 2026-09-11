@@ -46,12 +46,10 @@ def _enum(python_enum: type[enum.Enum], name: str):
     """`name` must match the type name the Alembic migration created.
 
     Postgres enums are real named types, so the name is part of the
-    schema — bind a Python enum member to a column whose type name
-    doesn't exist and psycopg2 fails with `type "..." does not exist`.
-    Left implicit, SQLAlchemy derives it from the Python class name
-    (ReminderType -> "remindertype"), which is NOT what 0001_baseline
-    created. MySQL never cared: its ENUM is inline in the column, with
-    no named type to match."""
+    schema — bind a column to a type name that doesn't exist and
+    psycopg2 fails with `type "..." does not exist`. Left implicit,
+    SQLAlchemy derives it from the Python class name (ReminderType ->
+    "remindertype"), which won't match what the migration created."""
     return SAEnum(python_enum, name=name, values_callable=lambda e: [m.value for m in e])
 
 
@@ -59,11 +57,9 @@ class Order(Base):
     __tablename__ = "orders"
 
     order_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # PHP: `orders.user_id` had `ON DELETE CASCADE` to users.client_id — i.e.
-    # deleting a user row silently deleted their entire order history.
-    # Confirmed decision: change to SET NULL (no admin feature deletes users
-    # today, so this changes no currently-reachable behavior; it only stops
-    # a future user-deletion feature from being a silent data-loss trap).
+    # SET NULL rather than CASCADE: deleting a user should not delete their
+    # order history. No current admin feature deletes users, so this only
+    # guards against a future one becoming a silent data-loss trap.
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.client_id", ondelete="SET NULL"), nullable=True
     )
@@ -75,11 +71,10 @@ class Order(Base):
     customer_surname: Mapped[str | None] = mapped_column(String(100), default=None)
     customer_email: Mapped[str | None] = mapped_column(String(180), default=None)
     comment: Mapped[str | None] = mapped_column(Text, default=None)
-    # Stored as PHP did: sometimes bare "HH:MM", sometimes full
-    # "YYYY-MM-DD HH:MM" — kept as a plain string, not a real DATETIME
-    # column, since checkout.php's own validation/formatting logic (ported
-    # in services/schedule.py) depends on parsing this exact free-form
-    # shape, and admin pages format it for display without a strict type.
+    # Free-form string, sometimes bare "HH:MM", sometimes full
+    # "YYYY-MM-DD HH:MM" — not a real DATETIME column, since
+    # services/schedule.py parses this exact free-form shape and admin
+    # pages format it for display without a strict type.
     ready_time: Mapped[str | None] = mapped_column(String(20), default=None)
     payment_method: Mapped[str | None] = mapped_column(String(50), default=None)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
@@ -95,9 +90,7 @@ class OrderItem(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.order_id", ondelete="CASCADE"))
     # No FK — deliberately polymorphic, resolved via `category` against one
-    # of the 11 product tables (see app/constants/categories.py). This is
-    # existing behavior, not a port shortcut: order_items predates any
-    # attempt at normalizing the product catalog into one table.
+    # of the 11 product tables (see app/constants/categories.py).
     product_id: Mapped[int] = mapped_column(Integer)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)  # price snapshot at order time
@@ -117,7 +110,7 @@ class OrderRating(Base):
     rating: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
-    __table_args__ = ()  # UNIQUE(order_id, user_id) added via Alembic to match existing `uq_order_user`
+    __table_args__ = ()  # UNIQUE(order_id, user_id) added via Alembic (`uq_order_user`)
 
 
 class OrderReminder(Base):

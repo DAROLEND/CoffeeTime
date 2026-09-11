@@ -1,11 +1,8 @@
-"""Verifies the canonical ProductCategory enum (Phase 0 output) matches
-every category-table name actually used across the PHP codebase, and that
-every category resolves to a concrete SQLAlchemy model."""
+"""Verifies the canonical ProductCategory enum matches every category
+table name, and that every category resolves to a concrete SQLAlchemy
+model."""
 from app.constants.categories import CATEGORY_MODEL_MAP, ProductCategory
 
-# Exact set confirmed via:
-#   grep -rn "coffee_items\|fast_food_items\|...' --include=*.php .
-# across forms/, pages/, admin/, includes/telegram.php, db/get_menu_items.php.
 EXPECTED_TABLE_NAMES = {
     "coffee_items", "cold_drink_items", "dessert_items", "fast_food_items",
     "pizza_items", "mini_pizza_items", "ice_cream_items", "cake_items",

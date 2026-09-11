@@ -1,5 +1,4 @@
-"""Port of the homepage's local helper functions from pages/index.php:
-fetchPopularItems(), fetchTopOrderedItems(), reviewAvatarColor()."""
+"""Homepage helpers: popular items, top-ordered items, review avatar color."""
 from __future__ import annotations
 
 import datetime

@@ -35,7 +35,7 @@ RUN chmod +x /entrypoint.sh
 
 # Writable dirs for uploads (menu item photos, gallery, hero slides,
 # about/dessert-banner images) — same tree the app writes to when
-# Supabase isn't configured, matching the PHP image's equivalent dirs.
+# Supabase isn't configured.
 RUN mkdir -p static/images/menu_items static/images/gallery static/images/slides static/images/main \
  && useradd --create-home --uid 1000 appuser \
  && chown -R appuser:appuser /app

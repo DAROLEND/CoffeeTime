@@ -1,6 +1,6 @@
-"""Port of pages/checkout.php's cart-resolution and prep-time estimate
-(the order-creation logic itself lives in the router since it's mostly
-sequential INSERT statements, not reusable branching)."""
+"""Checkout cart-resolution and prep-time estimate. The order-creation
+logic itself lives in the router since it's mostly sequential INSERT
+statements, not reusable branching."""
 from __future__ import annotations
 
 import math
@@ -9,10 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.constants.categories import CATEGORY_MODEL_MAP, ProductCategory
 
-# checkout.php's own whitelist — note it deliberately excludes ice_cream_items
-# and sauces (a cake/ice-cream/sauce line was never meant to be ordered as its
-# own top-level product in checkout; ice cream travels inside a fast_food/
-# dessert variant, sauces are add-ons). Preserved exactly, not widened.
+# Deliberately excludes ice_cream_items and sauces: ice cream travels
+# inside a fast_food/dessert variant rather than as its own line, and
+# sauces are add-ons, not top-level checkout products.
 CHECKOUT_CATEGORIES = {
     "coffee_items", "fast_food_items", "pizza_items", "mini_pizza_items",
     "cold_drink_items", "dessert_items", "sushi_items", "sushi_sets",

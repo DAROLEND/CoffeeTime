@@ -1,5 +1,5 @@
-"""Port of admin/dashboard.php + get_chart_data.php + get_top_products.php
-+ get_order_counts.php + check_new_orders.php."""
+"""Admin dashboard page plus its chart-data, top-products, order-count,
+and new-order-polling endpoints."""
 from __future__ import annotations
 
 import datetime

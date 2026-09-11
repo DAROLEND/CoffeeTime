@@ -1,10 +1,5 @@
-"""Port of admin/orders.php + view_order.php + get_order_details.php +
-update_order_status.php + bulk_order_status.php + delete_order.php.
-
-The order status state machine was duplicated three times in PHP
-(orders.php's JS, update_order_status.php, bulk_order_status.php) — this
-module is the single shared implementation the migration plan calls for.
-"""
+"""Admin order management: status transitions, order-item display
+resolution, and the orders-list filter builder."""
 from __future__ import annotations
 
 import json
@@ -32,8 +27,6 @@ PAYMENT_METHOD_LABELS = {
 SIZE_LABELS = {"small": "30 см", "medium": "35 см", "large": "40 см", "xl": "XL"}
 SIZED_CATEGORIES = {"pizza_items", "mini_pizza_items", "sushi_sets"}
 
-# Category whitelist shared by orders.php/view_order.php/get_order_details.php
-# (each PHP file re-declared this array; identical membership across all three)
 ORDER_ITEM_LOOKUP_CATEGORIES = {
     "coffee_items", "fast_food_items", "pizza_items", "mini_pizza_items", "cold_drink_items",
     "dessert_items", "sushi_items", "sushi_sets", "salad_items", "cake_items", "ice_cream_items",
@@ -99,8 +92,7 @@ def _decode_variant_opts(item: dict) -> list[str]:
 
 def resolve_order_items_for_display(db: Session, order_id: int) -> list[dict]:
     """Fetch order_items + resolve product name/image, decode size/variant
-    options into a display-ready list. Shared by orders.php's preloaded
-    rows, view_order.php, and get_order_details.php."""
+    options into a display-ready list."""
     rows = db.execute(select(OrderItem).where(OrderItem.order_id == order_id).order_by(OrderItem.id)).scalars().all()
     items = []
     for row in rows:
@@ -128,8 +120,7 @@ def get_order_rating(db: Session, order_id: int) -> OrderRating | None:
 
 
 def build_orders_where(filters: dict):
-    """Builds the list of SQLAlchemy filter clauses for the orders list
-    query — port of orders.php's dynamic $where string builder."""
+    """Builds the list of SQLAlchemy filter clauses for the orders list query."""
     clauses = []
     if filters.get("status") in STATUS_LABELS:
         clauses.append(Order.status == filters["status"])

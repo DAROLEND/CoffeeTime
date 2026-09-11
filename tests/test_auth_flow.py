@@ -1,6 +1,6 @@
-"""Phase 4 verification: registration, the dual customer/admin login
-branching, IP rate-limiting, forgot/reset password, and change-password —
-driven through FastAPI's TestClient against seeded data."""
+"""Tests for registration, the dual customer/admin login branching, IP
+rate-limiting, forgot/reset password, and change-password — driven
+through FastAPI's TestClient against seeded data."""
 from __future__ import annotations
 
 import re
@@ -83,9 +83,9 @@ def test_login_lockout_after_five_failed_attempts(client, db_session):
 
 
 def test_login_customer_account_that_is_also_admin_goes_to_dashboard(client, db_session):
-    """login.php's core branching: matches `users` by login/email first,
-    verifies the password there, and ONLY THEN checks whether that same
-    login also has an admin_users row."""
+    """Login matches `users` by login/email first, verifies the password
+    there, and ONLY THEN checks whether that same login also has an
+    admin_users row."""
     db_session.add(User(login="staffmember", email="staff@example.com", password=hash_password("adminpass")))
     db_session.add(AdminUser(username="staffmember", password=hash_password("adminpass"), role="staff", permissions="[]"))
     db_session.commit()

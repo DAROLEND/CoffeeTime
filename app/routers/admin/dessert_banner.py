@@ -1,9 +1,5 @@
-"""Port of admin/dessert_banner.php. Already had require_perm('content')
-in PHP — no permission-check fix needed.
-
-The CREATE TABLE IF NOT EXISTS site_settings DDL is not reproduced (part
-of the Alembic baseline); the "INSERT IGNORE the defaults" seeding is
-reproduced for parity, same as about_section.py."""
+"""Admin editor for the homepage "dessert of the day" banner. Seeds
+default site_settings rows on first access, same as about_section.py."""
 from __future__ import annotations
 
 import time
@@ -57,19 +53,15 @@ def dessert_banner_page(request: Request, db: Session = Depends(get_db)):
     if not (settings.get("dessert_banner_image") or ""):
         # ORDER BY RANDOM() LIMIT 1 — func.random() maps to Postgres's
         # RANDOM(), same as app/routers/public/pages.py's identical query.
-        # (Previously func.rand()/MySQL's RAND(), which SQLite has no
-        # equivalent for; RANDOM() happens to work on SQLite too, but
-        # tests still seed a custom dessert_banner_image to skip this
-        # branch rather than depend on that — see MIGRATION_NOTES.md.)
         random_row = db.execute(select(DessertItem.image).order_by(func.random()).limit(1)).first()
         random_img = "/" + random_row[0].lstrip("/") if random_row else None
 
     has_custom_image = bool(settings.get("dessert_banner_image"))
     photo_version = ""
     if has_custom_image:
-        # ?v=filemtime(...) cache-bust, same as PHP — without it the
-        # browser can keep showing the old photo after a re-upload, since
-        # the filename ("dessert-banner.<ext>") doesn't change.
+        # ?v=filemtime(...) cache-bust — without it the browser can keep
+        # showing the old photo after a re-upload, since the filename
+        # ("dessert-banner.<ext>") doesn't change.
         image_path = PROJECT_ROOT / settings["dessert_banner_image"]
         try:
             photo_version = int(image_path.stat().st_mtime)

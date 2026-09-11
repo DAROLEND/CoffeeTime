@@ -1,5 +1,5 @@
-"""Port of admin/admin_gallery.php. Already had require_perm('content')
-in PHP — no permission-check fix needed."""
+"""Admin gallery management: browsing, category/alt-text editing, deletion,
+and multi-photo upload."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -35,8 +35,8 @@ def _parse_cat(raw: str | None) -> str:
 def _delete_gallery_file(filename: str) -> None:
     """`gallery.filename` stores a bare filename for locally-saved photos
     (unlike the product-item pipeline, which stores a full relative path)
-    — so, unlike delete_stored_image(), the gallery dir has to be prepended
-    here, exactly as PHP's `$galleryDir . $row['filename']` does."""
+    — so, unlike delete_stored_image(), the gallery dir has to be
+    prepended here."""
     if not filename:
         return
     if filename.startswith("http"):
@@ -145,8 +145,8 @@ async def _gallery_upload(request: Request, db: Session):
         if saved:
             # `saved` is either a Supabase public URL, or (fallback) the
             # bare filename — gallery.filename stores exactly that (no
-            # directory prefix), matching PHP; the "static/images/gallery/"
-            # prefix is added at render time instead (see the template).
+            # directory prefix); the "static/images/gallery/" prefix is
+            # added at render time instead (see the template).
             file_alt = alt or Path(filename).stem
             db.add(Gallery(filename=saved, alt=file_alt, category=category))
             db.commit()
@@ -158,8 +158,7 @@ async def _gallery_upload(request: Request, db: Session):
         return RedirectResponse(f"/admin/gallery?uploaded={uploaded_count}", status_code=303)
 
     # No action attribute on the upload <form> — the browser resubmits to
-    # the current URL, query string included, exactly like PHP reading
-    # $_GET['cat'] back on this same POST.
+    # the current URL, query string included, so `cat` is read back here.
     filter_cat = request.query_params.get("cat", "").strip()
     clauses = [Gallery.category == filter_cat] if filter_cat in ALLOWED_CATS else []
     return admin_render(

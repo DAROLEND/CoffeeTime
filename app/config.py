@@ -1,22 +1,10 @@
 """
-Central app configuration.
+Central app configuration, read from the environment via pydantic-settings
+(populated from `.env` in development).
 
-Mirrors, in one place, what the PHP app read from three separate files:
-- includes/env.php     -> just loaded .env, defined nothing itself
-- includes/config.php  -> LIQPAY_*, SITE_URL, SITE_PATH, APP_ENV
-- db/db.php            -> DB_HOST/PORT/NAME/USER/PASS/CHARSET/SOCKET
-
-Values are read from the environment (populated from `.env` via
-python-dotenv / pydantic-settings), with the same defaults the PHP code
-used, so an existing `.env` file works unchanged.
-
-DB engine: PostgreSQL (psycopg2). The original PHP app used MySQL, but
-that was purely a PHP-ecosystem default — nothing in this port's SQL is
-MySQL-specific, so the FastAPI/SQLAlchemy version runs on Postgres
-instead, which has a real permanently-free hosting story (Supabase,
-Neon) that MySQL no longer does. DB_CHARSET is kept only for backward
-compatibility with an old `.env`; Postgres is UTF-8 by default and
-never needs it.
+DB engine is PostgreSQL (psycopg2), chosen for its permanently-free hosting
+options (Supabase, Neon). DB_CHARSET is unused by Postgres but kept for
+backward compatibility with older `.env` files.
 """
 from functools import lru_cache
 from urllib.parse import quote_plus
@@ -30,9 +18,9 @@ class Settings(BaseSettings):
     # --- App / site ---
     APP_ENV: str = "production"
     APP_URL: str = ""  # if unset, SITE_URL is derived from the request host (see dependencies.get_site_url)
-    SESSION_LIFETIME: int = 3600  # seconds, matches PHP session.gc_maxlifetime
+    SESSION_LIFETIME: int = 3600  # seconds
 
-    # --- Database (same names/defaults as db/db.php, port now Postgres's) ---
+    # --- Database ---
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
     DB_NAME: str = ""
@@ -50,7 +38,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""
 
-    # --- Mail (PHPMailer -> smtplib equivalent) ---
+    # --- Mail ---
     MAIL_HOST: str = "smtp.gmail.com"
     MAIL_PORT: int = 587
     MAIL_USERNAME: str = ""
@@ -58,16 +46,16 @@ class Settings(BaseSettings):
     MAIL_FROM: str = ""
     MAIL_FROM_NAME: str = "Coffee Time"
 
-    # --- Google (index.php reviews import script; feature confirmed unused today) ---
+    # --- Google (reviews import; currently unused) ---
     GOOGLE_API_KEY: str = ""
     GOOGLE_PLACE_ID: str = ""
 
-    # --- Supabase storage (includes/storage.php) ---
+    # --- Supabase storage ---
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_BUCKET: str = "media"
 
-    # --- Misc, used ad hoc in PHP templates but missing from .env.example ---
+    # --- Misc ---
     CAFE_PHONE: str = ""
     CAFE_INSTAGRAM: str = ""
     GA_ID: str = ""
@@ -78,8 +66,7 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_database_uri(self) -> str:
-        # mirrors db/db.php's DSN construction (unix socket takes priority),
-        # ported to Postgres's psycopg2 driver/query-param names.
+        # Unix socket takes priority over host/port when set.
         # User/password are percent-encoded — Supabase's pooler user is
         # "postgres.<project-ref>" (a literal dot) and a generated DB
         # password routinely contains "@"/"/" etc., either of which

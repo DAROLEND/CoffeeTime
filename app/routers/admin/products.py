@@ -1,12 +1,6 @@
-"""Port of admin/manage_items.php, admin/add_item.php, admin/edit_item.php,
-admin/ajax_delete_item.php.
-
-Confirmed fix applied: `require_perm('products')` on every route in this
-router. PHP only ever checked it on manage_items.php's listing page —
-add_item.php/edit_item.php/ajax_delete_item.php checked just "some admin
-is logged in" via auth_check.php, so any staff account (regardless of
-assigned permissions) could create/edit/delete products by hitting those
-URLs directly. All four now share the same permission."""
+"""Admin product management: listing, add, edit, and delete across all
+menu categories. `require_perm('products')` is applied to every route in
+this router."""
 from __future__ import annotations
 
 import json
@@ -31,7 +25,6 @@ router = APIRouter(
     dependencies=[Depends(get_current_admin), Depends(require_perm("products"))],
 )
 
-# .../CoffeeTime-release (repo root — where static/images/... lives)
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 ALLOWED = [
@@ -61,9 +54,9 @@ _FLOAT_RE = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)")
 
 
 def _floatval(raw) -> float:
-    """PHP's floatval(): parses a leading numeric prefix, 0.0 on anything
-    else (never raises) — HTML `type=number` inputs already constrain the
-    common case, this just matches the fallback behavior exactly."""
+    """Parses a leading numeric prefix, 0.0 on anything else (never
+    raises) — HTML `type=number` inputs already constrain the common
+    case, this just handles whatever else comes through."""
     s = (raw or "").strip() if isinstance(raw, str) else raw
     if not s:
         return 0.0
@@ -72,21 +65,18 @@ def _floatval(raw) -> float:
 
 
 def _has_photo(image: str | None) -> bool:
-    """Port of manage_items.php's $hasPhoto check. `file_exists()` on an
-    http(s) Supabase URL always returns false in PHP (no local file at
-    that path) — so, faithfully reproduced, a Supabase-hosted photo never
-    counts as "has photo" on this page and falls back to the placeholder
-    icon. That's an existing display quirk, not something introduced
-    here; not in scope to fix (not one of the confirmed bugs)."""
+    """Checks for a local file at `image`'s path. A Supabase-hosted photo
+    (an http(s) URL) never counts as "has photo" here and falls back to
+    the placeholder icon — an existing display quirk, not in scope to
+    fix."""
     if not image or "default.jpg" in image:
         return False
     return (PROJECT_ROOT / image).exists()
 
 
 def _item_js_payload(item, has_photo: bool) -> str:
-    """Mirrors `$itemForJs = array_merge($item, [...]); json_encode(...)`
-    — the inline JSON the "Редагувати" button embeds for the edit modal
-    to prefill from, without a extra round trip to the server."""
+    """The inline JSON the "Редагувати" button embeds for the edit modal
+    to prefill from, without an extra round trip to the server."""
     data = {
         "id": item.id, "name": item.name, "description": item.description or "",
         "price": float(item.price) if hasattr(item, "price") else None,
@@ -121,9 +111,9 @@ def _variant_options_json(form) -> str:
 
 
 async def _handle_image_upload(form, category: ProductCategory) -> tuple[str, list[str]]:
-    """Shared upload_image_b64/upload_image branch from add_item.php +
-    edit_item.php. Returns (image_path, errors) — image_path is '' if
-    nothing new was uploaded or an error occurred."""
+    """Shared upload_image_b64/upload_image branch for add and edit.
+    Returns (image_path, errors) — image_path is '' if nothing new was
+    uploaded or an error occurred."""
     errors: list[str] = []
     subfolder = CATEGORY_FOLDERS.get(category, "other")
     upload_dir = PROJECT_ROOT / "static" / "images" / "menu_items" / subfolder

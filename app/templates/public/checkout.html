@@ -1,8 +1,3 @@
-<!-- Port of pages/checkout.php. This page's <head>/layout historically did
-     NOT extend the shared header.php exactly like other pages (it still
-     includes it, but with its own <head>), so we still extend base.html
-     for consistency (nav/footer must match the rest of the site) while
-     keeping the checkout-specific styles. -->
 {% extends "base.html" %}
 {% block extra_css %}<link rel="stylesheet" href="/static/css/checkout.css">{% endblock %}
 

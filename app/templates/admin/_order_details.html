@@ -1,6 +1,6 @@
 {# Shared by the pre-loaded expandable rows in orders.html and the
-   /admin/orders/{id}/details AJAX fragment used by view_order.php's
-   equivalent — both render the exact same od-wrap markup. #}
+   /admin/orders/{id}/details AJAX fragment — both render the exact
+   same od-wrap markup. #}
 {% set pm = order.payment_method or '' %}
 {% if 'cash' in pm %}{% set pay_method_label = 'При отриманні' %}
 {% elif pm == 'card_online' %}{% set pay_method_label = 'Картка онлайн (LiqPay)' %}

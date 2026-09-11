@@ -1,11 +1,5 @@
-"""Phase 8 (9/n, final) verification: admin/backup.php port.
-
-Confirmed fixes applied: (1) require_super() — PHP checked only
-auth_check.php (any logged-in admin), so any staff account could trigger
-a full DB dump/download by hitting the URL directly; (2) DB credentials
-now come from the real app config instead of PHP's hardcoded
-'localhost'/'root'/''/'CoffeeTime', which was disconnected from any real
-deployment's actual database.
+"""Tests for the admin database backup download: super-admin restriction,
+and credentials passed to pg_dump.
 
 pg_dump itself isn't invoked for real here — subprocess.run is
 monkeypatched, matching how this project avoids depending on external
@@ -41,8 +35,7 @@ def _fake_pg_dump_success(cmd, stdout, stderr, timeout, env=None):
 
 
 def test_backup_requires_super(client, db_session):
-    """Confirmed fix: PHP's backup.php had no permission check at all
-    beyond being logged in as some admin."""
+    """Only super-admins may download the database backup."""
     _login_admin(client, db_session, role="staff", perms='["products", "content", "orders_view", "orders_edit", "reviews"]')
     resp = client.get("/admin/backup", follow_redirects=False)
     assert resp.status_code == 303
@@ -66,8 +59,7 @@ def test_backup_downloads_sql_dump(client, db_session, monkeypatch, tmp_path):
 
 
 def test_backup_uses_real_config_credentials(client, db_session, monkeypatch, tmp_path):
-    """Confirmed fix: credentials passed to pg_dump come from the real
-    app config, not PHP's hardcoded root/empty-password/localhost.
+    """Credentials passed to pg_dump come from the real app config.
 
     The password specifically must NOT be on the command line (where any
     other process could read it out of /proc) — pg_dump takes it from

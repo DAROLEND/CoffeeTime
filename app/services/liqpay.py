@@ -1,9 +1,7 @@
-"""1:1 port of includes/liqpay.php's LiqPay class, plus a shared
-verify+status-mapping helper used by BOTH liqpay_callback.php (the
-server-to-server webhook) and pages/payment_success.php (the browser
-redirect target) — those two files independently re-implemented the same
-signature-verify + status-mapping logic in PHP; centralized here per the
-migration plan so there's exactly one place that decides what a LiqPay
+"""
+LiqPay signing/verification helper, plus a shared verify+status-mapping
+helper used by both the server-to-server webhook and the browser payment
+redirect target, so there's exactly one place that decides what a LiqPay
 status string means.
 """
 from __future__ import annotations
@@ -24,10 +22,9 @@ class LiqPay:
         params["public_key"] = self.public_key
         params.setdefault("version", 3)
         params.setdefault("currency", "UAH")
-        # ensure_ascii=True (default) matches PHP's json_encode() default
-        # behavior (\uXXXX-escapes non-ASCII) — the exact byte content of
-        # this JSON is what gets signed, so it must match what PHP would
-        # have produced for the signature to still verify against LiqPay.
+        # ensure_ascii=True (the default) \uXXXX-escapes non-ASCII — the
+        # exact byte content of this JSON is what gets signed, so it must
+        # be produced consistently for the signature to verify.
         raw = json.dumps(params)
         return base64.b64encode(raw.encode("utf-8")).decode("ascii")
 
@@ -45,8 +42,7 @@ class LiqPay:
 
 
 def map_liqpay_status(status: str) -> tuple[str, str | None]:
-    """Returns (payment_status, order_status_or_None) — exact port of
-    liqpay_callback.php's if/elif chain."""
+    """Returns (payment_status, order_status_or_None)."""
     if status in ("success", "sandbox"):
         return "paid", "new"
     if status in ("failure", "error"):

@@ -1,5 +1,4 @@
-"""Phase 8 (6/n) verification: admin/hero_slides.php port. No permission
-fix needed here — PHP already had require_perm('content')."""
+"""Tests for the admin hero-slider management endpoints."""
 from __future__ import annotations
 
 import re
@@ -48,8 +47,7 @@ def test_hero_slides_lists_existing_without_reseeding(client, db_session):
 def test_add_slide_requires_title(client, db_session):
     """Table starts empty, so the self-healing seed (see
     test_hero_slides_seeds_defaults_when_empty) fires on this very POST
-    too, exactly like PHP running it unconditionally at the top of the
-    file — the failed add contributes no 4th row on top of those 3."""
+    too — the failed add contributes no 4th row on top of those 3."""
     _login_admin(client, db_session)
     resp = client.post("/admin/hero-slides", data={"action": "add", "title": ""}, follow_redirects=True)
     assert "Заголовок обовʼязковий" in resp.text
@@ -111,8 +109,8 @@ def test_edit_slide_updates_text_without_touching_image(client, db_session, monk
 
 
 def test_edit_slide_silently_noops_without_title(client, db_session):
-    """Preserves an existing PHP quirk: if id or title is falsy, the edit
-    branch does nothing at all — not even a flash message."""
+    """If id or title is falsy, the edit branch does nothing at all — not
+    even a flash message."""
     _login_admin(client, db_session)
     slide = HeroSlide(image="x.jpg", title="Незмінний", subtitle="", sort_order=0)
     db_session.add(slide)

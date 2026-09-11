@@ -1,5 +1,4 @@
-"""Phase 8 (7/n) verification: admin/about_section.php port. No permission
-fix needed here — PHP already had require_perm('content')."""
+"""Tests for the admin About-section editor."""
 from __future__ import annotations
 
 import re

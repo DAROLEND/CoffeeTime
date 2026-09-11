@@ -1,7 +1,6 @@
-"""Port of includes/reminders.php's schedule_reminders() (order-creation
-time) and cron/send_reminders.php's per-row send logic (the actual cron
-job — see cron/send_reminders.py, a thin wrapper around
-process_due_reminders() below)."""
+"""Order pickup reminders: scheduling at order-creation time
+(schedule_reminders), and the per-row send logic used by the cron job
+(process_due_reminders, wrapped by cron/send_reminders.py)."""
 from __future__ import annotations
 
 import datetime
@@ -66,12 +65,9 @@ def schedule_reminders(db: Session, order_id: int, ready_time: str, customer_ema
     db.commit()
 
 
-# ── cron/send_reminders.php's sending logic ──────────────────────────────────
-
-
 def format_pickup(ready_time: str | None) -> str:
-    """Port of format_pickup(): 'сьогодні о HH:MM' / 'завтра о HH:MM' /
-    'DD.MM.YYYY о HH:MM', falling back to the raw string for the old
+    """Formats a ready_time as 'сьогодні о HH:MM' / 'завтра о HH:MM' /
+    'DD.MM.YYYY о HH:MM', falling back to the raw string for the older
     bare-"HH:MM" ready_time format."""
     if not ready_time or not _READY_TIME_RE.match(ready_time):
         return ready_time or ""
@@ -88,8 +84,7 @@ def format_pickup(ready_time: str | None) -> str:
 
 
 def _email_template(name: str, headline: str, body: str, order_id: int, pickup: str) -> str:
-    """Port of send_reminders.php's email_template() (also duplicated,
-    unported, in the throwaway cron/preview_email.php dev tool)."""
+    """Renders the HTML body for a reminder email."""
     settings = get_settings()
     phone = settings.CAFE_PHONE
     instagram = settings.CAFE_INSTAGRAM
@@ -146,11 +141,10 @@ def send_reminder_telegram(order: Order) -> bool:
     if order.ready_time and _READY_TIME_RE.match(order.ready_time):
         pickup_dt = datetime.datetime.strptime(order.ready_time + ":00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=KYIV_TZ)
         now = datetime.datetime.now(KYIV_TZ)
-        # PHP: $diff->days*24 + $diff->h, from $pickupDt->diff($now) — a
-        # non-negative, whole-hours difference regardless of which side
-        # is earlier, unlike the plain (signed, fractional) subtraction
-        # in send_reminder_email() below. Preserved as-is (an existing
-        # PHP asymmetry between the two functions, not a bug to fix).
+        # Non-negative, whole-hours difference regardless of which side is
+        # earlier — unlike the plain signed, fractional subtraction in
+        # send_reminder_email() below. Intentionally asymmetric between
+        # the two functions, not a bug to fix.
         hours_left = int(abs((pickup_dt - now).total_seconds()) // 3600)
 
     if hours_left is not None and hours_left <= 3:
@@ -203,10 +197,10 @@ def send_reminder_email(order: Order) -> bool:
 
 
 def process_due_reminders(db: Session, limit: int = 50) -> list[dict]:
-    """Port of send_reminders.php's main loop: fetch pending reminders due
-    now, send each (Telegram to admin, or email to customer), and record
-    the outcome. Returns a per-reminder result list for the cron script
-    to print (and for tests to assert against)."""
+    """Fetch pending reminders due now, send each (Telegram to admin, or
+    email to customer), and record the outcome. Returns a per-reminder
+    result list for the cron script to print (and for tests to assert
+    against)."""
     now = datetime.datetime.now(KYIV_TZ).replace(tzinfo=None)
     rows = db.execute(
         select(OrderReminder, Order)
@@ -225,7 +219,7 @@ def process_due_reminders(db: Session, limit: int = 50) -> list[dict]:
                 success = send_reminder_telegram(order)
             else:
                 success = send_reminder_email(order)
-        except Exception as exc:  # noqa: BLE001 — mirrors PHP's catch (Throwable $e)
+        except Exception as exc:  # noqa: BLE001 — record the failure, keep processing the rest
             fail_reason = str(exc)[:255]
 
         reminder.status = ReminderStatus.SENT if success else ReminderStatus.FAILED

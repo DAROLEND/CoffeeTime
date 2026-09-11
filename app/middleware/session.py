@@ -1,20 +1,13 @@
 """
-Server-side session middleware — the single, unified replacement for
-PHP's two divergent session bootstraps (`includes/session.php`'s hardened
-cookie params + idle-timeout regeneration, vs. many files calling bare
-`session_start()` with none of that). Installed once in app/main.py and
-used by every route from here on, closing that inconsistency by
-construction rather than by auditing ~20 files.
+Server-side, DB-backed session middleware. Installed once in app/main.py
+and used by every route.
 
-Policy ported from includes/session.php:
-- httponly, SameSite=Lax cookie (unchanged)
-- `secure` tied to APP_ENV=production rather than left as a manually-set
-  `false` someone has to remember to flip — same intent, safer default
+Policy:
+- httponly, SameSite=Lax cookie
+- `secure` tied to APP_ENV=production, rather than a manually-set flag
+  someone has to remember to flip
 - 30-minute idle timeout -> regenerate the session id (data carried over)
-- 1-hour hard lifetime -> mirrors `session.gc_maxlifetime`
-
-`request.state.session` behaves like PHP's `$_SESSION` (dict-like
-get/set/delete) so ported service code reads the same way the PHP did.
+- 1-hour hard lifetime
 """
 from __future__ import annotations
 
@@ -38,7 +31,7 @@ HARD_LIFETIME = datetime.timedelta(hours=1)
 
 class SessionData(MutableMapping[str, Any]):
     """Dict-like wrapper so `request.state.session['cart']` etc. reads
-    exactly like PHP's `$_SESSION['cart']`."""
+    like a plain dict while tracking whether it needs to be persisted."""
 
     def __init__(self, initial: dict[str, Any]):
         self._data = dict(initial)
@@ -86,8 +79,7 @@ class DBSessionMiddleware(BaseHTTPMiddleware):
                 session_id = secrets.token_hex(32)
                 data = {}
             elif (now - row.last_activity) > IDLE_TIMEOUT:
-                # Idle too long -> regenerate id, keep data (mirrors PHP's
-                # session_regenerate_id(true) on idle in includes/session.php)
+                # Idle too long -> regenerate id, keep data
                 data = json.loads(row.data)
                 db.delete(row)
                 db.commit()

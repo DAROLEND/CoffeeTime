@@ -1,6 +1,6 @@
-"""Phase 5 verification: checkout order creation (cash vs card_online),
-LiqPay signature round-trip, the webhook callback, payment-status polling,
-and reminder scheduling."""
+"""Tests for checkout order creation (cash vs card_online), LiqPay
+signature round-trip, the webhook callback, payment-status polling, and
+reminder scheduling."""
 from __future__ import annotations
 
 import datetime
@@ -130,12 +130,11 @@ def test_checkout_requires_cart(client, db_session):
 
 
 def test_checkout_rejects_missing_fields(client, db_session):
-    """checkout.php has a real quirk worth preserving: the generic
-    "fill all required fields" message is deliberately excluded from the
-    visible error banner (client-side JS shows per-field messages
-    instead) — `error_message and error_message != "..."` in the
-    template. So the observable behavior here is: no order gets created
-    and the form re-renders (200, not a redirect)."""
+    """The generic "fill all required fields" message is deliberately
+    excluded from the visible error banner (client-side JS shows
+    per-field messages instead) — `error_message and error_message !=
+    "..."` in the template. So the observable behavior here is: no order
+    gets created and the form re-renders (200, not a redirect)."""
     _add_coffee_to_cart(client, db_session)
     resp = client.get("/checkout")
     token = _csrf_token(resp.text)

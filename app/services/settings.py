@@ -1,6 +1,5 @@
-"""Generic key/value settings store helper (site_settings table),
-used by pages/index.php's About/dessert-banner sections and the
-corresponding admin content-editor pages (Phase 8)."""
+"""Generic key/value settings store helper (site_settings table), used by
+the homepage's About/dessert-banner sections and their admin editors."""
 from __future__ import annotations
 
 from sqlalchemy import select

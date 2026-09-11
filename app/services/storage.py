@@ -1,7 +1,6 @@
-"""Port of includes/storage.php: Supabase Storage integration for admin
-image uploads (product photos, gallery, hero slides, sauces, ...), with a
-transparent fallback to local disk storage when Supabase isn't configured
-— exactly mirroring the PHP version's behavior."""
+"""Supabase Storage integration for admin image uploads (product photos,
+gallery, hero slides, sauces, ...), with a transparent fallback to local
+disk storage when Supabase isn't configured."""
 from __future__ import annotations
 
 import uuid
@@ -62,9 +61,7 @@ def supabase_delete(remote_path: str) -> None:
 
 def delete_stored_image(image_path: str | None, project_root: str | Path) -> None:
     """Remove a previously-stored image, whether it lives in Supabase
-    (an http(s) URL) or on local disk (a root-relative path) — the
-    delete-old-image branch duplicated inline in admin/edit_item.php and
-    the other admin content-editing pages."""
+    (an http(s) URL) or on local disk (a root-relative path)."""
     if not image_path:
         return
     settings = get_settings()
@@ -85,11 +82,10 @@ def delete_stored_image(image_path: str | None, project_root: str | Path) -> Non
 def upload_image(data: bytes, local_dest: str | Path, remote_path: str, mime: str = "image/webp") -> str | None:
     """Write an uploaded file's bytes into place, then mirror it to
     Supabase if configured. Returns the value to store in the DB: a
-    Supabase public URL, or (fallback) just the filename — same contract
-    as the PHP version (`move_uploaded_file` + `supabase_upload`), which
-    callers turn into a root-relative path. Takes raw bytes rather than a
-    temp-file path — unlike PHP's `$_FILES[...]['tmp_name']`, Starlette's
-    `UploadFile` has no guaranteed on-disk path to move from."""
+    Supabase public URL, or (fallback) just the filename, which callers
+    turn into a root-relative path. Takes raw bytes rather than a
+    temp-file path, since Starlette's `UploadFile` has no guaranteed
+    on-disk path to move from."""
     local_dest = Path(local_dest)
     try:
         local_dest.write_bytes(data)
@@ -120,7 +116,7 @@ def upload_image_b64(b64: str, local_dest: str | Path, remote_path: str) -> str 
 
 
 def unique_filename(prefix: str = "item_") -> str:
-    """PHP's uniqid('item_', true) — a collision-safe unique token; the
-    exact format doesn't matter since it's never parsed back, only used
-    as an opaque on-disk/remote filename."""
+    """A collision-safe unique token; the exact format doesn't matter
+    since it's never parsed back, only used as an opaque on-disk/remote
+    filename."""
     return f"{prefix}{uuid.uuid4().hex}"

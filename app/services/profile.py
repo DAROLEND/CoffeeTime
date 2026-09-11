@@ -1,7 +1,6 @@
-"""Port of pages/profile.php's local helper functions: profPayBadge(),
-profStatusBadge(), needsPayment(), plus the order-history aggregation
-(preview item names, ratings, today/week/earlier grouping) factored out
-of the route for testability."""
+"""Profile page helpers: payment/status badges, "needs payment" check,
+plus order-history aggregation (preview item names, ratings,
+today/week/earlier grouping)."""
 from __future__ import annotations
 
 import datetime
@@ -15,7 +14,7 @@ from app.services.enum_utils import enum_value as _enum_value
 
 _STATUS_LABELS = {"processing": "В обробці", "ready": "Готово", "done": "Виконано"}
 
-# profile.php's own whitelist for resolving order_items -> product name previews
+# Categories eligible for order_items -> product name preview resolution
 PREVIEW_CATEGORIES = {
     "coffee_items", "fast_food_items", "pizza_items", "cold_drink_items",
     "dessert_items", "sushi_items", "sushi_sets", "salad_items", "cake_items",
@@ -24,7 +23,7 @@ PREVIEW_CATEGORIES = {
 
 
 def pay_badge_label(order: Order) -> tuple[str, str]:
-    """Returns (css_class, label) for profPayBadge()."""
+    """Returns (css_class, label) for the payment badge."""
     ps = _enum_value(order.payment_status)
     pm = order.payment_method or ""
     if ps == "paid":

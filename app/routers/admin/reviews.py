@@ -1,15 +1,5 @@
-"""Port of admin/admin_reviews.php. Already had require_perm('reviews')
-in PHP — no permission-check fix needed.
-
-Confirmed fix applied: the "dedupe the double-DELETE bug" decision.
-PHP had a second, entirely dead POST branch (`isset($_POST['delete_id'])`)
-— unreachable from any form or script in the app (grepped: nothing ever
-submits `delete_id`) — that ran the exact same `DELETE FROM site_reviews
-WHERE id=?` twice in a row as a "fallback for older MySQLi" leftover.
-The one reachable delete path (the AJAX `action=delete` branch below) is
-kept as-is; the dead duplicate branch is not ported at all, the same
-treatment given the other confirmed-dead legacy files in this migration
-(delete_item.php, update_order.php, ...)."""
+"""Admin reviews management: site reviews and order ratings tabs, with
+approve/decline/delete actions."""
 from __future__ import annotations
 
 import datetime

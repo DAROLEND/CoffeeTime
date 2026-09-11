@@ -48,11 +48,7 @@ class Gallery(Base):
 
 
 class SiteReview(Base):
-    """User-submitted site reviews (pages/reviews.php + admin/admin_reviews.php).
-
-    Distinct from db/fetch_google_reviews.php's Google-Places JSON cache,
-    which was confirmed unused/dead during Phase 0 and is not ported.
-    """
+    """User-submitted site reviews."""
 
     __tablename__ = "site_reviews"
 

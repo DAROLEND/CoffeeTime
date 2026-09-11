@@ -1,17 +1,12 @@
 """
 The 11 menu-category tables + `sauces`.
 
-Each PHP category table was hand-rolled independently (`id, name,
-description, image, price, popularity` plus category-specific extras) —
-NOT a shared `products` table with a `category` discriminator. We keep
-that exact physical layout here (rather than "normalizing" it) because
+Each table is independent (`id, name, description, image, price,
+popularity` plus category-specific extras) rather than a shared
+`products` table with a `category` discriminator, because
 `order_items.product_id` has no FK and is resolved purely by matching
 `order_items.category` to one of these table names at read time
-(see app/constants/categories.py) — collapsing them into one table would
-be a real schema/behavior change, not a port.
-
-Column types/defaults are transliterated 1:1 from CoffeeTime.sql's
-`SHOW CREATE TABLE` output (read directly, not guessed).
+(see app/constants/categories.py).
 """
 from __future__ import annotations
 
@@ -90,9 +85,9 @@ class PizzaItem(Base):
     price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     price_large: Mapped[float | None] = mapped_column(Numeric(10, 2), default=0)
     popularity: Mapped[int] = mapped_column(Integer, default=0)
-    # One Python enum, but two distinct Postgres types — pizza_items and
-    # mini_pizza_items each got their own in 0001_baseline (MySQL had no
-    # shared type to reuse), so the names must be spelled out per column.
+    # One Python enum, but two distinct Postgres enum types — Postgres
+    # names enum types globally, so pizza_items and mini_pizza_items each
+    # need their own (sauce_type_pizza / sauce_type_mini_pizza).
     sauce_type: Mapped[SauceType] = mapped_column(SAEnum(SauceType, name="sauce_type_pizza", values_callable=lambda e: [m.value for m in e]), default=SauceType.TOMATO)
     is_spicy: Mapped[bool] = mapped_column(Boolean, default=False)
     has_size_choice: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -111,9 +106,7 @@ class MiniPizzaItem(Base):
     is_spicy: Mapped[bool] = mapped_column(Boolean, default=False)
     ingredients_tags: Mapped[str | None] = mapped_column(String(500), default=None)
     popularity: Mapped[int] = mapped_column(Integer, default=0)
-    # NOTE: no price_large — mini pizzas have one size only (confirmed: no
-    # $sizedCats branch in add_to_cart.php reads a `price_large` column for
-    # this table, only plain `price`).
+    # No price_large — mini pizzas only come in one size.
 
 
 class IceCreamItem(Base):
@@ -165,15 +158,6 @@ class SushiSet(Base):
     image: Mapped[str] = mapped_column(String(255), default=DEFAULT_IMAGE)
     price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     popularity: Mapped[int] = mapped_column(Integer, default=0)
-    # Consolidated from the two overlapping PHP columns `pieces`
-    # (tinyint, populated only by the one-off db/migrate_menu.php seed
-    # script and read by pages/menu.php) vs `pieces_count` (smallint,
-    # the one admin/edit_item.php actually writes and pages/checkout.php
-    # reads for prep-time estimation) — confirmed via grep that these had
-    # silently drifted apart (an admin edit to piece count never showed up
-    # on the public menu). Kept the actively-maintained one; see
-    # alembic/versions for the one-time data backfill
-    # (`pieces_count = pieces` wherever `pieces_count` was still 0).
     pieces_count: Mapped[int] = mapped_column(Integer, default=0)
 
 

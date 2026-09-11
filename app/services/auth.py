@@ -1,20 +1,9 @@
 """
 Password hashing/verification + login rate-limiting.
 
-Port of the auth-related pieces of forms/login.php, register.php,
-reset.php, change_password.php, admin/admin_users.php.
-
-Password compatibility: PHP's `password_hash($pw, PASSWORD_DEFAULT)` on
-PHP 8.x produces a `$2y$` bcrypt hash. passlib's bcrypt backend treats
-`$2y$`/`$2b$`/`$2a$` as interchangeable for verification, so existing
-users' and admins' passwords keep working without any rehash/migration
-step. New passwords are hashed with the same CryptContext going forward
-(bit-for-bit compatible bcrypt output PHP could also verify, if it ever
-needed to).
-
-See tests/test_auth_compat.py for the concrete compatibility check
-against real hashes pulled from CoffeeTime.sql (Phase 1 verification
-step from the migration plan).
+passlib's bcrypt backend treats the `$2y$`/`$2b$`/`$2a$` hash-format
+variants as interchangeable for verification, so existing stored password
+hashes keep working regardless of which variant produced them.
 """
 from __future__ import annotations
 
@@ -40,8 +29,8 @@ def verify_password(plain: str, hashed: str) -> bool:
     try:
         return pwd_context.verify(plain, hashed)
     except ValueError:
-        # Unrecognized hash format — PHP's password_verify() returns false
-        # in this case rather than raising; match that.
+        # Unrecognized hash format — treat as a failed verification rather
+        # than raising.
         return False
 
 
@@ -53,7 +42,7 @@ def is_bcrypt_hash(hashed: str) -> bool:
 
 
 def prune_old_attempts(db: Session, ip: str) -> None:
-    """Mirrors: DELETE FROM login_attempts WHERE attempted_at < NOW() - INTERVAL {lockMinutes} MINUTE"""
+    """Deletes login_attempts rows older than the lockout window."""
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(minutes=LOCK_MINUTES)
     db.execute(delete(LoginAttempt).where(LoginAttempt.attempted_at < cutoff))
     db.commit()

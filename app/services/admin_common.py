@@ -1,5 +1,4 @@
-"""Shared context for every admin page — port of the data-prep half of
-admin/includes/layout_top.php (sidebar badges, notification bell)."""
+"""Shared context for every admin page: sidebar badges and notification bell."""
 from __future__ import annotations
 
 import datetime

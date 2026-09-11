@@ -1,5 +1,4 @@
-"""Phase 8 (3/n) verification: admin/admin_sauces.php port. No permission
-fix needed here — PHP already had require_perm('products')."""
+"""Tests for the admin sauce management endpoints."""
 from __future__ import annotations
 
 import re
@@ -64,8 +63,7 @@ def test_add_sauce_creates_row(client, db_session):
 
 
 def test_add_sauce_without_active_flag_is_inactive(client, db_session):
-    """Mirrors PHP's isset($_POST['active']) checkbox semantics — the JS
-    only sends the field when the checkbox is checked."""
+    """Checkbox semantics: the field is only present when checked."""
     _login_admin(client, db_session)
     resp = client.post("/admin/sauces", data={"action": "add", "name": "Гострий", "price": "10"})
     data = resp.json()
@@ -141,7 +139,7 @@ def test_add_sauce_rejects_oversized_image(client, db_session, monkeypatch, tmp_
     )
     data = resp.json()
     assert data["success"] is True
-    assert data["image"] == ""  # oversized upload silently ignored, matches PHP
+    assert data["image"] == ""  # oversized upload silently ignored
 
 
 def test_unknown_action_returns_error(client, db_session):

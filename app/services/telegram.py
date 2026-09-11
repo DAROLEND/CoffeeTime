@@ -1,5 +1,4 @@
-"""Port of includes/telegram.php: send_telegram(), notify_new_order(),
-notify_order_from_db()."""
+"""Telegram admin notifications for new orders."""
 from __future__ import annotations
 
 from html import escape
@@ -56,8 +55,8 @@ def notify_new_order(
 
 
 def notify_order_from_db(db: Session, order_id: int) -> None:
-    """Used by liqpay_callback.php after a confirmed card payment (and by
-    the dev-bypass path when the real webhook can't reach localhost)."""
+    """Used after a confirmed card payment (and by the dev-bypass path
+    when the real webhook can't reach localhost)."""
     order = db.get(Order, order_id)
     if not order:
         return

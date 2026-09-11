@@ -1,17 +1,8 @@
-<!-- Port of admin/includes/layout_top.php + layout_bottom.php merged into
-     one Jinja base template. Two fixes made here "by construction" per
-     the migration plan:
-     1. The admin_flash/admin_flash_type session keys (set by
-        services/permissions.py's require_perm()/require_super() on
-        access-denied) are rendered unconditionally below — in the PHP
-        original, only 4 of the pages that could receive this redirect
-        actually displayed it, and dashboard.php (the actual redirect
-        target) was not one of them, so access-denied messages were
-        silently lost. Centralizing here fixes that for every admin page.
-     2. The 30s new-order poll was duplicated verbatim in both
-        layout_top.php and layout_bottom.php (two independent
-        setInterval(..., 30000) calls hitting check_new_orders.php). Kept
-        only one (the layout_top version, which also plays a beep). -->
+<!-- Shared admin layout: the admin_flash/admin_flash_type session keys
+     (set by services/permissions.py's require_perm()/require_super() on
+     access-denied) are rendered unconditionally below, so every admin
+     page shows access-denied messages. Also runs the 30s new-order poll
+     (setInterval hitting /admin/check-new-orders), which also plays a beep. -->
 <!DOCTYPE html>
 <html lang="uk">
 <head>

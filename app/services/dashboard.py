@@ -1,5 +1,5 @@
-"""Port of admin/dashboard.php's data-prep logic (the staff-home stats,
-the full-dashboard stats/chart data/recent-orders/top-products)."""
+"""Admin dashboard data prep: staff-home stats, full-dashboard
+stats/chart data/recent-orders/top-products."""
 from __future__ import annotations
 
 import datetime
@@ -77,9 +77,8 @@ def get_staff_home_stats(db: Session, request) -> tuple[dict, dict]:
         staff_stats["gallery_cats"] = gallery_cats
 
         slides_total = db.execute(select(func.count()).select_from(HeroSlide)).scalar_one()
-        # COUNT(*) WHERE active, not SUM(active): Postgres has no sum(boolean)
-        # (MySQL summed the old TINYINT(1) column). NULL active stays uncounted
-        # either way.
+        # COUNT(*) WHERE active, not SUM(active): Postgres has no sum(boolean).
+        # NULL active stays uncounted either way.
         slides_active = db.execute(
             select(func.count()).select_from(HeroSlide).where(HeroSlide.active.is_(True))
         ).scalar_one()

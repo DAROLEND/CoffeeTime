@@ -1,13 +1,12 @@
-"""Port of forms/login.php, register.php, forgot.php, reset.php,
-change_password.php, and pages/logout.php.
+"""
+Login, registration, password reset/change, and logout.
 
-login.php's dual customer/admin branching is reproduced exactly: try the
-`users` table first (by email OR login), verify the password, and only
-THEN check whether that login also has an admin_users row (customer
-account that's also staff); if no `users` row matched at all, fall back
-to checking `admin_users` directly (an admin-only account with no
-customer-side `users` row). Both paths converge on the same
-"admin session" branch that redirects to /admin/dashboard.
+Login checks the `users` table first (by email OR login) and verifies
+the password, then checks whether that login also has an admin_users row
+(a customer account that's also staff); if no `users` row matched at
+all, it falls back to checking `admin_users` directly (an admin-only
+account with no customer-side `users` row). Both paths converge on the
+same "admin session" branch that redirects to /admin/dashboard.
 """
 from __future__ import annotations
 

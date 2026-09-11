@@ -1,6 +1,5 @@
-"""Port of admin/admin_users.php. Confirmed fix applied: CSRF protection
-added to every mutating form here (PHP had none on this page, unlike
-every other form in the app)."""
+"""Admin staff-account management: create/edit/delete accounts, manage
+permissions, and the current admin's own account settings."""
 from __future__ import annotations
 
 import json

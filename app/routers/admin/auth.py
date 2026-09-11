@@ -1,5 +1,4 @@
-"""Port of admin/login.php (thin redirect stub — the real form lives at
-/login) and admin/logout.php."""
+"""Admin login redirect (the actual login form lives at /login) and logout."""
 from __future__ import annotations
 
 from fastapi import APIRouter

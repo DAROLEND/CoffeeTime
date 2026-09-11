@@ -1,9 +1,7 @@
-"""AJAX cart endpoints. Routes keep their literal PHP filenames
-(/forms/xxx.php) because static/js/menu.js and static/js/cart-edit.js are
-reused byte-for-byte and hardcode these exact URLs (confirmed via grep —
-see the migration plan). None of these endpoints carried CSRF checks in
-the original PHP either (unlike login/register/reviews), so none are
-added here — preserving behavior exactly, not just the URLs."""
+"""AJAX cart endpoints. Routes keep their `/forms/*.php`-shaped paths
+because static/js/menu.js and static/js/cart-edit.js hardcode these exact
+URLs in their fetch() calls. None of these endpoints have CSRF checks
+(unlike login/register/reviews)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, Query, Request

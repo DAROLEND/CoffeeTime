@@ -1,9 +1,7 @@
-"""Port of pages/menu.php's local helpers: parseIngTags(), fmtPrice(), and
-the big renderCard() function — split here into a pure data-prep function
-(build_card_context) so the Jinja template only handles markup, while all
-the "is this a pizza / does it have a fast-food size choice / what's the
-cheese-crust badge" branching logic lives in one testable place, exactly
-mirroring the PHP branch-for-branch.
+"""Menu page helpers. `build_card_context` is a pure data-prep function
+so the Jinja template only handles markup, while all the "is this a
+pizza / does it have a fast-food size choice / what's the cheese-crust
+badge" branching logic lives in one testable place.
 """
 from __future__ import annotations
 

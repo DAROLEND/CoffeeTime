@@ -1,12 +1,13 @@
-"""Baseline: reflects the CURRENT production PHP schema exactly (CoffeeTime.sql,
-read via SHOW CREATE TABLE — not guessed), including the two known-inconsistent
-bits (orders.user_id ON DELETE CASCADE, sushi_sets.pieces + pieces_count both
-present, users.email varchar(30)) that get fixed in the next migration.
+"""Baseline: reflects the production schema exactly as it currently
+exists, including a few known-inconsistent bits (orders.user_id ON
+DELETE CASCADE, sushi_sets.pieces + pieces_count both present,
+users.email varchar(30)) that get fixed in the next migration.
 
-Purpose: an EXISTING production database should be `alembic stamp 0001_baseline`
-(not upgraded — its data already matches this shape) before running `alembic
-upgrade head` to apply 0002's fixes. A fresh dev/test database instead runs
-`alembic upgrade head` from empty, passing through this exact starting shape.
+An EXISTING production database should be `alembic stamp 0001_baseline`
+(not upgraded — its data already matches this shape) before running
+`alembic upgrade head` to apply 0002's fixes. A fresh dev/test database
+instead runs `alembic upgrade head` from empty, passing through this
+exact starting shape.
 
 Revision ID: 0001_baseline
 Revises:

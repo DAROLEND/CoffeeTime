@@ -3,18 +3,9 @@ Single source of truth for the "which of the 11 product tables (+ sauces)
 does this order_items.category / cart-line category string refer to"
 question.
 
-The PHP codebase re-declared this whitelist ad hoc in ~15 different files
-(forms/*.php, pages/*.php, admin/*.php, includes/telegram.php), with
-slightly inconsistent membership between them (verified during Phase 0:
-`grep -rn "coffee_items\\|fast_food_items\\|..." --include=*.php .`).
-Every one of those PHP whitelists used the *literal MySQL table name* as
-the category string, and `order_items.category` in the live data
-(CoffeeTime.sql) stores exactly those table names — e.g.
-`INSERT INTO order_items ... VALUES (13,22,2,1,210.00,'pizza_items',...)`.
-
-So the enum values below are fixed to the exact existing table names,
-byte-for-byte, to guarantee zero drift against historical order_items
-rows and zero re-mapping needed on data import.
+The enum values are fixed to the exact underlying table names, so
+`order_items.category` values line up byte-for-byte with the table they
+reference, with no re-mapping needed.
 """
 from __future__ import annotations
 
@@ -34,21 +25,18 @@ class ProductCategory(str, Enum):
     SUSHI_SET = "sushi_sets"
     SALAD = "salad_items"
     SAUCE = "sauces"  # the only category that is also independently browsable/orderable,
-    # not just a pizza/fast-food add-on (forms/add_to_cart.php:128 `$table === 'sauces'` branch)
+    # not just a pizza/fast-food add-on
 
 
 # Categories that support a small/large size choice + optional cheese-crust
 # add-on (pizza_items, mini_pizza_items) or a size-driven prep-time estimate
-# (sushi_sets) — mirrors the `$sizedCats`/`$sizedCategories` arrays repeated
-# in admin/orders.php, admin/view_order.php, admin/get_order_details.php.
+# (sushi_sets).
 SIZED_CATEGORIES: frozenset[ProductCategory] = frozenset(
     {ProductCategory.PIZZA, ProductCategory.MINI_PIZZA, ProductCategory.SUSHI_SET}
 )
 
-# Only pizza_items carries the cheese-crust surcharge (mini_pizza_items does
-# not — confirmed in forms/add_to_cart.php: the +65/+100 crust branch is
-# nested inside the pizza_items-only price-recompute block, mini_pizza_items
-# shares the size lookup but never applies a crust surcharge).
+# Only pizza_items carries the cheese-crust surcharge; mini_pizza_items
+# shares the size lookup but never applies a crust surcharge.
 CHEESE_CRUST_CATEGORIES: frozenset[ProductCategory] = frozenset({ProductCategory.PIZZA})
 
 CHEESE_CRUST_SURCHARGE = {"small": 65, "large": 100}
@@ -78,10 +66,8 @@ def _model_map() -> dict[ProductCategory, type]:
 class _CategoryModelMap:
     """Lazily-built, then cached, category -> SQLAlchemy model class map.
 
-    Replaces the ~15 ad-hoc `if ($category === 'pizza_items') { ... }` /
-    dynamic `` `$category` `` table-name interpolation blocks scattered
-    across the PHP codebase with one lookup used everywhere (cart
-    resolution, checkout, order rendering, admin product CRUD).
+    Used everywhere a category needs its model class: cart resolution,
+    checkout, order rendering, admin product CRUD.
     """
 
     _map: dict[ProductCategory, type] | None = None

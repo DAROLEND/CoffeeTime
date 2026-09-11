@@ -1,12 +1,7 @@
-"""Port of admin/admin_sauces.php. Already had require_perm('products') in
-PHP — unlike manage_items.php's add/edit/delete siblings, no permission-
-check fix was needed here.
+"""Admin sauce management: add/update/toggle/delete.
 
 Note: unlike the product-item upload pipeline (app/services/storage.py),
-this file never called includes/storage.php's supabase_upload() — sauce
-photos are saved to local disk only, even though storage.php was
-require_once'd (only its save_cropped_image()-adjacent helper is used).
-Reproduced as-is; not a confirmed fix target."""
+sauce photos are saved to local disk only, not mirrored to Supabase."""
 from __future__ import annotations
 
 import json
@@ -48,8 +43,6 @@ def _numval(raw) -> float:
 
 
 def _unique_name() -> str:
-    # PHP: 'sauce_' . time() . '_' . mt_rand(1000,9999) — exact format is
-    # never parsed back, only kept opaque/collision-safe.
     return f"sauce_{int(time.time())}_{random.randint(1000, 9999)}"
 
 
@@ -62,8 +55,8 @@ def _has_photo(image: str | None) -> bool:
 async def _handle_sauce_image(form) -> str:
     """Shared add/update image branch. Returns the new image path, or ''
     if nothing valid was supplied — callers then leave the existing image
-    untouched, same as PHP (a rejected/missing upload here is silently
-    ignored, not surfaced as a form error)."""
+    untouched (a rejected/missing upload here is silently ignored, not
+    surfaced as a form error)."""
     upload_dir = PROJECT_ROOT / "static" / "images" / "menu_items" / "sauces"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -86,10 +79,8 @@ async def _handle_sauce_image(form) -> str:
 
 
 def _sauce_json(s: Sauce) -> str:
-    # Mirrors json_encode($s) in PHP: the *raw* row, not filtered by
-    # has_photo — the edit form's JS preview trusts `image` unconditionally
-    # (see module docstring's has_photo note for the analogous listing-page
-    # behavior, which IS filtered).
+    # The *raw* row, not filtered by has_photo — the edit form's JS
+    # preview trusts `image` unconditionally, unlike the listing page.
     return json.dumps({
         "id": s.id, "name": s.name, "price": float(s.price) if s.price is not None else 0,
         "image": s.image or "", "active": 1 if s.active else 0, "sort_order": s.sort_order or 0,

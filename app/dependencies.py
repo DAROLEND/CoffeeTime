@@ -1,12 +1,11 @@
 """
 Shared FastAPI dependencies: DB session (re-exported), current customer
-user, and the admin-auth dependency that replaces admin/auth_check.php.
+user, and the admin-auth dependency.
 
-admin/auth_check.php re-fetched role/permissions from `admin_users` on
-EVERY admin request (so a permission change by a super-admin takes effect
-immediately, without the affected staff member re-logging in) and
-destroyed the session if the admin_users row had been deleted. Both
-behaviors are preserved here as `get_current_admin`.
+`get_current_admin` re-fetches role/permissions from `admin_users` on
+every admin request, so a permission change by a super-admin takes effect
+immediately without the affected staff member re-logging in, and destroys
+the session if the admin_users row has been deleted.
 """
 from __future__ import annotations
 
@@ -23,12 +22,11 @@ from app.models.auth import AdminUser, User
 
 class AuthRequired(Exception):
     """Raised when a public page requires a logged-in customer. The
-    exception handler in app.main redirects to forms/login.php's FastAPI
-    equivalent, mirroring `header('Location: ../forms/login.php')`."""
+    exception handler in app.main redirects to the login page."""
 
 
 def get_current_user(request: Request) -> dict | None:
-    """Mirrors reading `$_SESSION['user']` — returns None for guests."""
+    """Returns the logged-in customer's session data, or None for guests."""
     return request.state.session.get("user")
 
 
@@ -40,16 +38,16 @@ def require_user(request: Request) -> dict:
 
 
 def get_current_admin(request: Request, db: Session = Depends(get_db)) -> AdminUser:
-    """Re-fetches the admin row every request (matching auth_check.php),
-    refreshes session role/permissions/display_name, and destroys the
-    session + raises if the account was deleted out from under it."""
+    """Re-fetches the admin row every request, refreshes session
+    role/permissions/display_name, and destroys the session + raises if
+    the account was deleted out from under it."""
     username = request.state.session.get("admin")
     if not username:
         raise AuthRequired()
 
     admin = db.execute(select(AdminUser).where(AdminUser.username == username)).scalar_one_or_none()
     if admin is None:
-        # Account deleted since login — PHP called session_destroy().
+        # Account deleted since login.
         request.state.session.clear()
         raise AuthRequired()
 

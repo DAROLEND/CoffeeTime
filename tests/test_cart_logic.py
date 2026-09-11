@@ -1,8 +1,6 @@
-"""Phase 3 verification: unit tests for app/services/cart.py — the
-highest-risk phase per the migration plan (zero test coverage existed for
-this logic in the original PHP app, and subtle dedup-key mistakes are the
+"""Unit tests for app/services/cart.py. Subtle dedup-key mistakes are the
 easiest way to silently break "same pizza different size" vs "duplicate
-line" behavior)."""
+line" behavior."""
 from __future__ import annotations
 
 from app.middleware.session import SessionData
@@ -174,8 +172,7 @@ def test_update_qty_stepper_removes_at_zero(db_session):
 
 
 def test_update_qty_stepper_rejects_cake_category(db_session):
-    """cake_items is deliberately excluded from the qty-stepper whitelist —
-    matches forms/update_cart.php's own $allowed array exactly."""
+    """cake_items is deliberately excluded from the qty-stepper whitelist."""
     session = _session([{"category": "cake_items", "id": 1, "quantity": 1}])
     result = cart_service.update_qty_stepper(session, db_session, "cake_items", 1, "increase", None)
     assert result == {"ok": False}

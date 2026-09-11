@@ -1,9 +1,5 @@
-"""Phase 8 (2/n) verification: admin/manage_items.php + add_item.php +
-edit_item.php + ajax_delete_item.php port. Confirmed fix applied:
-require_perm('products') now guards every route here — PHP only checked
-it on the listing page, so any logged-in staff account (regardless of
-assigned permissions) could add/edit/delete products by hitting
-add_item.php/edit_item.php/ajax_delete_item.php directly."""
+"""Tests for admin product management: listing, add, edit, and delete.
+`require_perm('products')` guards every route here."""
 from __future__ import annotations
 
 import base64
@@ -36,8 +32,8 @@ def test_manage_items_requires_products_permission(client, db_session):
 
 
 def test_add_item_direct_url_requires_products_permission(client, db_session):
-    """Confirmed fix: PHP's add_item.php checked only auth_check.php (any
-    logged-in admin), not require_perm('products')."""
+    """Direct POST to /add also requires the 'products' permission, not
+    just being logged in."""
     _login_admin(client, db_session, role="staff", perms='["orders_view"]')
     resp = client.post("/admin/manage-items/add?category=coffee_items", data={"name": "X", "price": "10"}, follow_redirects=False)
     assert resp.status_code == 303

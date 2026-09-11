@@ -1,4 +1,4 @@
-"""Phase 6 verification: profile page, order history/stats, rating
+"""Tests for the profile page: order history/stats, rating
 (post-delivery, ownership-checked), and repay flow."""
 from __future__ import annotations
 

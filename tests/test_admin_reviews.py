@@ -1,9 +1,4 @@
-"""Phase 8 (5/n) verification: admin/admin_reviews.php port. No permission
-fix needed here — PHP already had require_perm('reviews').
-
-Confirmed fix applied: the dead `delete_id` POST branch (unreachable from
-any form/script — grepped) that ran a duplicate DELETE statement is not
-ported at all; only the one reachable AJAX delete path is kept."""
+"""Tests for the admin reviews management endpoints."""
 from __future__ import annotations
 
 import re

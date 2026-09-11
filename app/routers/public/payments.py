@@ -1,5 +1,5 @@
-"""Port of liqpay_checkout.php, liqpay_callback.php, check_payment_status.php,
-and pages/payment_success.php / payment_pending.php / payment_failure.php."""
+"""LiqPay checkout, webhook callback, payment status polling, and the
+success/pending/failure result pages."""
 from __future__ import annotations
 
 import re

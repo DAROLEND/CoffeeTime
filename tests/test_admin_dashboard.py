@@ -1,5 +1,5 @@
-"""Phase 7 verification (part 1): admin dashboard — staff-home vs full
-dashboard split, and the AJAX endpoints it depends on."""
+"""Tests for the admin dashboard: staff-home vs full dashboard split, and
+the AJAX endpoints it depends on."""
 from __future__ import annotations
 
 import re

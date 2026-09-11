@@ -1,5 +1,5 @@
-"""Port of pages/reviews.php: paginated/sorted/filtered site reviews +
-the authenticated review-submission form."""
+"""Paginated/sorted/filtered site reviews, plus the authenticated
+review-submission form."""
 from __future__ import annotations
 
 from urllib.parse import urlencode

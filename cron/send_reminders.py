@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
-"""Coffee Time — Reminder cron job (port of cron/send_reminders.php).
+"""Coffee Time — Reminder cron job.
 
 Run every 15 minutes, e.g. via crontab:
-    */15 * * * * /path/to/venv/bin/python /path/to/CoffeeTime-release/cron/send_reminders.py >> /tmp/ct_reminders.log 2>&1
+    */15 * * * * /path/to/venv/bin/python /path/to/coffee-time-fastapi/cron/send_reminders.py >> /tmp/ct_reminders.log 2>&1
 
 Finds pending reminders with send_at <= now() and sends them (Telegram to
 the admin, or email to the customer). All the actual logic lives in
 app.services.reminders.process_due_reminders() — testable in isolation,
 without shelling out to this script — this file is just the entry point
-that wires up a DB session and prints progress, matching the PHP
-script's console output.
-
-cron/preview_email.php (a "Temporary preview — delete after review" dev
-tool for eyeballing the email template, never wired into any real flow)
-is not ported."""
+that wires up a DB session and prints progress."""
 from __future__ import annotations
 
 import datetime

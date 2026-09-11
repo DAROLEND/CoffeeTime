@@ -1,10 +1,4 @@
-"""
-SQLAlchemy engine + declarative base.
-
-Replaces the mysqli half of db/db.php (the PDO handle it also opened was
-dead code — grep confirmed `$pdo` was never used anywhere else in the PHP
-codebase — so there is nothing to replicate there).
-"""
+"""SQLAlchemy engine + declarative base."""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -14,7 +8,7 @@ settings = get_settings()
 
 engine = create_engine(
     settings.sqlalchemy_database_uri,
-    pool_pre_ping=True,   # mirrors mysqli's implicit reconnect-on-use tolerance
+    pool_pre_ping=True,   # transparently reconnects if the DB drops a stale connection
     future=True,
 )
 

@@ -1,5 +1,4 @@
-"""SMTP email sending — replaces PHPMailer usage in forms/forgot.php and
-(later, Phase 9) cron/send_reminders.php. Same STARTTLS/env-driven config."""
+"""SMTP email sending, STARTTLS with env-driven config."""
 from __future__ import annotations
 
 import smtplib

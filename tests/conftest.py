@@ -1,12 +1,11 @@
 """Shared pytest fixtures: an in-memory SQLite DB (schema created directly
 from the SQLAlchemy models, not via Alembic) wired into the FastAPI app in
-place of the configured MySQL engine, plus a TestClient.
+place of the configured Postgres engine, plus a TestClient.
 
-This is a template/route-rendering smoke test, not a MySQL-fidelity
-check — MySQL-specific SQL (e.g. `func.rand()`) is exercised separately
-by `alembic upgrade head --sql` (see MIGRATION_NOTES.md) since SQLite
-doesn't understand MySQL's RAND(). Tests here seed around that instead of
-avoiding real routes.
+This is a template/route-rendering smoke test, not a Postgres-fidelity
+check — where a route depends on nondeterministic SQL (e.g. `func.random()`),
+tests seed data to make the outcome deterministic rather than avoiding
+the route.
 """
 from __future__ import annotations
 
@@ -18,9 +17,8 @@ import os
 # session cookie is marked Secure (see app/middleware/session.py), which
 # a plain-http TestClient silently refuses to store/resend between
 # requests — session state would appear to "not persist" across calls
-# even though the middleware logic is correct. This bit us once already
-# while writing the Phase 3 cart tests; setting it here up front avoids
-# every future test file needing to remember it.
+# even though the middleware logic is correct. Setting it here up front
+# avoids every future test file needing to remember it.
 os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("DB_NAME", "coffeetime_test")
 

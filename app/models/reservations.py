@@ -1,9 +1,6 @@
-"""`reservations` table — present in CoffeeTime.sql with a real FK to
-`users`, but Phase 0 grep found no PHP file (page, form, or admin
-endpoint) that reads or writes it. Modeled here so the schema round-trips
-byte-for-byte and the table isn't silently dropped, but deliberately has
-no corresponding router/service — there is no current feature to port.
-Revisit if a reservation feature is added later.
+"""`reservations` table — modeled here for schema completeness, but has no
+corresponding router/service since there is no current reservation
+feature. Revisit if one is added later.
 """
 from __future__ import annotations
 
@@ -26,9 +23,8 @@ class Reservation(Base):
     __tablename__ = "reservations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Kept as CASCADE (unlike orders.user_id) — no evidence this table is
-    # live, so there is no confirmed "financial history" reason to change
-    # it; flip to SET NULL too if/when a real reservation feature lands.
+    # Unlike orders.user_id, this stays CASCADE; revisit if a reservation
+    # feature becomes live enough that user deletion should preserve it.
     user_id: Mapped[int] = mapped_column(ForeignKey("users.client_id", ondelete="CASCADE"))
     table_number: Mapped[int] = mapped_column(Integer)
     location: Mapped[ReservationLocation] = mapped_column(

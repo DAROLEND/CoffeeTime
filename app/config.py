@@ -19,6 +19,7 @@ compatibility with an old `.env`; Postgres is UTF-8 by default and
 never needs it.
 """
 from functools import lru_cache
+from urllib.parse import quote_plus
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -79,10 +80,16 @@ class Settings(BaseSettings):
     def sqlalchemy_database_uri(self) -> str:
         # mirrors db/db.php's DSN construction (unix socket takes priority),
         # ported to Postgres's psycopg2 driver/query-param names.
+        # User/password are percent-encoded — Supabase's pooler user is
+        # "postgres.<project-ref>" (a literal dot) and a generated DB
+        # password routinely contains "@"/"/" etc., either of which
+        # breaks the URL's own delimiters if inserted raw.
         driver = "postgresql+psycopg2"
+        user = quote_plus(self.DB_USER)
+        password = quote_plus(self.DB_PASS)
         if self.DB_SOCKET:
-            return f"{driver}://{self.DB_USER}:{self.DB_PASS}@/{self.DB_NAME}?host={self.DB_SOCKET}"
-        return f"{driver}://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            return f"{driver}://{user}:{password}@/{self.DB_NAME}?host={self.DB_SOCKET}"
+        return f"{driver}://{user}:{password}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 
 @lru_cache

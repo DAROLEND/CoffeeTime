@@ -14,7 +14,11 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.sqlalchemy_database_uri)
+# %-escaped for configparser's own interpolation syntax (set_main_option
+# writes into a ConfigParser value) — a percent-encoded password (e.g.
+# "%40" for "@", common with generated Supabase/Neon passwords) would
+# otherwise raise "invalid interpolation syntax" here.
+config.set_main_option("sqlalchemy.url", settings.sqlalchemy_database_uri.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

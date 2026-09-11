@@ -8,11 +8,17 @@ Confirmed fixes applied:
    completely disconnected from the real db/db.php config — broken
    against any real deployment. Reimplemented against the actual
    app/config.py settings (the same DB_* values the app itself connects
-   with), and passed to mysqldump as an argv list (not a shell string)
-   so there's no shell-escaping to get wrong."""
+   with), and passed to pg_dump as an argv list (not a shell string)
+   so there's no shell-escaping to get wrong.
+3. pg_dump, not mysqldump — the app moved from MySQL to Postgres, and
+   the image installs postgresql-client (see Dockerfile) so the binary
+   is actually present. The password goes through PGPASSWORD in the
+   child env rather than the command line, which would otherwise expose
+   it in the container's process list."""
 from __future__ import annotations
 
 import datetime
+import os
 import subprocess
 from pathlib import Path
 
@@ -37,28 +43,28 @@ def download_backup():
     tmp_file = backup_dir / filename
 
     cmd = [
-        "mysqldump",
-        f"--user={settings.DB_USER}",
-        f"--password={settings.DB_PASS}",
+        "pg_dump",
         f"--host={settings.DB_HOST}",
         f"--port={settings.DB_PORT}",
-        "--single-transaction",
-        "--routines",
+        f"--username={settings.DB_USER}",
+        "--no-owner",
+        "--no-privileges",
         settings.DB_NAME,
     ]
+    env = {**os.environ, "PGPASSWORD": settings.DB_PASS}
     try:
         with open(tmp_file, "wb") as out:
-            result = subprocess.run(cmd, stdout=out, stderr=subprocess.PIPE, timeout=300)
+            result = subprocess.run(cmd, stdout=out, stderr=subprocess.PIPE, timeout=300, env=env)
     except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
         return PlainTextResponse(
-            f"<p>Помилка створення резервної копії. Перевірте, чи встановлено mysqldump.</p><pre>{exc}</pre>",
+            f"<p>Помилка створення резервної копії. Перевірте, чи встановлено pg_dump.</p><pre>{exc}</pre>",
             status_code=500,
         )
 
     if result.returncode != 0 or not tmp_file.exists():
         error_output = result.stderr.decode(errors="replace") if result.stderr else ""
         return PlainTextResponse(
-            f"<p>Помилка створення резервної копії. Перевірте, чи встановлено mysqldump.</p><pre>{error_output}</pre>",
+            f"<p>Помилка створення резервної копії. Перевірте, чи встановлено pg_dump.</p><pre>{error_output}</pre>",
             status_code=500,
         )
 

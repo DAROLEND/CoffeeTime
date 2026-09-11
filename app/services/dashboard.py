@@ -77,7 +77,12 @@ def get_staff_home_stats(db: Session, request) -> tuple[dict, dict]:
         staff_stats["gallery_cats"] = gallery_cats
 
         slides_total = db.execute(select(func.count()).select_from(HeroSlide)).scalar_one()
-        slides_active = db.execute(select(func.coalesce(func.sum(HeroSlide.active), 0))).scalar_one()
+        # COUNT(*) WHERE active, not SUM(active): Postgres has no sum(boolean)
+        # (MySQL summed the old TINYINT(1) column). NULL active stays uncounted
+        # either way.
+        slides_active = db.execute(
+            select(func.count()).select_from(HeroSlide).where(HeroSlide.active.is_(True))
+        ).scalar_one()
         staff_stats["slides_total"] = slides_total
         staff_stats["slides_active"] = int(slides_active or 0)
 

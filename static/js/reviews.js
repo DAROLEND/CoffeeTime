@@ -189,8 +189,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function fetchGrid(overrides, pushState) {
     var qs      = buildParams(overrides);
-    var ajaxUrl = 'reviews.php?ajax=1' + (qs ? '&' + qs : '');
-    var pageUrl = 'reviews.php'        + (qs ? '?' + qs : '');
+    var ajaxUrl = '/reviews?ajax=1' + (qs ? '&' + qs : '');
+    var pageUrl = '/reviews'            + (qs ? '?' + qs : '');
 
     // Update state on wrapper
     if (overrides.sort   !== undefined) gridWrap.dataset.sort   = overrides.sort;

@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine   # matches the hosted DB's major version (Supabase)
     environment:
       POSTGRES_DB: ${DB_NAME:-coffeetime}
       POSTGRES_USER: ${DB_USER:-coffeetime}

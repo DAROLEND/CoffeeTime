@@ -56,7 +56,7 @@
   function showToast(msg) {
     toast.innerHTML =
       '<span>' + msg + '</span>' +
-      '<a href="cart.php" class="toast-cart-link">До кошику →</a>';
+      '<a href="/cart" class="toast-cart-link">До кошику →</a>';
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 3500);
@@ -1519,7 +1519,7 @@
         return;
       }
 
-      if (modalAdd.classList.contains('in-cart')) { window.location.href = 'cart.php'; return; }
+      if (modalAdd.classList.contains('in-cart')) { window.location.href = '/cart'; return; }
       if (modalAdd.classList.contains('just-added-modal')) return;
 
       // Ice cream: collect selected scoop
@@ -1647,7 +1647,7 @@
     }
 
     if (btn.classList.contains('mc-size-btn')) {
-      if (btn.classList.contains('in-cart')) { window.location.href = 'cart.php'; return; }
+      if (btn.classList.contains('in-cart')) { window.location.href = '/cart'; return; }
       var _card1 = btn.closest('.menu-card');
       var _ov1   = _card1 ? _card1.querySelector('.mc-img-overlay') : null;
       openModal({
@@ -1681,7 +1681,7 @@
     }
 
     if (btn.classList.contains('mc-ff-size-btn')) {
-      if (btn.classList.contains('in-cart')) { window.location.href = 'cart.php'; return; }
+      if (btn.classList.contains('in-cart')) { window.location.href = '/cart'; return; }
       var card = btn.closest('.menu-card');
       var overlay = card ? card.querySelector('.mc-img-overlay') : null;
       if (overlay) {
@@ -1702,7 +1702,7 @@
       return;
     }
 
-    if (btn.classList.contains('in-cart')) { window.location.href = 'cart.php'; return; }
+    if (btn.classList.contains('in-cart')) { window.location.href = '/cart'; return; }
 
     var id             = parseInt(btn.dataset.id, 10);
     var cat            = btn.dataset.cat;

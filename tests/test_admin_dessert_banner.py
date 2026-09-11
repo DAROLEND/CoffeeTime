@@ -26,13 +26,12 @@ def test_dessert_banner_requires_content_permission(client, db_session):
     assert resp.headers["location"] == "/admin/dashboard"
 
 
-# No test for the "no custom image" / random-dessert-photo state: that
-# branch runs `ORDER BY RAND()` (func.rand(), matching
-# app/routers/public/pages.py's identical query), which SQLite doesn't
-# understand — a documented MySQL-vs-SQLite test-environment limitation
-# (see MIGRATION_NOTES.md), not a code bug. Every test here seeds a
-# dessert_banner_image setting to skip that code path, same as
-# tests/test_public_pages_smoke.py does for the public-facing banner.
+# The "no custom image" state falls back to a random dessert photo
+# (`ORDER BY RANDOM()`, matching the identical query in
+# app/routers/public/pages.py) and is deliberately left uncovered —
+# there's no stable value to assert against. Every test here seeds a
+# dessert_banner_image setting to take the deterministic path instead,
+# same as tests/test_public_pages_smoke.py does for the public banner.
 
 
 def test_dessert_banner_with_custom_image_hides_random_hint(client, db_session):

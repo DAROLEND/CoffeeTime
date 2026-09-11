@@ -15,8 +15,7 @@
 #     The image's entrypoint (docker/entrypoint.sh) runs `alembic
 #     upgrade head` automatically on every boot; against a fresh,
 #     empty database that just creates the schema — no manual step
-#     needed. (Cutting this over onto a database that already has data
-#     in it is a different story — see MIGRATION_NOTES.md.)
+#     needed.
 
 services:
   - type: web

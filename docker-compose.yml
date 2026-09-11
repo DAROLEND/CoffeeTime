@@ -29,11 +29,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS:-secret}
     volumes:
       - db_data:/var/lib/postgresql/data
-      # The app container's entrypoint runs `alembic upgrade head`
-      # against a fresh DB, which creates the full schema
-      # (0001_baseline + the 3 confirmed fixes in 0002_port_fixes) —
-      # see MIGRATION_NOTES.md for cutting this over onto an existing
-      # production database instead.
+      # The app container's entrypoint runs `alembic upgrade head` on
+      # boot, so a fresh DB gets the full schema automatically.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-coffeetime} -d ${DB_NAME:-coffeetime}"]
       interval: 5s

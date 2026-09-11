@@ -26,12 +26,10 @@ print('[entrypoint] Postgres not reachable after 30 attempts — starting anyway
 "
 
 echo "[entrypoint] Running Alembic migrations (alembic upgrade head)..."
-# On a genuinely fresh DB this creates the full schema (0001_baseline)
-# plus the 3 confirmed fixes (0002_port_fixes). Cutting over an existing
-# production database instead? Run `alembic stamp 0001_baseline` once
-# by hand first (see MIGRATION_NOTES.md) — this image doesn't guess
-# that for you, to avoid silently reinterpreting a database it didn't
-# create.
+# On a fresh DB this creates the whole schema. Pointing at a database
+# that already has these tables? Run `alembic stamp 0001_baseline` once
+# by hand first — this image won't guess that for you, to avoid
+# silently reinterpreting a database it didn't create.
 alembic upgrade head
 
 echo "[entrypoint] Starting app: $*"

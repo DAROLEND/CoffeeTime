@@ -44,7 +44,7 @@ class AdminUser(Base):
     username: Mapped[str] = mapped_column(String(100), unique=True)
     password: Mapped[str] = mapped_column(String(255))
     role: Mapped[AdminRole] = mapped_column(
-        SAEnum(AdminRole, values_callable=lambda e: [m.value for m in e]), default=AdminRole.STAFF
+        SAEnum(AdminRole, name="admin_role", values_callable=lambda e: [m.value for m in e]), default=AdminRole.STAFF
     )
     # JSON array of permission keys from all_perms(): orders_view, orders_edit,
     # products, content, reviews. Stored as text (not a JSON column type) to

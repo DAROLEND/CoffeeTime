@@ -42,7 +42,7 @@ class Gallery(Base):
     filename: Mapped[str] = mapped_column(String(255))
     alt: Mapped[str] = mapped_column(String(255), default="")
     category: Mapped[GalleryCategory] = mapped_column(
-        SAEnum(GalleryCategory, values_callable=lambda e: [m.value for m in e]), default=GalleryCategory.FOOD
+        SAEnum(GalleryCategory, name="gallery_category", values_callable=lambda e: [m.value for m in e]), default=GalleryCategory.FOOD
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -62,7 +62,7 @@ class SiteReview(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
     rating: Mapped[int | None] = mapped_column(Integer, default=0)
     status: Mapped[ReviewStatus] = mapped_column(
-        SAEnum(ReviewStatus, values_callable=lambda e: [m.value for m in e]), default=ReviewStatus.APPROVED
+        SAEnum(ReviewStatus, name="review_status", values_callable=lambda e: [m.value for m in e]), default=ReviewStatus.APPROVED
     )
 
 

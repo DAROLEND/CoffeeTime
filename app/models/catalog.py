@@ -90,7 +90,10 @@ class PizzaItem(Base):
     price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     price_large: Mapped[float | None] = mapped_column(Numeric(10, 2), default=0)
     popularity: Mapped[int] = mapped_column(Integer, default=0)
-    sauce_type: Mapped[SauceType] = mapped_column(SAEnum(SauceType, values_callable=lambda e: [m.value for m in e]), default=SauceType.TOMATO)
+    # One Python enum, but two distinct Postgres types — pizza_items and
+    # mini_pizza_items each got their own in 0001_baseline (MySQL had no
+    # shared type to reuse), so the names must be spelled out per column.
+    sauce_type: Mapped[SauceType] = mapped_column(SAEnum(SauceType, name="sauce_type_pizza", values_callable=lambda e: [m.value for m in e]), default=SauceType.TOMATO)
     is_spicy: Mapped[bool] = mapped_column(Boolean, default=False)
     has_size_choice: Mapped[bool] = mapped_column(Boolean, default=True)
     ingredients_tags: Mapped[str | None] = mapped_column(String(500), default=None)
@@ -104,7 +107,7 @@ class MiniPizzaItem(Base):
     description: Mapped[str | None] = mapped_column(Text, default=None)
     image: Mapped[str] = mapped_column(String(255), default=DEFAULT_IMAGE)
     price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
-    sauce_type: Mapped[SauceType] = mapped_column(SAEnum(SauceType, values_callable=lambda e: [m.value for m in e]), default=SauceType.TOMATO)
+    sauce_type: Mapped[SauceType] = mapped_column(SAEnum(SauceType, name="sauce_type_mini_pizza", values_callable=lambda e: [m.value for m in e]), default=SauceType.TOMATO)
     is_spicy: Mapped[bool] = mapped_column(Boolean, default=False)
     ingredients_tags: Mapped[str | None] = mapped_column(String(500), default=None)
     popularity: Mapped[int] = mapped_column(Integer, default=0)

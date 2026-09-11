@@ -32,7 +32,7 @@ class Reservation(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.client_id", ondelete="CASCADE"))
     table_number: Mapped[int] = mapped_column(Integer)
     location: Mapped[ReservationLocation] = mapped_column(
-        SAEnum(ReservationLocation, values_callable=lambda e: [m.value for m in e])
+        SAEnum(ReservationLocation, name="reservation_location", values_callable=lambda e: [m.value for m in e])
     )
     reservation_datetime: Mapped[datetime.datetime] = mapped_column(DateTime)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())

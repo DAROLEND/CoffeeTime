@@ -13,6 +13,7 @@ services:
     environment:
       APP_ENV: production
       DB_HOST: db          # overrides DB_HOST from .env — always use the db service in Docker
+      DB_PORT: "5432"      # overrides DB_PORT from .env — the db service's internal Postgres port
     volumes:
       - images:/app/static/images   # uploaded images survive container restarts
     depends_on:
@@ -21,21 +22,20 @@ services:
     restart: unless-stopped
 
   db:
-    image: mysql:8.0
+    image: postgres:16-alpine
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme}
-      MYSQL_DATABASE: ${DB_NAME:-coffeetime}
-      MYSQL_USER: ${DB_USER:-coffeetime}
-      MYSQL_PASSWORD: ${DB_PASS:-secret}
+      POSTGRES_DB: ${DB_NAME:-coffeetime}
+      POSTGRES_USER: ${DB_USER:-coffeetime}
+      POSTGRES_PASSWORD: ${DB_PASS:-secret}
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data:/var/lib/postgresql/data
       # The app container's entrypoint runs `alembic upgrade head`
       # against a fresh DB, which creates the full schema
       # (0001_baseline + the 3 confirmed fixes in 0002_port_fixes) —
       # see MIGRATION_NOTES.md for cutting this over onto an existing
       # production database instead.
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-coffeetime} -d ${DB_NAME:-coffeetime}"]
       interval: 5s
       timeout: 10s
       retries: 15
@@ -49,6 +49,7 @@ services:
     environment:
       APP_ENV: production
       DB_HOST: db
+      DB_PORT: "5432"
     volumes:
       - images:/app/static/images
     depends_on:

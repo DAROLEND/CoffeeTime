@@ -1,9 +1,8 @@
 # Coffee Time — FastAPI app image.
 FROM python:3.12-slim-bookworm
 
-# No system MySQL client libs needed — the app uses PyMySQL (pure
-# Python, see requirements.txt), and `cryptography` ships prebuilt
-# manylinux wheels for this base image's platform.
+# No system Postgres client libs needed — psycopg2-binary (see
+# requirements.txt) ships its own bundled libpq.
 WORKDIR /app
 
 COPY requirements.txt .

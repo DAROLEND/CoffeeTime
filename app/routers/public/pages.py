@@ -63,8 +63,8 @@ def index(request: Request, db: Session = Depends(get_db)):
     if dessert_banner["image"]:
         dessert_banner_img = "/" + dessert_banner["image"].lstrip("/")
     else:
-        # ORDER BY RAND() LIMIT 1 — func.rand() maps to MySQL's RAND().
-        random_row = db.execute(select(DessertItem.image).order_by(func.rand()).limit(1)).first()
+        # ORDER BY RANDOM() LIMIT 1 — func.random() maps to Postgres's RANDOM().
+        random_row = db.execute(select(DessertItem.image).order_by(func.random()).limit(1)).first()
         dessert_banner_img = "/" + random_row[0].lstrip("/") if random_row else None
 
     total_reviews = db.execute(select(func.count()).select_from(SiteReview)).scalar_one()

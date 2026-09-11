@@ -4,32 +4,13 @@
 #   - a free Web Service running the existing Dockerfile (uvicorn)
 #   - a Cron Job running cron/send_reminders.py every 15 minutes
 # What it does NOT deploy:
-#   - the database — it stays on Railway (already set up, already free).
+#   - the database — bring your own free Postgres (Supabase, Neon, ...).
 #     Both services below just connect to it over the network via DB_*.
-#
-# ── BEFORE THE FIRST DEPLOY, READ THIS ──────────────────────────────
-# The Docker image's entrypoint (docker/entrypoint.sh) runs
-# `alembic upgrade head` automatically on every boot. Our Railway DB
-# already has the full production schema and data (25 tables, no
-# alembic_version table) — it was never created BY Alembic. If the web
-# service's first boot hits that database and just runs `alembic
-# upgrade head` blind, Alembic will try to CREATE TABLE on tables that
-# already exist and the deploy will fail (best case) or, if the
-# migration order ever changes, could try to alter live data (worst
-# case).
-#
-# So before enabling this blueprint, stamp the Railway DB once by hand
-# so Alembic knows it's already at the pre-fix baseline — see
-# MIGRATION_NOTES.md ("cutting over an EXISTING database"):
-#
-#   # from your machine, with .env pointed at the real Railway DB_*:
-#   alembic stamp 0001_baseline
-#   alembic upgrade head   # applies only the 0002 fixes, once
-#
-# Do this exactly once, before the first deploy. After that, every
-# future deploy's automatic `alembic upgrade head` is a safe no-op
-# unless a new migration is actually added.
-# ─────────────────────────────────────────────────────────────────────
+#     The image's entrypoint (docker/entrypoint.sh) runs `alembic
+#     upgrade head` automatically on every boot; against a fresh,
+#     empty database that just creates the schema — no manual step
+#     needed. (Cutting this over onto a database that already has data
+#     in it is a different story — see MIGRATION_NOTES.md.)
 
 services:
   - type: web
@@ -45,17 +26,15 @@ services:
       - key: APP_URL
         sync: false # set to the *.onrender.com URL Render gives this service (or a custom domain)
       - key: DB_HOST
-        sync: false # Railway's public proxy host, e.g. acela.proxy.rlwy.net
+        sync: false # e.g. Supabase's db.<project-ref>.supabase.co, or Neon's host
       - key: DB_PORT
-        sync: false # Railway's public proxy port, NOT 3306
+        sync: false # 5432 direct, or Supabase's pooler port (6543) if you use that instead
       - key: DB_NAME
         sync: false
       - key: DB_USER
         sync: false
       - key: DB_PASS
         sync: false
-      - key: DB_CHARSET
-        value: utf8mb4
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID
@@ -124,8 +103,6 @@ services:
         sync: false
       - key: DB_PASS
         sync: false
-      - key: DB_CHARSET
-        value: utf8mb4
       - key: MAIL_HOST
         value: smtp.gmail.com
       - key: MAIL_PORT

@@ -1,5 +1,16 @@
 # Migration notes: PHP → FastAPI
 
+> **Update, post-port:** everything below describes the port as it was
+> built and verified — against real MySQL, exactly mirroring the PHP
+> app's schema. The project has since moved its DB engine from MySQL to
+> PostgreSQL (MySQL was a PHP-ecosystem default carried over out of
+> caution, not a real dependency — nothing in the ported SQL turned out
+> to be MySQL-specific beyond `ORDER BY RAND()`, now `RANDOM()`), mainly
+> to get onto a genuinely free hosting story. `app/config.py` and
+> `docker-compose.yml` reflect Postgres today; this document's MySQL
+> references below are left as an accurate record of what was actually
+> tested at the time.
+
 This project started as a PHP 8 + MySQL app and was rewritten from
 scratch in Python/FastAPI, aiming for **identical logic, design, and
 functionality** — same templates/CSS/JS, same MySQL schema (with three

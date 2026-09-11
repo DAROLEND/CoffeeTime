@@ -8,8 +8,7 @@ python-multipart==0.0.20
 
 sqlalchemy==2.0.36
 alembic==1.14.0
-pymysql==1.1.1
-cryptography==44.0.0          # required by pymysql for sha256_password/caching_sha2_password auth
+psycopg2-binary==2.9.10
 
 pydantic==2.10.4
 pydantic-settings==2.7.1

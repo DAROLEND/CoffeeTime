@@ -76,9 +76,9 @@ def upgrade() -> None:
         sa.Column("description", sa.Text),
         sa.Column("image", sa.String(255), nullable=False),
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
-        sa.Column("is_cold", sa.Boolean, nullable=False, server_default=sa.text("0")),
+        sa.Column("is_cold", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_coffee_items_popularity", "popularity"),
     )
     op.create_table(
         "cold_drink_items",
@@ -88,7 +88,7 @@ def upgrade() -> None:
         sa.Column("image", sa.String(255), nullable=False),
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_cold_drink_items_popularity", "popularity"),
     )
     op.create_table(
         "dessert_items",
@@ -98,7 +98,7 @@ def upgrade() -> None:
         sa.Column("image", sa.String(255), nullable=False),
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_dessert_items_popularity", "popularity"),
     )
     op.create_table(
         "fast_food_items",
@@ -109,7 +109,7 @@ def upgrade() -> None:
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
         sa.Column("variant_options", sa.Text),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_fast_food_items_popularity", "popularity"),
     )
     op.create_table(
         "pizza_items",
@@ -121,10 +121,10 @@ def upgrade() -> None:
         sa.Column("price_large", sa.Numeric(10, 2), server_default="0.00"),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
         sa.Column("sauce_type", sa.Enum("tomato", "cream", "bbq", name="sauce_type_pizza"), nullable=False, server_default="tomato"),
-        sa.Column("is_spicy", sa.Boolean, nullable=False, server_default=sa.text("0")),
-        sa.Column("has_size_choice", sa.Boolean, nullable=False, server_default=sa.text("1")),
+        sa.Column("is_spicy", sa.Boolean, nullable=False, server_default=sa.text("false")),
+        sa.Column("has_size_choice", sa.Boolean, nullable=False, server_default=sa.text("true")),
         sa.Column("ingredients_tags", sa.String(500)),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_pizza_items_popularity", "popularity"),
     )
     op.create_table(
         "mini_pizza_items",
@@ -134,7 +134,7 @@ def upgrade() -> None:
         sa.Column("image", sa.String(255), nullable=False, server_default=DEFAULT_IMAGE),
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
         sa.Column("sauce_type", sa.Enum("tomato", "cream", "bbq", name="sauce_type_mini_pizza"), nullable=False, server_default="tomato"),
-        sa.Column("is_spicy", sa.Boolean, nullable=False, server_default=sa.text("0")),
+        sa.Column("is_spicy", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.Column("ingredients_tags", sa.String(500)),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
     )
@@ -157,10 +157,10 @@ def upgrade() -> None:
         sa.Column("image", sa.String(255), nullable=False, server_default=DEFAULT_IMAGE),
         sa.Column("price_per_kg", sa.Numeric(10, 2), nullable=False, server_default="1000.00"),
         sa.Column("min_weight", sa.Numeric(4, 1), nullable=False, server_default="1.0"),
-        sa.Column("is_custom_order", sa.Boolean, nullable=False, server_default=sa.text("1")),
+        sa.Column("is_custom_order", sa.Boolean, nullable=False, server_default=sa.text("true")),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="1000.00"),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_cake_items_popularity", "popularity"),
     )
     op.create_table(
         "sushi_items",
@@ -172,7 +172,7 @@ def upgrade() -> None:
         sa.Column("image", sa.String(255), nullable=False, server_default=DEFAULT_IMAGE),
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_sushi_items_popularity", "popularity"),
     )
     op.create_table(
         "sushi_sets",
@@ -185,7 +185,7 @@ def upgrade() -> None:
         sa.Column("pieces", sa.SmallInteger, nullable=False, server_default="0"),  # legacy, dropped in 0002
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
         sa.Column("pieces_count", sa.Integer, nullable=False, server_default="0"),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_sushi_sets_popularity", "popularity"),
     )
     op.create_table(
         "salad_items",
@@ -195,7 +195,7 @@ def upgrade() -> None:
         sa.Column("image", sa.String(255), nullable=False, server_default=DEFAULT_IMAGE),
         sa.Column("price", sa.Numeric(10, 2), nullable=False, server_default="0.00"),
         sa.Column("popularity", sa.Integer, nullable=False, server_default="0"),
-        sa.Index("popularity", "popularity"),
+        sa.Index("idx_salad_items_popularity", "popularity"),
     )
     op.create_table(
         "sauces",
@@ -203,7 +203,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("price", sa.Numeric(10, 2), server_default="0.00"),
         sa.Column("emoji", sa.String(10), server_default="?"),
-        sa.Column("active", sa.Boolean, server_default=sa.text("1")),
+        sa.Column("active", sa.Boolean, server_default=sa.text("true")),
         sa.Column("sort_order", sa.Integer, server_default="0"),
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
         sa.Column("image", sa.String(255), nullable=False, server_default=""),
@@ -240,8 +240,8 @@ def upgrade() -> None:
         sa.Column("category", sa.String(50), nullable=False),
         sa.Column("selected_size", sa.String(20), server_default="small"),
         sa.Column("selected_variant", sa.Text),
-        sa.Column("cheese_crust", sa.Boolean, nullable=False, server_default=sa.text("0")),
-        sa.Column("takeaway", sa.Boolean, nullable=False, server_default=sa.text("0")),
+        sa.Column("cheese_crust", sa.Boolean, nullable=False, server_default=sa.text("false")),
+        sa.Column("takeaway", sa.Boolean, nullable=False, server_default=sa.text("false")),
     )
     op.create_table(
         "order_ratings",
@@ -285,7 +285,7 @@ def upgrade() -> None:
         sa.Column("title", sa.String(255), nullable=False, server_default=""),
         sa.Column("subtitle", sa.String(255), nullable=False, server_default=""),
         sa.Column("sort_order", sa.SmallInteger, server_default="0"),
-        sa.Column("active", sa.Boolean, server_default=sa.text("1")),
+        sa.Column("active", sa.Boolean, server_default=sa.text("true")),
     )
     op.create_table(
         "gallery",

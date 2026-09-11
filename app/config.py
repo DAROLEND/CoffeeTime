@@ -9,6 +9,14 @@ Mirrors, in one place, what the PHP app read from three separate files:
 Values are read from the environment (populated from `.env` via
 python-dotenv / pydantic-settings), with the same defaults the PHP code
 used, so an existing `.env` file works unchanged.
+
+DB engine: PostgreSQL (psycopg2). The original PHP app used MySQL, but
+that was purely a PHP-ecosystem default — nothing in this port's SQL is
+MySQL-specific, so the FastAPI/SQLAlchemy version runs on Postgres
+instead, which has a real permanently-free hosting story (Supabase,
+Neon) that MySQL no longer does. DB_CHARSET is kept only for backward
+compatibility with an old `.env`; Postgres is UTF-8 by default and
+never needs it.
 """
 from functools import lru_cache
 
@@ -23,13 +31,13 @@ class Settings(BaseSettings):
     APP_URL: str = ""  # if unset, SITE_URL is derived from the request host (see dependencies.get_site_url)
     SESSION_LIFETIME: int = 3600  # seconds, matches PHP session.gc_maxlifetime
 
-    # --- Database (same names/defaults as db/db.php) ---
+    # --- Database (same names/defaults as db/db.php, port now Postgres's) ---
     DB_HOST: str = "localhost"
-    DB_PORT: int = 3306
+    DB_PORT: int = 5432
     DB_NAME: str = ""
-    DB_USER: str = "root"
+    DB_USER: str = "postgres"
     DB_PASS: str = ""
-    DB_CHARSET: str = "utf8mb4"
+    DB_CHARSET: str = "utf8mb4"  # unused by Postgres, kept for an old .env's sake
     DB_SOCKET: str | None = None
 
     # --- LiqPay ---
@@ -69,17 +77,12 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_database_uri(self) -> str:
-        # mirrors db/db.php's mysqli/PDO DSN construction (unix socket takes priority)
-        driver = "mysql+pymysql"
+        # mirrors db/db.php's DSN construction (unix socket takes priority),
+        # ported to Postgres's psycopg2 driver/query-param names.
+        driver = "postgresql+psycopg2"
         if self.DB_SOCKET:
-            return (
-                f"{driver}://{self.DB_USER}:{self.DB_PASS}@/{self.DB_NAME}"
-                f"?unix_socket={self.DB_SOCKET}&charset={self.DB_CHARSET}"
-            )
-        return (
-            f"{driver}://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}"
-            f"/{self.DB_NAME}?charset={self.DB_CHARSET}"
-        )
+            return f"{driver}://{self.DB_USER}:{self.DB_PASS}@/{self.DB_NAME}?host={self.DB_SOCKET}"
+        return f"{driver}://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 
 @lru_cache

@@ -23,7 +23,7 @@
 |-----|-----------|
 | Frontend | HTML, CSS, Vanilla JS |
 | Backend | Python 3.12, FastAPI, Jinja2 |
-| БД | MySQL, SQLAlchemy 2.0, Alembic |
+| БД | PostgreSQL, SQLAlchemy 2.0, Alembic |
 | Оплата | LiqPay SDK |
 | Сповіщення | Telegram Bot API, smtplib (Gmail SMTP) |
 | Інфраструктура | Docker, uvicorn |
@@ -63,7 +63,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env   # налаштувати DB_* під локальний MySQL
+cp .env.example .env   # налаштувати DB_* під локальний PostgreSQL
 
 alembic upgrade head
 uvicorn app.main:app --reload
@@ -75,9 +75,8 @@ python cron/send_reminders.py
 ## Деплой
 
 Конфіг для безкоштовного хостингу на [Render](https://render.com) — `render.yaml`
-(web-сервіс + cron-джоба нагадувань, БД лишається на своєму MySQL-хості).
-Перед першим деплоєм на вже наповнену базу дивись примітку про
-`alembic stamp` на початку файлу.
+(web-сервіс + cron-джоба нагадувань, БД — окремий безкоштовний Postgres,
+напр. [Supabase](https://supabase.com) чи [Neon](https://neon.tech)).
 
 ## Тести
 
@@ -86,8 +85,8 @@ pytest tests/ -v
 ```
 
 Ганяються проти SQLite (швидко, без зовнішніх залежностей) — деталі та
-відома межа (MySQL-специфічний `RAND()`) описані в
-[MIGRATION_NOTES.md](MIGRATION_NOTES.md).
+відома межа (один запит з `ORDER BY RANDOM()`, навмисно не покритий
+тестом) описані в [MIGRATION_NOTES.md](MIGRATION_NOTES.md).
 
 ## Адмін-панель
 

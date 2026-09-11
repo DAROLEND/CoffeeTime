@@ -55,13 +55,13 @@ def dessert_banner_page(request: Request, db: Session = Depends(get_db)):
 
     random_img = None
     if not (settings.get("dessert_banner_image") or ""):
-        # ORDER BY RAND() LIMIT 1 — func.rand() maps to MySQL's RAND(),
-        # same as app/routers/public/pages.py's identical query. SQLite
-        # (used in tests) doesn't understand RAND(); tests seed a custom
-        # dessert_banner_image to skip this branch instead of exercising
-        # it — a documented MySQL-vs-SQLite test-environment limitation,
-        # not a code bug (see MIGRATION_NOTES.md).
-        random_row = db.execute(select(DessertItem.image).order_by(func.rand()).limit(1)).first()
+        # ORDER BY RANDOM() LIMIT 1 — func.random() maps to Postgres's
+        # RANDOM(), same as app/routers/public/pages.py's identical query.
+        # (Previously func.rand()/MySQL's RAND(), which SQLite has no
+        # equivalent for; RANDOM() happens to work on SQLite too, but
+        # tests still seed a custom dessert_banner_image to skip this
+        # branch rather than depend on that — see MIGRATION_NOTES.md.)
+        random_row = db.execute(select(DessertItem.image).order_by(func.random()).limit(1)).first()
         random_img = "/" + random_row[0].lstrip("/") if random_row else None
 
     has_custom_image = bool(settings.get("dessert_banner_image"))

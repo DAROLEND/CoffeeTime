@@ -1,5 +1,11 @@
 # Render Blueprint — deploy Coffee Time (FastAPI) for free.
 #
+# Auto-deploy on push needs Render's GitHub App to actually have access
+# to this repo (Configure it at https://github.com/settings/installations
+# -> Render -> "All repositories", or add this repo explicitly under
+# "Only select repositories") — otherwise every push needs a manual
+# "Deploy latest commit" in the Render dashboard.
+#
 # What this deploys:
 #   - a free Web Service running the existing Dockerfile (uvicorn)
 #   - a Cron Job running cron/send_reminders.py every 15 minutes

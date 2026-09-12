@@ -1,104 +1,106 @@
-# Coffee Time — онлайн-замовлення для кафе
+# Coffee Time — online ordering for a café
 
-### 🔗 Живий сайт: **[coffeetime.onrender.com](https://coffeetime.onrender.com)**
+*Також доступно [українською](README.uk.md).*
 
-Повноцінний сайт для кафе **Coffee Time** (м. Гусятин) з меню, онлайн-замовленнями,
-оплатою через LiqPay та адмін-панеллю з розмежуванням прав.
+### 🔗 Live site: **[coffeetime.onrender.com](https://coffeetime.onrender.com)**
 
-> Хостинг на безкоштовному плані Render — сервіс засинає після 15 хв
-> бездіяльності, тож перше відкриття може зайняти до хвилини.
+A complete website for the **Coffee Time** café (Husiatyn, Ukraine) with a menu, online ordering,
+payment via LiqPay, and an admin panel with role-based permissions.
 
-## Скріншоти
+> Hosted on Render's free tier — the service sleeps after 15 minutes of
+> inactivity, so the first load can take up to a minute.
+
+## Screenshots
 
 | | |
 |---|---|
-| ![Головна](static/images/preview/homepage.png) | ![Меню](static/images/preview/menu.png) |
-| **Головна** — hero-слайдер з фото кафе, CTA-кнопка | **Меню** — каталог з пошуком, категоріями та фільтрами |
-| ![Кошик](static/images/preview/cart.png) | ![Оформлення](static/images/preview/cart2.png) |
-| **Кошик** — список товарів, зведення замовлення | **Оформлення** — тип доставки, контакти, барабанний picker часу |
-| ![Профіль](static/images/preview/profile.png) | ![Адмін](static/images/preview/admin.png) |
-| **Профіль** — історія замовлень зі статусами та оцінками | **Адмін** — дашборд зі статистикою, графіком та топ-товарами |
+| ![Homepage](static/images/preview/homepage.png) | ![Menu](static/images/preview/menu.png) |
+| **Homepage** — hero slider with café photos, CTA button | **Menu** — catalog with search, categories and filters |
+| ![Cart](static/images/preview/cart.png) | ![Checkout](static/images/preview/cart2.png) |
+| **Cart** — item list, order summary | **Checkout** — delivery type, contact info, a drum-style time picker |
+| ![Profile](static/images/preview/profile.png) | ![Admin](static/images/preview/admin.png) |
+| **Profile** — order history with statuses and ratings | **Admin** — dashboard with stats, a chart, and top items |
 
-## Стек
+## Stack
 
-| Шар | Технології |
+| Layer | Technologies |
 |-----|-----------|
 | Frontend | HTML, CSS, Vanilla JS |
 | Backend | Python 3.12, FastAPI, Jinja2 |
-| БД | PostgreSQL, SQLAlchemy 2.0, Alembic |
-| Оплата | LiqPay SDK |
-| Сповіщення | Telegram Bot API, smtplib (Gmail SMTP) |
-| Інфраструктура | Docker, uvicorn |
-| Тести | pytest, SQLite fixtures |
+| Database | PostgreSQL, SQLAlchemy 2.0, Alembic |
+| Payments | LiqPay SDK |
+| Notifications | Telegram Bot API, smtplib (Gmail SMTP) |
+| Infrastructure | Docker, uvicorn |
+| Tests | pytest, SQLite fixtures |
 
-## Функціонал
+## Features
 
-- Каталог меню з фільтрацією, пошуком і категоріями
-- Кошик із варіантами: розмір піци, борти, соуси, вага торту, морозиво на вагу
-- Оформлення замовлення з вибором часу (барабанний picker) та типом оплати
-- Онлайн-оплата через LiqPay (з sandbox-режимом)
-- Telegram-сповіщення адміністратору при новому замовленні
-- Email-нагадування клієнту перед готовністю замовлення (cron-джоба)
-- Авторизація, реєстрація, відновлення паролю
-- Профіль користувача з історією замовлень
-- Відгуки клієнтів
-- Адмін-панель з розмежуванням прав (super/staff): товари, замовлення,
-  соуси, галерея, hero-слайдер, контент сторінки "Про нас"/банер дня,
-  персонал, резервна копія БД
+- Menu catalog with filtering, search, and categories
+- Cart with variants: pizza size, crust, sauces, cake weight, ice cream by weight
+- Checkout with time selection (drum-style picker) and payment type
+- Online payment via LiqPay (with sandbox mode)
+- Telegram notification to the admin on every new order
+- Email reminder to the customer before the order is ready (cron job)
+- Authentication, registration, password recovery
+- User profile with order history
+- Customer reviews
+- Admin panel with role-based permissions (super/staff): products, orders,
+  sauces, gallery, hero slider, "About us" page content / banner of the day,
+  staff, database backup
 
-## Запуск через Docker
+## Running with Docker
 
 ```bash
 git clone https://github.com/DAROLEND/CoffeeTime.git && cd CoffeeTime
 cp .env.example .env
-# відредагувати .env (DB_NAME, DB_USER, DB_PASS, APP_URL, TELEGRAM_*, LIQPAY_*, MAIL_* тощо)
+# edit .env (DB_NAME, DB_USER, DB_PASS, APP_URL, TELEGRAM_*, LIQPAY_*, MAIL_*, etc.)
 
 docker compose up -d --build
-# сайт на http://localhost:8000
-# схема БД створюється автоматично через Alembic при першому запуску
+# site at http://localhost:8000
+# the DB schema is created automatically via Alembic on first run
 ```
 
-## Локальний запуск
+## Running locally
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env   # налаштувати DB_* під локальний PostgreSQL
+cp .env.example .env   # configure DB_* for your local PostgreSQL
 
 alembic upgrade head
 uvicorn app.main:app --reload
 
-# reminders cron-джоба (окремим процесом, кожні 15 хв):
+# reminders cron job (as a separate process, every 15 minutes):
 python cron/send_reminders.py
 ```
 
-## Деплой
+## Deployment
 
-Конфіг для безкоштовного хостингу на [Render](https://render.com) — `render.yaml`
-(web-сервіс + cron-джоба нагадувань, БД — окремий безкоштовний Postgres,
-напр. [Supabase](https://supabase.com) чи [Neon](https://neon.tech)).
+Config for free hosting on [Render](https://render.com) — `render.yaml`
+(web service + reminders cron job, DB as a separate free Postgres,
+e.g. [Supabase](https://supabase.com) or [Neon](https://neon.tech)).
 
-## Тести
+## Tests
 
 ```bash
 pytest tests/ -v
 ```
 
-187 тестів: логіка кошика, оформлення замовлення, платіжні колбеки,
-аутентифікація, CSRF, права адмінів і рендеринг усіх сторінок.
-Ганяються проти SQLite в пам'яті — швидко і без зовнішніх залежностей.
+187 tests: cart logic, checkout, payment callbacks,
+authentication, CSRF, admin permissions, and rendering of every page.
+Run against an in-memory SQLite database — fast, no external dependencies.
 
-## Адмін-панель
+## Admin panel
 
 ```
 /admin/login
 ```
 
-## Змінні середовища
+## Environment variables
 
-Всі секрети зберігаються в `.env` (не комітиться). Дивись `.env.example`.
+All secrets are kept in `.env` (not committed). See `.env.example`.
 
 ```
 APP_URL=https://yourdomain.com

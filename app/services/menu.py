@@ -1,11 +1,14 @@
-"""Menu page helpers. `build_card_context` is a pure data-prep function
-so the Jinja template only handles markup, while all the "is this a
-pizza / does it have a fast-food size choice / what's the cheese-crust
-badge" branching logic lives in one testable place.
+"""Menu helpers. `build_card_context` is a pure data-prep function, so
+the client only renders, while all the "is this a pizza / does it have a
+fast-food size choice / which price range to show" branching lives in
+one testable place.
 """
 from __future__ import annotations
 
 import json
+
+from app.services.media import item_img
+from app.services.pricing import parse_variant_options
 
 DEFAULT_IMAGE = "static/images/menu_items/default.jpg"
 
@@ -51,38 +54,28 @@ def build_card_context(item: dict, tbl: str, label: str, cart_keys: set[str], ca
         sushi_tags.append(f"{int(item['pieces_count'])} шт")
 
     variant_options_raw = item.get("variant_options") or ""
-    has_fast_food_size = is_fast_food and bool(variant_options_raw) and (
-        '"type":"size"' in variant_options_raw or '"type":"filling"' in variant_options_raw
-    )
-    has_sauce_variant = is_fast_food and bool(variant_options_raw) and not has_fast_food_size
-    has_ice_cream_scoop = is_ice_cream and bool(variant_options_raw)
+    # Parsed, not substring-matched: '"type":"size"' misses the
+    # '"type": "size"' spelling json.dumps produces.
+    vo = parse_variant_options(variant_options_raw) if (is_fast_food or is_ice_cream) else None
+    has_fast_food_size = is_fast_food and vo is not None and vo["type"] in ("size", "filling")
+    has_sauce_variant = is_fast_food and vo is not None and vo["type"] == "sauce"
+    has_ice_cream_scoop = is_ice_cream and vo is not None and vo["type"] == "scoops"
 
     price = float(item.get("price", 0) or 0)
     ff_small_price = ff_large_price = price
     ff_size_str = ""
     if has_fast_food_size:
-        try:
-            ff_vo = json.loads(variant_options_raw)
-        except ValueError:
-            ff_vo = {}
-        options = ff_vo.get("options") if isinstance(ff_vo, dict) else None
-        if isinstance(options, list):
-            labels = []
-            max_diff = 0.0
-            for opt in options:
-                labels.append(opt.get("label", ""))
-                d = float(opt.get("price_diff", 0) or 0)
-                sizes = opt.get("sizes")
-                if isinstance(sizes, list):
-                    for sz in sizes:
-                        td = d + float(sz.get("price_diff", 0) or 0)
-                        max_diff = max(max_diff, td)
-                else:
-                    max_diff = max(max_diff, d)
-            if max_diff > 0:
-                ff_large_price = ff_small_price + max_diff
-            if ff_vo.get("type") == "size" and len(labels) == 2:
-                ff_size_str = " / ".join(labels)
+        max_diff = 0.0
+        for opt in vo["options"]:
+            if opt["sizes"]:
+                for sz in opt["sizes"]:
+                    max_diff = max(max_diff, opt["price_diff"] + sz["price_diff"])
+            else:
+                max_diff = max(max_diff, opt["price_diff"])
+        if max_diff > 0:
+            ff_large_price = ff_small_price + max_diff
+        if vo["type"] == "size" and len(vo["options"]) == 2:
+            ff_size_str = " / ".join(o["label"] for o in vo["options"])
 
     has_size = is_pizza and bool(item.get("has_size_choice"))
     price_large = float(item.get("price_large") or 0) if is_pizza else 0.0
@@ -92,9 +85,8 @@ def build_card_context(item: dict, tbl: str, label: str, cart_keys: set[str], ca
     tags_arr = parse_ing_tags(ing_tags_raw) if is_pizza_type else []
     popularity = int(item.get("popularity", 0) or 0)
 
-    image = item.get("image") or ""
-    is_default = image == DEFAULT_IMAGE or not image
-    img_src = "" if is_default else "/" + image
+    img_src = item_img(item.get("image"))
+    is_default = not img_src
 
     return {
         "id": item_id,
@@ -132,5 +124,6 @@ def build_card_context(item: dict, tbl: str, label: str, cart_keys: set[str], ca
         "price_per_kg": price if tbl == "cake_items" else None,
         "min_weight": float(item.get("min_weight") or 1) if tbl == "cake_items" else None,
         "variant_options_raw": variant_options_raw,
+        "variant_options": vo,
         "is_cold": bool(item.get("is_cold")) if tbl == "coffee_items" else None,
     }

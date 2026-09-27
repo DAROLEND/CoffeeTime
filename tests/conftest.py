@@ -89,3 +89,11 @@ def client(sqlite_engine, db_session, monkeypatch):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def api(client):
+    """The TestClient wrapped to send the CSRF header like the SPA."""
+    from tests.helpers import Api
+
+    return Api(client)

@@ -1,17 +1,20 @@
 """
-Cart business logic: add/update/remove cart lines, price recomputation,
-and cart-page item resolution.
+Cart business logic: add/update/remove cart lines and cart resolution
+for the cart page, the header mini-cart and checkout.
 
 `session["cart"]` is a flat list of dicts:
     {category, id, quantity,
-     [price_override], [weight], [selected_size], [cheese_crust],
-     [takeaway], [selected_variant: JSON string]}
+     [weight], [selected_size], [cheese_crust], [takeaway],
+     [selected_variant: canonical JSON string], [price_override]}
 
-Per-category whitelist sets below are intentionally separate rather than
-one shared constant, each scoped to the endpoint whose exact membership
-it governs. Note: CART_ITEM_LOOKUP_CATEGORIES omits `sauces` — sauces
-never reach the cart "edit" UI flow, so this is harmless dead-path
-behavior rather than a bug worth correcting.
+Lines are addressed by their list index everywhere the client edits
+them: two lines can share a category+id (a small and a large pizza), so
+category+id alone is ambiguous.
+
+`price_override` is only a snapshot of the server-computed unit price at
+the time the line was written. Anything that shows or charges a price
+re-derives it from the DB via app/services/pricing.py, so a price change
+in the admin panel applies to carts that already hold the item.
 """
 from __future__ import annotations
 
@@ -22,331 +25,224 @@ from sqlalchemy.orm import Session
 
 from app.constants.categories import CATEGORY_MODEL_MAP, ProductCategory
 from app.middleware.session import SessionData
-from app.models.catalog import CakeItem, IceCreamItem, MiniPizzaItem, PizzaItem, Sauce
+from app.models.catalog import Sauce
 from app.services.media import item_img
+from app.services.pricing import (
+    InvalidVariant, clamp_cake_weight, pizza_size, resolve_variant, unit_price,
+)
 
 ALL_CATEGORIES = {c.value for c in ProductCategory}  # 12
-QTY_STEPPER_CATEGORIES = {
-    "coffee_items", "fast_food_items", "pizza_items",
-    "mini_pizza_items", "cold_drink_items", "dessert_items",
+PIZZA_CATEGORIES = {"pizza_items", "mini_pizza_items"}
+
+CAT_LABELS = {
+    "coffee_items": "Кава", "cold_drink_items": "Холодні напої", "fast_food_items": "Фаст-фуд",
+    "pizza_items": "Піца", "mini_pizza_items": "Міні-піца", "sushi_items": "Суші",
+    "sushi_sets": "Суші-сети", "salad_items": "Салати", "dessert_items": "Десерти",
+    "ice_cream_items": "Морозиво", "cake_items": "Торти", "sauces": "Соуси",
 }
-VARIANT_UPDATE_CATEGORIES = ALL_CATEGORIES - {"ice_cream_items", "sauces"}
-CART_ITEM_LOOKUP_CATEGORIES = ALL_CATEGORIES - {"sauces"}
 
 
-def _total_qty(cart: list[dict]) -> int:
+def total_qty(cart: list[dict]) -> int:
     return sum(int(ci.get("quantity", 0)) for ci in cart)
 
 
-def _get_cart(session: SessionData) -> list[dict]:
+def get_cart(session: SessionData) -> list[dict]:
     cart = session.get("cart")
     if not isinstance(cart, list):
         cart = []
     return cart
 
 
-def get_price(db: Session, category: str, item_id: int) -> float | None:
-    """Looks up the current price for a category/item, since every one of
-    the 12 category models has a plain `price` column (cake_items keeps
-    one alongside price_per_kg)."""
+def cart_keys(cart: list[dict]) -> list[str]:
+    """`<category>_<id>` for every line; the menu uses it for "in cart" badges."""
+    return sorted({f"{ci['category']}_{ci['id']}" for ci in cart if "category" in ci and "id" in ci})
+
+
+def _row(db: Session, category: str, item_id: int):
     try:
         model = CATEGORY_MODEL_MAP[ProductCategory(category)]
     except ValueError:
         return None
-    row = db.execute(select(model.price).where(model.id == item_id)).first()
-    return float(row[0]) if row else None
+    return db.get(model, item_id)
+
+
+def get_price(db: Session, category: str, item_id: int) -> float | None:
+    row = _row(db, category, item_id)
+    return float(row.price) if row is not None else None
+
+
+def _qty(raw, default: int = 1) -> int:
+    try:
+        return max(1, min(99, int(raw)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _result(cart: list[dict], index: int) -> dict:
+    return {"ok": True, "count": total_qty(cart), "index": index}
 
 
 def add_to_cart(session: SessionData, db: Session, category: str, item_id: int, qty: int, form: dict) -> dict:
+    """Add (or merge into) a cart line. `form` carries only the line's
+    parameters (weight, selected_size, cheese_crust, takeaway,
+    selected_variant); a `price_override` in it is ignored."""
     if category not in ALL_CATEGORIES or item_id <= 0:
         return {"ok": False}
-    cart = _get_cart(session)
-    qty = max(1, min(99, qty))
+    cart = get_cart(session)
+    qty = _qty(qty)
+
+    if category == "sauces":
+        row = db.execute(select(Sauce).where(Sauce.id == item_id, Sauce.active == True)).scalar_one_or_none()  # noqa: E712
+    else:
+        row = _row(db, category, item_id)
+    if row is None:
+        return {"ok": False}
 
     if category == "cake_items":
-        weight = max(1.0, float(form.get("weight") or 1.0))
-        cake = db.get(CakeItem, item_id)
-        if not cake:
-            return {"ok": False}
-        weight = max(float(cake.min_weight), weight)
-        price_override = round(weight * float(cake.price_per_kg), 2)
-        for it in cart:
-            if it.get("category") == "cake_items" and int(it.get("id", -1)) == item_id:
-                it.update(weight=weight, price_override=price_override, quantity=1)
-                session["cart"] = cart
-                return {"ok": True, "count": _total_qty(cart)}
-        cart.append({"category": category, "id": item_id, "quantity": 1, "weight": weight, "price_override": price_override})
-        session["cart"] = cart
-        return {"ok": True, "count": _total_qty(cart)}
-
-    if category in ("pizza_items", "mini_pizza_items"):
-        selected_size = form.get("selected_size") if form.get("selected_size") in ("small", "large") else "small"
-        cheese_crust = 1 if str(form.get("cheese_crust")) == "1" else 0
-        takeaway = 1 if str(form.get("takeaway")) == "1" else 0
-        raw_price_override = form.get("price_override")
-        price_override = float(raw_price_override) if raw_price_override else None
-
-        if price_override is not None:
-            if category == "mini_pizza_items":
-                row = db.get(MiniPizzaItem, item_id)
-                base_price = float(row.price) if row else None
-            else:
-                row = db.get(PizzaItem, item_id)
-                if not row:
-                    base_price = None
-                else:
-                    base_price = float(row.price_large) if selected_size == "large" else float(row.price)
-            if base_price is None:
-                return {"ok": False}
-            if cheese_crust and category == "pizza_items":
-                base_price += 100 if selected_size == "large" else 65
-            price_override = base_price
-
-        found = None
+        # At most one line per cake: re-adding updates the weight.
+        weight = clamp_cake_weight(row, form.get("weight"))
+        price = unit_price(category, row, {"weight": weight})
         for i, it in enumerate(cart):
-            if (
-                it.get("category") in ("pizza_items", "mini_pizza_items")
-                and int(it.get("id", -1)) == item_id
-                and it.get("selected_size", "small") == selected_size
-                and it.get("cheese_crust", 0) == cheese_crust
-            ):
-                found = i
-                break
+            if it.get("category") == "cake_items" and int(it.get("id", -1)) == item_id:
+                it.update(weight=weight, price_override=price, quantity=1)
+                session["cart"] = cart
+                return _result(cart, i)
+        cart.append({"category": category, "id": item_id, "quantity": 1, "weight": weight, "price_override": price})
+        session["cart"] = cart
+        return _result(cart, len(cart) - 1)
 
+    if category in PIZZA_CATEGORIES:
+        selected_size = pizza_size(row, form.get("selected_size")) if category == "pizza_items" else "small"
+        cheese_crust = 1 if category == "pizza_items" and str(form.get("cheese_crust")) == "1" else 0
+        takeaway = 1 if str(form.get("takeaway")) == "1" else 0
         entry = {"category": category, "id": item_id, "quantity": qty, "selected_size": selected_size, "cheese_crust": cheese_crust}
         if takeaway:
             entry["takeaway"] = takeaway
-        if price_override is not None:
-            entry["price_override"] = price_override
+        entry["price_override"] = unit_price(category, row, entry)
 
-        if found is not None:
-            cart[found]["quantity"] += qty
-        else:
-            cart.append(entry)
-        session["cart"] = cart
-        return {"ok": True, "count": _total_qty(cart)}
-
-    if category == "sauces":
-        sauce = db.execute(
-            select(Sauce).where(Sauce.id == item_id, Sauce.active == True)  # noqa: E712
-        ).scalar_one_or_none()
-        if not sauce:
-            return {"ok": False}
-        found = None
-        for i, it in enumerate(cart):
-            if it.get("category") == "sauces" and int(it.get("id", -1)) == item_id:
-                found = i
-                break
-        if found is not None:
-            cart[found]["quantity"] += qty
-        else:
-            cart.append({"category": "sauces", "id": item_id, "quantity": qty})
-        session["cart"] = cart
-        return {"ok": True, "count": _total_qty(cart)}
-
-    if category == "ice_cream_items":
-        selected_variant = (form.get("selected_variant") or "").strip()
-        price_diff = 0.0
-        if selected_variant:
-            try:
-                var = json.loads(selected_variant)
-                price_diff = float(var.get("price_diff", 0)) if isinstance(var, dict) else 0.0
-            except ValueError:
-                pass
-        row = db.get(IceCreamItem, item_id)
-        if not row:
-            return {"ok": False}
-        price_override = float(row.price) + price_diff
-
-        found = None
+        # Same pizza + size + crust merges; any other combination is its own line.
         for i, it in enumerate(cart):
             if (
-                it.get("category") == "ice_cream_items"
+                it.get("category") == category
                 and int(it.get("id", -1)) == item_id
-                and it.get("selected_variant", "") == selected_variant
+                and it.get("selected_size", "small") == selected_size
+                and int(it.get("cheese_crust", 0)) == cheese_crust
             ):
-                found = i
-                break
-        if found is not None:
-            cart[found]["quantity"] += qty
-        else:
-            entry = {"category": category, "id": item_id, "quantity": qty, "price_override": price_override}
-            if selected_variant:
-                entry["selected_variant"] = selected_variant
-            cart.append(entry)
+                it["quantity"] = min(99, int(it.get("quantity", 1)) + qty)
+                session["cart"] = cart
+                return _result(cart, i)
+        cart.append(entry)
         session["cart"] = cart
-        return {"ok": True, "count": _total_qty(cart)}
+        return _result(cart, len(cart) - 1)
 
-    # Default/catch-all: coffee, cold drinks, fast food, sushi, salads, desserts
-    selected_variant = (form.get("selected_variant") or "").strip()
-    raw_price_override = form.get("price_override")
-    price_override = float(raw_price_override) if raw_price_override else None
+    # Everything else: coffee, cold drinks, desserts, sushi, salads, sauces,
+    # plus the variant-priced fast food and ice cream. category + id +
+    # canonical variant identify a line.
+    selected_variant = None
+    if category in ("fast_food_items", "ice_cream_items"):
+        try:
+            selected_variant, _ = resolve_variant(row.variant_options, form.get("selected_variant"))
+        except InvalidVariant:
+            return {"ok": False, "error": "invalid_variant"}
 
-    found = None
     for i, it in enumerate(cart):
         if (
             it.get("category") == category
             and int(it.get("id", -1)) == item_id
-            and it.get("selected_variant", "") == selected_variant
+            and (it.get("selected_variant") or None) == selected_variant
         ):
-            found = i
-            break
-    if found is not None:
-        cart[found]["quantity"] += qty
-    else:
-        entry = {"category": category, "id": item_id, "quantity": qty}
-        if selected_variant:
-            entry["selected_variant"] = selected_variant
-        if price_override is not None:
-            entry["price_override"] = price_override
-        cart.append(entry)
+            it["quantity"] = min(99, int(it.get("quantity", 1)) + qty)
+            session["cart"] = cart
+            return _result(cart, i)
+
+    entry = {"category": category, "id": item_id, "quantity": qty}
+    if selected_variant:
+        entry["selected_variant"] = selected_variant
+    if category != "sauces":
+        entry["price_override"] = unit_price(category, row, entry)
+    cart.append(entry)
     session["cart"] = cart
-    return {"ok": True, "count": _total_qty(cart)}
-
-
-def update_qty_stepper(session: SessionData, db: Session, category: str, item_id: int, action: str, qty_field: int | None) -> dict:
-    if category not in QTY_STEPPER_CATEGORIES or item_id <= 0 or action not in ("increase", "decrease", "set_qty"):
-        return {"ok": False}
-    cart = _get_cart(session)
-    found = None
-    for i, ci in enumerate(cart):
-        if ci.get("category") == category and int(ci.get("id", -1)) == item_id:
-            found = i
-            break
-    if found is None:
-        return {"ok": False}
-
-    if action == "increase":
-        cart[found]["quantity"] = int(cart[found].get("quantity", 1)) + 1
-    elif action == "set_qty":
-        cart[found]["quantity"] = max(1, min(99, int(qty_field or 1)))
-    else:
-        cart[found]["quantity"] = int(cart[found].get("quantity", 1)) - 1
-
-    new_qty = cart[found]["quantity"]
-    removed = False
-    if new_qty <= 0:
-        cart.pop(found)
-        removed = True
-
-    item_total = 0.0
-    if not removed:
-        price = get_price(db, category, item_id) or 0.0
-        item_total = round(price * new_qty, 2)
-
-    cart_total, cart_count = 0.0, 0
-    for ci in cart:
-        if ci.get("category") not in QTY_STEPPER_CATEGORIES:
-            continue
-        price = get_price(db, ci["category"], int(ci["id"])) or 0.0
-        cart_total += price * int(ci.get("quantity", 1))
-        cart_count += int(ci.get("quantity", 1))
-
-    session["cart"] = cart
-    return {
-        "ok": True, "removed": removed, "new_qty": new_qty, "item_total": item_total,
-        "cart_total": round(cart_total, 2), "cart_count": cart_count,
-    }
+    return _result(cart, len(cart) - 1)
 
 
 def update_cart_item(session: SessionData, db: Session, index: int, form: dict) -> dict:
-    cart = _get_cart(session)
+    """Change one line's quantity and/or options. Only the keys present in
+    `form` are changed. Cakes always stay at quantity 1."""
+    cart = get_cart(session)
     if index < 0 or index >= len(cart):
         return {"ok": False, "error": "invalid_index"}
     item = cart[index]
-    table = item.get("category", "")
-    item_id = int(item.get("id", 0))
-    if table not in ALL_CATEGORIES:
+    category = item.get("category", "")
+    if category not in ALL_CATEGORIES:
         return {"ok": False}
+    row = _row(db, category, int(item.get("id", 0)))
+    if row is None:
+        return {"ok": False, "error": "db_not_found"}
 
-    existing_qty = int(item.get("quantity", 1))
-    raw_qty = form.get("quantity")
-    qty = max(1, min(99, int(raw_qty))) if raw_qty not in (None, "") else existing_qty
+    if form.get("quantity") not in (None, ""):
+        item["quantity"] = _qty(form.get("quantity"), int(item.get("quantity", 1)))
 
-    if table == "pizza_items":
-        size = form.get("selected_size") if form.get("selected_size") in ("small", "large") else "small"
-        crust = 1 if str(form.get("cheese_crust", "0")) == "1" else 0
-        row = db.get(PizzaItem, item_id)
-        if not row:
-            return {"ok": False}
-        new_price = float(row.price_large) if size == "large" else float(row.price)
-        if crust:
-            new_price += 100 if size == "large" else 65
-        item["selected_size"] = size
-        item["cheese_crust"] = crust
-        item["price_override"] = round(new_price, 2)
-        item["quantity"] = qty
-
-    elif table in ("fast_food_items", "ice_cream_items"):
-        sv_raw = (form.get("selected_variant") or "").strip()
-        sv = None
-        if sv_raw:
-            try:
-                sv = json.loads(sv_raw)
-            except ValueError:
-                sv = None
-        model = CATEGORY_MODEL_MAP[ProductCategory(table)]
-        row = db.get(model, item_id)
-        if not row:
-            return {"ok": False}
-        price_diff = float(sv.get("price_diff", 0)) if isinstance(sv, dict) else 0.0
-        new_price = float(row.price) + price_diff
-        if sv_raw:
-            item["selected_variant"] = sv_raw
+    if category == "pizza_items":
+        if "selected_size" in form:
+            item["selected_size"] = pizza_size(row, form.get("selected_size"))
+        if "cheese_crust" in form:
+            item["cheese_crust"] = 1 if str(form.get("cheese_crust")) == "1" else 0
+    elif category in ("fast_food_items", "ice_cream_items") and "selected_variant" in form:
+        try:
+            canonical, _ = resolve_variant(row.variant_options, form.get("selected_variant"))
+        except InvalidVariant:
+            return {"ok": False, "error": "invalid_variant"}
+        if canonical:
+            item["selected_variant"] = canonical
         else:
             item.pop("selected_variant", None)
-        item["price_override"] = round(new_price, 2)
-        item["quantity"] = qty
-
-    elif table == "cake_items":
-        weight = max(0.5, float(form.get("weight") or 1.0))
-        row = db.get(CakeItem, item_id)
-        if not row:
-            return {"ok": False}
-        weight = max(float(row.min_weight), weight)
-        new_price = round(weight * float(row.price_per_kg), 2)
-        item["weight"] = weight
-        item["price_override"] = new_price
+    elif category == "cake_items":
+        if "weight" in form:
+            item["weight"] = clamp_cake_weight(row, form.get("weight"))
         item["quantity"] = 1
-        qty = 1
 
-    else:
-        item["quantity"] = qty
-        if item.get("price_override", 0) and float(item["price_override"]) > 0:
-            new_price = float(item["price_override"])
-        else:
-            new_price = get_price(db, table, item_id) or 0.0
+    new_price = unit_price(category, row, item)
+    if category != "sauces":
+        item["price_override"] = new_price
+    qty = int(item.get("quantity", 1))
+
+    # Two lines can now describe the same product+options; fold them together.
+    for j, other in enumerate(cart):
+        if j != index and _same_line(other, item):
+            other["quantity"] = min(99, int(other.get("quantity", 1)) + qty) if category != "cake_items" else 1
+            cart.pop(index)
+            session["cart"] = cart
+            return {
+                "ok": True, "merged": True, "index": j if j < index else j - 1,
+                "new_price": new_price, "new_qty": int(other["quantity"]),
+                "new_subtotal": round(new_price * int(other["quantity"]), 2),
+                "selected_size": other.get("selected_size"),
+                "cheese_crust": int(other["cheese_crust"]) if "cheese_crust" in other else None,
+                "selected_variant": other.get("selected_variant"),
+            }
 
     session["cart"] = cart
     return {
-        "ok": True,
-        "new_price": round(new_price, 2),
-        "new_subtotal": round(new_price * qty, 2),
-        "new_qty": qty,
+        "ok": True, "merged": False, "index": index,
+        "new_price": new_price, "new_qty": qty, "new_subtotal": round(new_price * qty, 2),
         "selected_size": item.get("selected_size"),
         "cheese_crust": int(item["cheese_crust"]) if "cheese_crust" in item else None,
         "selected_variant": item.get("selected_variant"),
     }
 
 
-def update_cart_variant(session: SessionData, category: str, item_id: int, variant: str) -> dict:
-    variant = (variant or "").strip()
-    if category not in VARIANT_UPDATE_CATEGORIES or item_id <= 0 or not variant:
-        return {"ok": False}
-    cart = _get_cart(session)
-    found = None
-    for i, it in enumerate(cart):
-        if it.get("category") == category and int(it.get("id", -1)) == item_id:
-            found = i  # keep scanning — the last match wins
-    if found is None:
-        return {"ok": False}
-    cart[found]["selected_variant"] = variant
-    session["cart"] = cart
-    return {"ok": True}
+def _same_line(a: dict, b: dict) -> bool:
+    return (
+        a.get("category") == b.get("category")
+        and int(a.get("id", -1)) == int(b.get("id", -2))
+        and a.get("selected_size", "small") == b.get("selected_size", "small")
+        and int(a.get("cheese_crust", 0)) == int(b.get("cheese_crust", 0))
+        and (a.get("selected_variant") or None) == (b.get("selected_variant") or None)
+    )
 
 
-def remove_from_cart(session: SessionData, db: Session, session_index: int | None, category: str, item_id: int) -> dict:
-    cart = _get_cart(session)
+def remove_from_cart(session: SessionData, db: Session, session_index: int | None, category: str = "", item_id: int = 0) -> dict:
+    cart = get_cart(session)
     if session_index is not None and 0 <= session_index < len(cart):
         cart.pop(session_index)
     elif category in ALL_CATEGORIES and item_id > 0:
@@ -356,154 +252,173 @@ def remove_from_cart(session: SessionData, db: Session, session_index: int | Non
                 break
     else:
         return {"ok": False}
-
-    cart_total, cart_count = 0.0, 0
-    for ci in cart:
-        if ci.get("category") not in ALL_CATEGORIES:
-            continue
-        price = ci["price_override"] if "price_override" in ci else get_price(db, ci["category"], int(ci["id"]))
-        if price is None:
-            continue
-        cart_total += float(price) * int(ci.get("quantity", 1))
-        cart_count += int(ci.get("quantity", 1))
-
     session["cart"] = cart
-    return {"ok": True, "cart_total": round(cart_total, 2), "cart_count": cart_count}
+    lines = resolve_cart_lines(db, cart)
+    return {
+        "ok": True,
+        "cart_total": round(sum(line["subtotal"] for line in lines), 2),
+        "cart_count": sum(line["quantity"] for line in lines),
+    }
 
 
 def clear_cart(session: SessionData) -> None:
     session["cart"] = []
 
 
+def resolve_cart_lines(db: Session, cart: list[dict], categories: set[str] | None = None) -> list[dict]:
+    """Pair every cart line with its DB row and a freshly computed unit
+    price. Lines whose product no longer exists are skipped."""
+    lines = []
+    for si, it in enumerate(cart):
+        category, item_id = it.get("category"), it.get("id")
+        if category not in ALL_CATEGORIES or not item_id:
+            continue
+        if categories is not None and category not in categories:
+            continue
+        row = _row(db, category, int(item_id))
+        if row is None:
+            continue
+        qty = int(it.get("quantity", 1))
+        price = unit_price(category, row, it)
+        lines.append({
+            "session_index": si, "category": category, "row": row, "line": it,
+            "quantity": qty, "price": price, "subtotal": round(price * qty, 2),
+        })
+    return lines
+
+
 def get_cart_preview(session: SessionData, db: Session) -> dict:
-    cart = _get_cart(session)
     items = []
     total, count = 0.0, 0
-    for si, it in enumerate(cart):
-        cat, item_id, qty = it.get("category", ""), int(it.get("id", 0)), int(it.get("quantity", 1))
-        if cat not in ALL_CATEGORIES or item_id <= 0:
-            continue
-        model = CATEGORY_MODEL_MAP[ProductCategory(cat)]
-        row = db.execute(select(model.name, model.price, model.image).where(model.id == item_id)).first()
-        if not row:
-            continue
-        price = float(it["price_override"]) if "price_override" in it else float(row.price)
+    for line in resolve_cart_lines(db, get_cart(session)):
+        row = line["row"]
         items.append({
-            "session_index": si, "category": cat, "id": item_id,
+            "session_index": line["session_index"], "category": line["category"], "id": row.id,
             "name": row.name, "image": item_img(row.image, prefix=""),
-            "price": round(price, 2), "qty": qty,
+            "price": line["price"], "qty": line["quantity"],
         })
-        total += price * qty
-        count += qty
+        total += line["subtotal"]
+        count += line["quantity"]
     return {"ok": True, "items": items, "total": round(total, 2), "count": count}
 
 
-def get_cart_item(session: SessionData, db: Session, index: int | None, category: str, item_id: int, variant: str, selected_size: str, cheese_crust: int) -> dict:
-    cart = _get_cart(session)
-    cart_entry, cart_index = None, -1
-
-    if index is not None and index >= 0 and index < len(cart):
-        cart_entry, cart_index = cart[index], index
-    else:
-        if category not in CART_ITEM_LOOKUP_CATEGORIES or item_id <= 0:
-            return {"ok": False, "error": "invalid_params"}
-        for si, it in enumerate(cart):
-            if it.get("category") != category or int(it.get("id", 0)) != item_id:
-                continue
-            if variant:
-                if it.get("selected_variant", "") == variant:
-                    cart_entry, cart_index = it, si
-                    break
-            elif category == "pizza_items":
-                if it.get("selected_size", "") == selected_size and int(it.get("cheese_crust", 0)) == cheese_crust:
-                    cart_entry, cart_index = it, si
-                    break
-            else:
-                cart_entry, cart_index = it, si
-                break
-
-    if cart_entry is None:
+def get_cart_item(session: SessionData, db: Session, index: int) -> dict:
+    """Everything the cart page's "edit options" modal needs for one line."""
+    cart = get_cart(session)
+    if index < 0 or index >= len(cart):
         return {"ok": False, "error": "item_not_found"}
-
-    category = cart_entry.get("category", "")
-    item_id = int(cart_entry.get("id", 0))
-    model = CATEGORY_MODEL_MAP[ProductCategory(category)]
-    row = db.get(model, item_id)
-    if not row:
+    entry = cart[index]
+    category = entry.get("category", "")
+    if category not in ALL_CATEGORIES:
+        return {"ok": False, "error": "item_not_found"}
+    row = _row(db, category, int(entry.get("id", 0)))
+    if row is None:
         return {"ok": False, "error": "db_not_found"}
 
     result = {
-        "ok": True, "cart_index": cart_index, "category": category, "id": row.id,
+        "ok": True, "cart_index": index, "category": category, "id": row.id,
         "name": row.name, "desc": getattr(row, "description", "") or "",
         "image": item_img(getattr(row, "image", "") or ""),
         "price": float(getattr(row, "price", 0) or 0),
-        "quantity": int(cart_entry.get("quantity", 1)),
-        "selected_size": cart_entry.get("selected_size"),
-        "cheese_crust": int(cart_entry.get("cheese_crust", 0)),
-        "selected_variant": cart_entry.get("selected_variant"),
-        "weight": float(cart_entry["weight"]) if "weight" in cart_entry else None,
-        "price_override": float(cart_entry["price_override"]) if "price_override" in cart_entry else None,
+        "unit_price": unit_price(category, row, entry),
+        "quantity": int(entry.get("quantity", 1)),
+        "selected_size": entry.get("selected_size"),
+        "cheese_crust": int(entry.get("cheese_crust", 0)),
+        "selected_variant": entry.get("selected_variant"),
+        "weight": float(entry["weight"]) if "weight" in entry else None,
+        "price_large": None, "has_size_choice": None, "variant_options": None,
+        "price_per_kg": None, "min_weight": None,
     }
     if category == "pizza_items":
         result["price_large"] = float(row.price_large or 0)
-        result["has_size_choice"] = int(bool(row.has_size_choice))
+        result["has_size_choice"] = bool(row.has_size_choice)
     if category in ("fast_food_items", "ice_cream_items"):
         result["variant_options"] = row.variant_options
     if category == "cake_items":
         result["price_per_kg"] = float(row.price_per_kg or 0)
         result["min_weight"] = float(row.min_weight or 1)
-
     return result
 
 
-def resolve_cart_items_full(db: Session, cart: list[dict]) -> list[dict]:
-    """Fetches the category-specific column set for each cart line,
-    overlays session-stored overrides (price_override/weight/
-    selected_size/etc.), and computes the per-line subtotal. Used by the
-    full /cart page."""
-    items: list[dict] = []
-    for si, it in enumerate(cart):
-        category, item_id = it.get("category"), it.get("id")
-        if category not in ALL_CATEGORIES or not item_id:
-            continue
-        item_id = int(item_id)
-        model = CATEGORY_MODEL_MAP[ProductCategory(category)]
-        row = db.get(model, item_id)
-        if not row:
-            continue
+def opt_tags(category: str, line: dict, row) -> list[str]:
+    """Short human-readable labels for a line's options ("40 см",
+    "Сирний бортик", "1.5 кг", the chosen filling, ...)."""
+    tags = []
+    if line.get("selected_size") and category in PIZZA_CATEGORIES:
+        tags.append("20 см" if category == "mini_pizza_items" else ("40 см" if line["selected_size"] == "large" else "30 см"))
+    if int(line.get("cheese_crust") or 0):
+        tags.append("Сирний бортик")
+    if int(line.get("takeaway") or 0):
+        tags.append("З собою")
+    if line.get("weight"):
+        tags.append(f"{float(line['weight'])} кг")
+    if category in PIZZA_CATEGORIES and getattr(row, "is_spicy", False):
+        tags.append("Гостра")
+    if category == "coffee_items" and getattr(row, "is_cold", False):
+        tags.append("Холодна")
+    if line.get("selected_variant"):
+        try:
+            sv = json.loads(line["selected_variant"])
+        except ValueError:
+            sv = None
+        if isinstance(sv, dict):
+            if sv.get("type") == "filling":
+                fl = sv.get("filling_label", "")
+                if sv.get("size_label"):
+                    fl += " · " + sv["size_label"]
+                if fl:
+                    tags.append(fl)
+            elif sv.get("type") == "sauce" and sv.get("label"):
+                tags.append(sv["label"])
+            elif "scoop_label" in sv:
+                tags.append(sv["scoop_label"])
+    return tags
 
-        entry = {
-            "id": row.id, "name": row.name,
+
+def item_word(n: int) -> str:
+    n = abs(n) % 100
+    n1 = n % 10
+    if 11 <= n <= 19:
+        return "товарів"
+    if n1 == 1:
+        return "товар"
+    if 2 <= n1 <= 4:
+        return "товари"
+    return "товарів"
+
+
+def build_cart_view(session: SessionData, db: Session) -> dict:
+    """The full cart page: lines grouped by category (mini pizza shows
+    under pizza), totals, and the menu category to go back to."""
+    lines = resolve_cart_lines(db, get_cart(session))
+    items = []
+    for line in lines:
+        row, category = line["row"], line["category"]
+        it = line["line"]
+        show_edit = (category == "pizza_items" and bool(row.has_size_choice)) or (
+            category in ("fast_food_items", "ice_cream_items") and bool(row.variant_options)
+        )
+        items.append({
+            "session_index": line["session_index"], "category": category, "id": row.id,
+            "name": row.name,
             "description": "" if category == "sauces" else (getattr(row, "description", "") or ""),
-            "image": row.image, "price": float(row.price),
-        }
-        if category == "coffee_items":
-            entry["is_cold"] = bool(row.is_cold)
-        elif category == "pizza_items":
-            entry["is_spicy"] = bool(row.is_spicy)
-            entry["has_size_choice"] = bool(row.has_size_choice)
-        elif category == "mini_pizza_items":
-            entry["is_spicy"] = bool(row.is_spicy)
-        elif category in ("fast_food_items", "ice_cream_items"):
-            entry["variant_options"] = row.variant_options
+            "image": item_img(row.image), "price": line["price"], "quantity": line["quantity"],
+            "subtotal": line["subtotal"], "opt_tags": opt_tags(category, it, row),
+            "editable": show_edit, "weight": float(it["weight"]) if "weight" in it else None,
+        })
 
-        qty = int(it.get("quantity", 1))
-        entry["quantity"] = qty
-        entry["category"] = category
-        if "price_override" in it:
-            entry["price"] = float(it["price_override"])
-        if "weight" in it:
-            entry["weight"] = float(it["weight"])
-        if "selected_size" in it:
-            entry["selected_size"] = it["selected_size"]
-        if "cheese_crust" in it:
-            entry["cheese_crust"] = int(it["cheese_crust"])
-        if "takeaway" in it:
-            entry["takeaway"] = int(it["takeaway"])
-        if "selected_variant" in it:
-            entry["selected_variant"] = it["selected_variant"]
+    groups: dict[str, list[dict]] = {}
+    for it in items:
+        key = "pizza_items" if it["category"] == "mini_pizza_items" else it["category"]
+        groups.setdefault(key, []).append(it)
 
-        entry["session_index"] = si
-        entry["subtotal"] = entry["price"] * qty
-        items.append(entry)
-    return items
+    total_q = sum(it["quantity"] for it in items)
+    return {
+        "items": items,
+        "groups": [{"key": k, "label": CAT_LABELS.get(k, k), "items": v} for k, v in groups.items()],
+        "total": round(sum(it["subtotal"] for it in items), 2),
+        "total_qty": total_q,
+        "item_count": len(items),
+        "item_word": item_word(len(items)),
+        "back_category": session.get("lastCategory", "coffee_items"),
+    }

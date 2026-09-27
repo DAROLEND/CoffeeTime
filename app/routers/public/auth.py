@@ -5,8 +5,12 @@ Login checks the `users` table first (by email OR login) and verifies
 the password, then checks whether that login also has an admin_users row
 (a customer account that's also staff); if no `users` row matched at
 all, it falls back to checking `admin_users` directly (an admin-only
-account with no customer-side `users` row). Both paths converge on the
-same "admin session" branch that redirects to /admin/dashboard.
+account with no customer-side `users` row). Both admin paths return
+`kind: "admin"` and the SPA goes to /admin/dashboard.
+
+A successful login rotates the session id (see
+app/middleware/session.py), so a session id planted before login is
+useless afterwards.
 """
 from __future__ import annotations
 
@@ -15,206 +19,215 @@ import json
 import re
 import secrets
 
-from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.errors import ApiError, bad_request
+from app.config import get_settings
 from app.db.session import get_db
 from app.dependencies import require_user
 from app.models.auth import AdminUser, PasswordReset, User
-from app.services.auth import (
-    hash_password, is_locked_out, record_failed_attempt, verify_password,
+from app.schemas.auth import (
+    ChangePasswordRequest, ForgotRequest, LoginInfo, LoginRequest, LoginResult,
+    MessageResponse, RegisterRequest, ResetRequest, ResetTokenInfo,
 )
-from app.services.csrf import CSRFError, verify_csrf
+from app.schemas.common import OkResponse
+from app.services.auth import hash_password, is_locked_out, record_failed_attempt, verify_password
 from app.services.mail import send_html_email
-from app.templating import render
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 REMEMBER_COOKIE = "remember_me"
 LOCK_MINUTES = 15
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "0.0.0.0"
 
 
-@router.get("/login")
-def login_page(request: Request, db: Session = Depends(get_db)):
+def _set_admin_session(request: Request, admin_row: AdminUser) -> None:
     session = request.state.session
-    if session.get("admin"):
-        return RedirectResponse("/admin/dashboard", status_code=302)
-    from_admin = "/admin/" in (request.headers.get("referer") or "")
-    if session.get("user") and not from_admin:
-        return RedirectResponse("/", status_code=302)
-
-    ip = _client_ip(request)
-    is_locked = is_locked_out(db, ip)
-    return render(
-        request, "public/login.html", page="login", page_title="Авторизація — Coffee Time",
-        error="", is_locked=is_locked, lock_minutes=LOCK_MINUTES,
-        remembered_email=request.cookies.get(REMEMBER_COOKIE, ""),
-    )
-
-
-@router.post("/login")
-async def login_submit(request: Request, db: Session = Depends(get_db)):
-    try:
-        await verify_csrf(request)
-    except CSRFError as exc:
-        request.state.session["flash_error"] = exc.message
-        return RedirectResponse("/login", status_code=303)
-
-    session = request.state.session
-    form = await request.form()
-    email_or_login = (form.get("email") or "").strip()
-    password = (form.get("password") or "").strip()
-    remember = "remember" in form
-
-    ip = _client_ip(request)
-    is_locked = is_locked_out(db, ip)
-    error = ""
-
-    if is_locked:
-        error = f"Забагато невдалих спроб. Спробуйте через {LOCK_MINUTES} хвилин."
-    elif not email_or_login or not password:
-        error = "Будь ласка, заповніть усі поля!"
-    else:
-        user = db.execute(
-            select(User).where((User.email == email_or_login) | (User.login == email_or_login))
-        ).scalar_one_or_none()
-
-        if user is not None:
-            if verify_password(password, user.password):
-                admin_row = db.execute(
-                    select(AdminUser).where(AdminUser.username == user.login)
-                ).scalar_one_or_none()
-
-                if admin_row:
-                    _set_admin_session(session, admin_row)
-                    resp = RedirectResponse("/admin/dashboard", status_code=302)
-                    return resp
-
-                session["user"] = {
-                    "client_id": user.client_id, "login": user.login, "email": user.email,
-                    "client_name": user.client_name, "client_surname": user.client_surname,
-                    "client_PhoneNumber": user.client_PhoneNumber,
-                }
-                redirect_to = session.pop("redirect_after_login", "/")
-                resp = RedirectResponse(redirect_to, status_code=302)
-                if remember:
-                    resp.set_cookie(REMEMBER_COOKIE, email_or_login, max_age=7 * 24 * 3600, path="/")
-                return resp
-            else:
-                error = "Невірний пароль."
-                record_failed_attempt(db, ip)
-        else:
-            admin_row = db.execute(
-                select(AdminUser).where(AdminUser.username == email_or_login)
-            ).scalar_one_or_none()
-            if admin_row and verify_password(password, admin_row.password):
-                _set_admin_session(session, admin_row)
-                return RedirectResponse("/admin/dashboard", status_code=302)
-            error = "Користувача не знайдено."
-            record_failed_attempt(db, ip)
-
-    return render(
-        request, "public/login.html", page="login", page_title="Авторизація — Coffee Time",
-        error=error, is_locked=is_locked, lock_minutes=LOCK_MINUTES,
-        remembered_email=request.cookies.get(REMEMBER_COOKIE, ""),
-    )
-
-
-def _set_admin_session(session, admin_row: AdminUser) -> None:
+    session.pop("user", None)
     session["admin"] = admin_row.username
     session["admin_role"] = admin_row.role.value if hasattr(admin_row.role, "value") else admin_row.role
     try:
         session["admin_perms"] = json.loads(admin_row.permissions or "[]")
     except ValueError:
         session["admin_perms"] = []
+    request.state.rotate_session = True
 
 
-@router.get("/register")
-def register_page(request: Request):
-    if request.state.session.get("user"):
-        return RedirectResponse("/", status_code=302)
-    return render(request, "public/register.html", page="register", page_title="Реєстрація — Coffee Time", errors=[], success=False, form={})
+def _locked_error() -> ApiError:
+    return ApiError(429, f"Забагато невдалих спроб. Спробуйте через {LOCK_MINUTES} хвилин.", code="locked")
 
 
-@router.post("/register")
-async def register_submit(request: Request, db: Session = Depends(get_db)):
-    try:
-        await verify_csrf(request)
-    except CSRFError as exc:
-        request.state.session["flash_error"] = exc.message
-        return RedirectResponse("/register", status_code=303)
+@router.get("/login-info", response_model=LoginInfo)
+def login_info(request: Request, db: Session = Depends(get_db)):
+    return {
+        "is_locked": is_locked_out(db, _client_ip(request)),
+        "lock_minutes": LOCK_MINUTES,
+        "remembered_email": request.cookies.get(REMEMBER_COOKIE, ""),
+    }
 
-    form = await request.form()
-    email = (form.get("email") or "").strip()
-    login = (form.get("login") or "").strip()
-    password = form.get("password") or ""
-    confirm = form.get("confirm") or ""
+
+@router.post("/login", response_model=LoginResult)
+def login(body: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    session = request.state.session
+    email_or_login = body.login.strip()
+    password = body.password.strip()
+    ip = _client_ip(request)
+
+    if is_locked_out(db, ip):
+        raise _locked_error()
+    if not email_or_login or not password:
+        raise bad_request("Будь ласка, заповніть усі поля!", code="missing_fields")
+
+    user = db.execute(
+        select(User).where((User.email == email_or_login) | (User.login == email_or_login))
+    ).scalar_one_or_none()
+
+    if user is not None:
+        if not verify_password(password, user.password):
+            record_failed_attempt(db, ip)
+            raise bad_request("Невірний пароль.", code="invalid_credentials")
+        admin_row = db.execute(select(AdminUser).where(AdminUser.username == user.login)).scalar_one_or_none()
+        if admin_row:
+            _set_admin_session(request, admin_row)
+            return {"kind": "admin", "redirect": "/admin/dashboard"}
+
+        session["user"] = {
+            "client_id": user.client_id, "login": user.login, "email": user.email,
+            "client_name": user.client_name, "client_surname": user.client_surname,
+            "client_PhoneNumber": user.client_PhoneNumber,
+        }
+        request.state.rotate_session = True
+        if body.remember:
+            response.set_cookie(REMEMBER_COOKIE, email_or_login, max_age=7 * 24 * 3600, path="/", samesite="lax")
+        else:
+            response.delete_cookie(REMEMBER_COOKIE, path="/")
+        return {"kind": "user", "redirect": session.pop("redirect_after_login", "/")}
+
+    admin_row = db.execute(select(AdminUser).where(AdminUser.username == email_or_login)).scalar_one_or_none()
+    if admin_row and verify_password(password, admin_row.password):
+        _set_admin_session(request, admin_row)
+        return {"kind": "admin", "redirect": "/admin/dashboard"}
+    record_failed_attempt(db, ip)
+    raise bad_request("Користувача не знайдено.", code="invalid_credentials")
+
+
+@router.post("/register", response_model=MessageResponse, status_code=201)
+def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    email = body.email.strip()
+    login = body.login.strip()
 
     errors = []
-    if not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+    if not email or not EMAIL_RE.match(email):
         errors.append("Введіть коректну електронну пошту.")
     if len(login) < 3:
         errors.append("Логін має містити щонайменше 3 символи.")
-    if len(password) < 6:
+    if len(body.password) < 6:
         errors.append("Пароль має містити принаймні 6 символів.")
-    if password != confirm:
+    if body.password != body.confirm:
         errors.append("Паролі не співпадають.")
-
     if not errors:
-        existing = db.execute(
-            select(User).where((User.login == login) | (User.email == email))
-        ).scalar_one_or_none()
+        existing = db.execute(select(User.client_id).where((User.login == login) | (User.email == email))).first()
         if existing:
             errors.append("Користувач із таким логіном або email вже існує.")
+    if errors:
+        raise bad_request(errors[0], code="validation", errors=errors)
 
-    success = False
-    if not errors:
-        db.add(User(email=email, login=login, password=hash_password(password)))
-        db.commit()
-        success = True
-
-    return render(
-        request, "public/register.html", page="register", page_title="Реєстрація — Coffee Time",
-        errors=errors, success=success, form={"email": email, "login": login},
-    )
+    db.add(User(email=email, login=login, password=hash_password(body.password)))
+    db.commit()
+    return {"ok": True, "message": "Реєстрація успішна! Тепер ви можете увійти."}
 
 
-@router.get("/forgot")
-def forgot_page(request: Request):
-    return render(request, "public/forgot.html", page="forgot", page_title="Відновлення пароля — Coffee Time", error="", success=False)
-
-
-@router.post("/forgot")
-async def forgot_submit(request: Request, db: Session = Depends(get_db)):
-    from app.config import get_settings
-
-    form = await request.form()
-    email = (form.get("email") or "").strip()
-    error, success = "", False
-
+@router.post("/forgot", response_model=MessageResponse)
+def forgot(body: ForgotRequest, db: Session = Depends(get_db)):
+    email = body.email.strip()
     if not email:
-        error = "Будь ласка, введіть вашу електронну пошту."
-    elif not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
-        error = "Неправильний формат електронної пошти."
-    else:
-        user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
-        if user:
-            token = secrets.token_hex(32)
-            expires = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
-            db.add(PasswordReset(email=email, token=token, expires_at=expires))
-            db.commit()
+        raise bad_request("Будь ласка, введіть вашу електронну пошту.")
+    if not EMAIL_RE.match(email):
+        raise bad_request("Неправильний формат електронної пошти.")
 
-            settings = get_settings()
-            base_url = (settings.APP_URL or "http://localhost").rstrip("/")
-            reset_link = f"{base_url}/reset?token={token}"
-            from_name = settings.MAIL_FROM_NAME or "Coffee Time"
-            html_body = f"""<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"></head>
+    user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+    if user is None:
+        # No user enumeration: the same answer whether or not the email exists.
+        return {"ok": True, "message": "Лист надіслано"}
+
+    token = secrets.token_hex(32)
+    db.add(PasswordReset(email=email, token=token, expires_at=datetime.datetime.utcnow() + datetime.timedelta(hours=1)))
+    db.commit()
+
+    settings = get_settings()
+    reset_link = f"{(settings.APP_URL or 'http://localhost').rstrip('/')}/reset?token={token}"
+    html_body, alt_body = _reset_email(reset_link, settings.MAIL_FROM_NAME or "Coffee Time")
+    if not send_html_email(email, "Відновлення пароля — Coffee Time", html_body, alt_body):
+        raise ApiError(502, "Не вдалося надіслати листа. Спробуйте пізніше.", code="mail_failed")
+    return {"ok": True, "message": "Лист надіслано"}
+
+
+def _reset_row(db: Session, token: str) -> tuple[PasswordReset | None, str]:
+    token = token.strip()
+    if not token:
+        return None, "Токен не вказано."
+    row = db.execute(select(PasswordReset).where(PasswordReset.token == token)).scalar_one_or_none()
+    if row is None:
+        return None, "Недійсне або вже використане посилання."
+    if row.expires_at < datetime.datetime.utcnow():
+        return row, "Термін дії посилання вичерпано. Запросіть нове."
+    return row, ""
+
+
+@router.get("/reset", response_model=ResetTokenInfo)
+def reset_info(token: str = "", db: Session = Depends(get_db)):
+    row, error = _reset_row(db, token)
+    return {"valid": not error, "email": row.email if row else "", "error": error}
+
+
+@router.post("/reset", response_model=MessageResponse)
+def reset_password(body: ResetRequest, db: Session = Depends(get_db)):
+    row, error = _reset_row(db, body.token)
+    if error:
+        raise bad_request(error, code="invalid_token")
+    if len(body.password) < 6:
+        raise bad_request("Пароль повинен містити щонайменше 6 символів.")
+    if body.password != body.confirm:
+        raise bad_request("Паролі не співпадають.")
+    db.execute(User.__table__.update().where(User.email == row.email).values(password=hash_password(body.password)))
+    db.execute(PasswordReset.__table__.delete().where(PasswordReset.token == row.token))
+    db.commit()
+    return {"ok": True, "message": "Пароль змінено"}
+
+
+@router.post("/change-password", response_model=MessageResponse)
+def change_password(body: ChangePasswordRequest, db: Session = Depends(get_db), user: dict = Depends(require_user)):
+    if not body.current_password or not body.new_password or not body.confirm_password:
+        raise bad_request("Заповніть усі поля.")
+    if len(body.new_password) < 6:
+        raise bad_request("Новий пароль має містити принаймні 6 символів.")
+    if body.new_password != body.confirm_password:
+        raise bad_request("Нові паролі не збігаються.")
+    db_user = db.get(User, user["client_id"])
+    if db_user is None:
+        raise bad_request("Користувача не знайдено.")
+    if not verify_password(body.current_password, db_user.password):
+        raise bad_request("Неправильний поточний пароль.", code="invalid_credentials")
+    db_user.password = hash_password(body.new_password)
+    db.commit()
+    return {"ok": True, "message": "Пароль успішно змінено."}
+
+
+@router.post("/logout", response_model=OkResponse)
+def logout(request: Request):
+    request.state.session.clear()
+    request.state.rotate_session = True
+    return {"ok": True}
+
+
+def _reset_email(reset_link: str, from_name: str) -> tuple[str, str]:
+    html_body = f"""<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#faf7f2;font-family:'Helvetica Neue',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f2;padding:32px 16px;">
 <tr><td align="center"><table width="100%" style="max-width:520px;background:#fff;border-radius:16px;border:1px solid #f0e8df;overflow:hidden;">
@@ -228,117 +241,5 @@ async def forgot_submit(request: Request, db: Session = Depends(get_db)):
 <p style="margin:0;font-size:12px;color:#aaa;text-align:center;line-height:1.6;">Якщо ви не надсилали цей запит — просто ігноруйте цей лист.<br>Ваш пароль залишиться незмінним.</p></td></tr>
 <tr><td style="padding:16px 32px;border-top:1px solid #f0e8df;text-align:center;"><p style="margin:0;font-size:12px;color:#bbb;">Маєте питання? Ми завжди поруч ☕</p></td></tr>
 </table></td></tr></table></body></html>"""
-            alt_body = f"Щоб скинути пароль, перейдіть за посиланням: {reset_link}\n\nПосилання дійсне 1 годину."
-            if not send_html_email(email, "Відновлення пароля — Coffee Time", html_body, alt_body):
-                error = "Не вдалося надіслати листа. Спробуйте пізніше."
-            else:
-                success = True
-        else:
-            success = True  # no user-enumeration: always report success
-
-    return render(request, "public/forgot.html", page="forgot", page_title="Відновлення пароля — Coffee Time", error=error, success=success)
-
-
-@router.get("/reset")
-def reset_page(request: Request, token: str = "", db: Session = Depends(get_db)):
-    error, success, email = "", False, ""
-    token = token.strip()
-    if not token:
-        error = "Токен не вказано."
-    else:
-        row = db.execute(select(PasswordReset).where(PasswordReset.token == token)).scalar_one_or_none()
-        if row:
-            email = row.email
-            if row.expires_at < datetime.datetime.utcnow():
-                error = "Термін дії посилання вичерпано. Запросіть нове."
-        else:
-            error = "Недійсне або вже використане посилання."
-
-    return render(
-        request, "public/reset.html", page="reset", page_title="Новий пароль — Coffee Time",
-        error=error, success=success, email=email, token=token,
-    )
-
-
-@router.post("/reset")
-async def reset_submit(request: Request, token: str = "", db: Session = Depends(get_db)):
-    form = await request.form()
-    token = token.strip()
-    password = form.get("password") or ""
-    confirm = form.get("confirm") or ""
-    error, success, email = "", False, ""
-
-    row = db.execute(select(PasswordReset).where(PasswordReset.token == token)).scalar_one_or_none()
-    if not row:
-        error = "Недійсне або вже використане посилання."
-    else:
-        email = row.email
-        if row.expires_at < datetime.datetime.utcnow():
-            error = "Термін дії посилання вичерпано. Запросіть нове."
-        elif len(password) < 6:
-            error = "Пароль повинен містити щонайменше 6 символів."
-        elif password != confirm:
-            error = "Паролі не співпадають."
-        else:
-            db.execute(
-                User.__table__.update().where(User.email == email).values(password=hash_password(password))
-            )
-            db.execute(PasswordReset.__table__.delete().where(PasswordReset.token == token))
-            db.commit()
-            success = True
-
-    return render(
-        request, "public/reset.html", page="reset", page_title="Новий пароль — Coffee Time",
-        error=error, success=success, email=email, token=token,
-    )
-
-
-@router.get("/logout")
-def logout(request: Request):
-    request.state.session.clear()
-    return RedirectResponse("/", status_code=302)
-
-
-@router.get("/change-password")
-def change_password_page(request: Request, user: dict = Depends(require_user)):
-    return render(
-        request, "public/change_password.html", page="change_password",
-        page_title="Зміна паролю — Coffee Time", success_message="", error_message="",
-    )
-
-
-@router.post("/change-password")
-async def change_password_submit(request: Request, db: Session = Depends(get_db), user: dict = Depends(require_user)):
-    try:
-        await verify_csrf(request)
-    except CSRFError as exc:
-        request.state.session["flash_error"] = exc.message
-        return RedirectResponse("/change-password", status_code=303)
-
-    form = await request.form()
-    current_password = form.get("current_password") or ""
-    new_password = form.get("new_password") or ""
-    confirm_password = form.get("confirm_password") or ""
-
-    success_message, error_message = "", ""
-    if not current_password or not new_password or not confirm_password:
-        error_message = "Заповніть усі поля."
-    elif len(new_password) < 6:
-        error_message = "Новий пароль має містити принаймні 6 символів."
-    elif new_password != confirm_password:
-        error_message = "Нові паролі не збігаються."
-    else:
-        db_user = db.get(User, user["client_id"])
-        if not db_user:
-            error_message = "Користувача не знайдено."
-        elif not verify_password(current_password, db_user.password):
-            error_message = "Неправильний поточний пароль."
-        else:
-            db_user.password = hash_password(new_password)
-            db.commit()
-            success_message = "Пароль успішно змінено."
-
-    return render(
-        request, "public/change_password.html", page="change_password",
-        page_title="Зміна паролю — Coffee Time", success_message=success_message, error_message=error_message,
-    )
+    alt_body = f"Щоб скинути пароль, перейдіть за посиланням: {reset_link}\n\nПосилання дійсне 1 годину."
+    return html_body, alt_body

@@ -8,6 +8,9 @@ Policy:
   someone has to remember to flip
 - 30-minute idle timeout -> regenerate the session id (data carried over)
 - 1-hour hard lifetime
+- a route can set `request.state.rotate_session = True` (login, logout) to
+  get a fresh session id at the end of the request, which defeats
+  session fixation
 """
 from __future__ import annotations
 
@@ -92,6 +95,14 @@ class DBSessionMiddleware(BaseHTTPMiddleware):
             request.state.session = session
 
             response = await call_next(request)
+
+            if getattr(request.state, "rotate_session", False):
+                old = db.get(AppSession, session_id)
+                if old is not None:
+                    db.delete(old)
+                    db.commit()
+                session_id = secrets.token_hex(32)
+                regenerate = True
 
             if session.dirty or regenerate or row is None:
                 existing = db.get(AppSession, session_id)

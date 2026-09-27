@@ -18,7 +18,7 @@ _STATUS_LABELS = {"processing": "В обробці", "ready": "Готово", "d
 PREVIEW_CATEGORIES = {
     "coffee_items", "fast_food_items", "pizza_items", "cold_drink_items",
     "dessert_items", "sushi_items", "sushi_sets", "salad_items", "cake_items",
-    "ice_cream_items", "mini_pizza_items",
+    "ice_cream_items", "mini_pizza_items", "sauces",
 }
 
 

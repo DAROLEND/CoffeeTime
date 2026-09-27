@@ -1,11 +1,20 @@
 """
-CSRF token generation and verification.
+CSRF protection for the SPA.
 
-`verify_csrf` raises `CSRFError` on failure rather than building a
-response itself, since a FastAPI dependency can't "exit early" with a
-custom response; app.main installs an exception handler
-(csrf_error_handler) that returns a JSON 403 for AJAX requests or a
-flash + redirect otherwise.
+The token lives in the server-side session, as before. The SPA reads it
+once from `GET /api/csrf-token` and sends it back in an `X-CSRF-Token`
+header on every mutating request (the old form field is gone). The
+check itself is unchanged: a constant-time compare against the session
+copy.
+
+`verify_csrf` is a dependency on the whole `/api` router (see
+app/api/router.py), so a new endpoint is covered by default. It raises
+CSRFError instead of building a response, and app/main.py maps that to a
+403 with a `code` the client uses to fetch a fresh token and retry once.
+
+A header works as a CSRF defence here because a cross-site page can't
+set custom headers on a credentialed request without a CORS preflight,
+and the API allows no cross-origin callers.
 """
 from __future__ import annotations
 
@@ -17,6 +26,8 @@ from starlette.requests import Request
 from app.middleware.session import SessionData
 
 CSRF_SESSION_KEY = "csrf_token"
+CSRF_HEADER = "x-csrf-token"
+MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 class CSRFError(Exception):
@@ -34,30 +45,15 @@ def csrf_token(session: SessionData) -> str:
     return token
 
 
-def csrf_field(session: SessionData) -> str:
-    token = csrf_token(session)
-    return f'<input type="hidden" name="csrf_token" value="{token}">'
-
-
-def is_ajax(request: Request) -> bool:
-    return request.headers.get("x-requested-with", "").lower() == "xmlhttprequest"
-
-
 async def verify_csrf(request: Request) -> None:
-    """Raise CSRFError on failure; call explicitly (as a FastAPI
-    dependency) on every state-mutating route."""
-    if request.method != "POST":
+    """Raise CSRFError unless a mutating request carries the session's
+    token in the X-CSRF-Token header. Safe methods pass through."""
+    if request.method not in MUTATING_METHODS:
         return
 
     session: SessionData = request.state.session
     expected = session.get(CSRF_SESSION_KEY, "")
-
-    if request.headers.get("content-type", "").startswith("application/json"):
-        body = await request.json()
-        submitted = body.get("csrf_token", "")
-    else:
-        form = await request.form()
-        submitted = form.get("csrf_token") or request.headers.get("x-csrf-token", "")
+    submitted = request.headers.get(CSRF_HEADER, "")
 
     if not expected:
         csrf_token(session)  # seed one for the retry

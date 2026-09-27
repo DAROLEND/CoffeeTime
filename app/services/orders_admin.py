@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.constants.categories import CATEGORY_MODEL_MAP, ProductCategory
 from app.models.orders import Order, OrderItem, OrderRating
+from app.services.media import item_img
 
 STATUS_LABELS = {"new": "Нове", "processing": "В обробці", "ready": "Готово", "done": "Виконано", "cancelled": "Скасовано"}
 NEXT_LABELS = {"processing": "→ В обробці", "ready": "→ Готово", "done": "✓ Виконано", "cancelled": "✕ Скасувати"}
@@ -30,6 +31,7 @@ SIZED_CATEGORIES = {"pizza_items", "mini_pizza_items", "sushi_sets"}
 ORDER_ITEM_LOOKUP_CATEGORIES = {
     "coffee_items", "fast_food_items", "pizza_items", "mini_pizza_items", "cold_drink_items",
     "dessert_items", "sushi_items", "sushi_sets", "salad_items", "cake_items", "ice_cream_items",
+    "sauces",
 }
 
 
@@ -64,7 +66,10 @@ def _decode_variant_opts(item: dict) -> list[str]:
     opts = []
     raw_size = (item.get("selected_size") or "").strip()
     if raw_size and item.get("category") in SIZED_CATEGORIES:
-        opts.append(SIZE_LABELS.get(raw_size.lower(), raw_size))
+        if item.get("category") == "mini_pizza_items":
+            opts.append("20 см")
+        elif item.get("category") == "pizza_items":
+            opts.append(SIZE_LABELS.get(raw_size.lower(), raw_size))
     if item.get("cheese_crust"):
         opts.append("Сирні бортики")
     raw_variant = (item.get("selected_variant") or "").strip()
@@ -81,8 +86,10 @@ def _decode_variant_opts(item: dict) -> list[str]:
                 parts.append(d["size_label"])
             if not parts and d.get("scoop_label"):
                 parts.append(d["scoop_label"])
+            if d.get("type") == "sauce" and d.get("label"):
+                parts.append(d["label"])
             if isinstance(d.get("sauces"), list):
-                parts.append(", ".join(str(s) for s in d["sauces"]))
+                parts.append(", ".join(str(s.get("name", "")) if isinstance(s, dict) else str(s) for s in d["sauces"]))
             if parts:
                 opts.append(" · ".join(parts))
         else:
@@ -105,7 +112,8 @@ def resolve_order_items_for_display(db: Session, order_id: int) -> list[dict]:
                 raw_img = product.image or ""
                 image = "" if (not raw_img or raw_img == "static/images/menu_items/default.jpg") else raw_img
         item = {
-            "product_name": name, "product_image": image, "category": row.category,
+            "product_name": name, "product_image": image, "product_image_url": item_img(image),
+            "category": row.category,
             "quantity": row.quantity, "price": float(row.price),
             "selected_size": row.selected_size, "cheese_crust": row.cheese_crust,
             "selected_variant": row.selected_variant,

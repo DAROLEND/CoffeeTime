@@ -1,12 +1,10 @@
-"""The full menu catalog page: category tabs, client-side filter bar, and
-per-item detail modal. The modal/filter JS itself is static/js/menu.js;
-this route's job is to emit the data-* attributes that script depends on."""
+"""The menu catalog: every category's cards in one response (the SPA
+switches tabs and searches across categories without refetching), plus
+a single-category endpoint. Card flags/prices come from
+app/services/menu.build_card_context."""
 from __future__ import annotations
 
-import json
-
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,10 +13,13 @@ from app.models.catalog import (
     CakeItem, CoffeeItem, ColdDrinkItem, DessertItem, FastFoodItem,
     IceCreamItem, MiniPizzaItem, PizzaItem, SaladItem, Sauce, SushiItem, SushiSet,
 )
+from app.api.errors import not_found
+from app.schemas.menu import MenuCard, MenuResponse
+from app.services.item_labels import SUB_CATEGORY_PARENT
+from app.services.media import item_img
 from app.services.menu import build_card_context, parse_ing_tags
-from app.templating import render
 
-router = APIRouter()
+router = APIRouter(prefix="/menu", tags=["menu"])
 
 TABLES = {
     "coffee_items": "Кава",
@@ -63,18 +64,8 @@ def _rows(db: Session, *cols, order_by) -> list[dict]:
     return [dict(r) for r in db.execute(select(*cols).order_by(order_by)).mappings().all()]
 
 
-@router.get("/menu")
-def menu_page(request: Request, category: str | None = None, scroll_to: int = 0, db: Session = Depends(get_db)):
-    if category == "mini_pizza_items":
-        return RedirectResponse("/menu?category=pizza_items", status_code=302)
-    if category == "ice_cream_items":
-        return RedirectResponse("/menu?category=dessert_items", status_code=302)
-
-    current = category if category in TABLES else next(iter(TABLES))
-
+def _load_all(db: Session) -> dict[str, list[dict]]:
     all_items: dict[str, list[dict]] = {}
-    counts: dict[str, int] = {}
-
     all_items["coffee_items"] = _rows(db, CoffeeItem.id, CoffeeItem.name, CoffeeItem.description, CoffeeItem.image, CoffeeItem.price, CoffeeItem.is_cold, CoffeeItem.popularity, order_by=CoffeeItem.id)
     all_items["cold_drink_items"] = _rows(db, ColdDrinkItem.id, ColdDrinkItem.name, ColdDrinkItem.description, ColdDrinkItem.image, ColdDrinkItem.price, ColdDrinkItem.popularity, order_by=ColdDrinkItem.id)
     all_items["pizza_items"] = _rows(db, PizzaItem.id, PizzaItem.name, PizzaItem.description, PizzaItem.image, PizzaItem.price, PizzaItem.price_large, PizzaItem.sauce_type, PizzaItem.is_spicy, PizzaItem.has_size_choice, PizzaItem.ingredients_tags, PizzaItem.popularity, order_by=PizzaItem.id)
@@ -87,21 +78,71 @@ def menu_page(request: Request, category: str | None = None, scroll_to: int = 0,
     all_items["fast_food_items"] = _rows(db, FastFoodItem.id, FastFoodItem.name, FastFoodItem.description, FastFoodItem.image, FastFoodItem.price, FastFoodItem.variant_options, FastFoodItem.popularity, order_by=FastFoodItem.id)
     all_items["sushi_items"] = _rows(db, SushiItem.id, SushiItem.name, SushiItem.description, SushiItem.image, SushiItem.price, SushiItem.weight, SushiItem.popularity, order_by=SushiItem.id)
     all_items["sushi_sets"] = _rows(db, SushiSet.id, SushiSet.name, SushiSet.description, SushiSet.image, SushiSet.price, SushiSet.weight, SushiSet.pieces_count, SushiSet.popularity, order_by=SushiSet.id)
-
-    for tbl in TABLES:
-        if tbl == "sauces":
-            continue
-        counts[tbl] = len(all_items.get(tbl, []))
-
-    # Ice cream (merged into desserts section)
+    # Ice cream is shown inside the desserts tab, mini pizza inside pizza.
     all_items["ice_cream_items"] = _rows(db, IceCreamItem.id, IceCreamItem.name, IceCreamItem.description, IceCreamItem.image, IceCreamItem.price, IceCreamItem.variant_options, IceCreamItem.popularity, order_by=IceCreamItem.id)
-    counts["ice_cream_items"] = len(all_items["ice_cream_items"])
-
-    # Mini pizza (merged into pizza section)
     all_items["mini_pizza_items"] = _rows(db, MiniPizzaItem.id, MiniPizzaItem.name, MiniPizzaItem.description, MiniPizzaItem.image, MiniPizzaItem.price, MiniPizzaItem.sauce_type, MiniPizzaItem.is_spicy, MiniPizzaItem.ingredients_tags, MiniPizzaItem.popularity, order_by=MiniPizzaItem.id)
-    counts["mini_pizza_items"] = len(all_items["mini_pizza_items"])
+    all_items["sauces"] = [{**s, "description": "", "popularity": 0} for s in _active_sauces(db)]
+    return all_items
 
-    # Ingredient chips for pizza filter
+
+def _active_sauces(db: Session) -> list[dict]:
+    return [dict(s) for s in db.execute(
+        select(Sauce.id, Sauce.name, Sauce.price, Sauce.image, Sauce.emoji)
+        .where(Sauce.active == True)  # noqa: E712
+        .order_by(Sauce.sort_order)
+    ).mappings().all()]
+
+
+def _card(item: dict, tbl: str, label: str, idx: int) -> MenuCard:
+    c = build_card_context(item, tbl, label, set(), idx)
+    return MenuCard(
+        id=c["id"], category=tbl, label=label, name=c["name"], description=c["description"], order=idx,
+        image=c["img_src"], price=c["price"], popularity=c["popularity"],
+        is_pizza=c["is_pizza"], is_mini_pizza=c["is_mini_pizza"], is_pizza_type=c["is_pizza_type"],
+        is_fast_food=c["is_fast_food"], is_cold_coffee=c["is_cold_coffee"], is_ice_cream=c["is_ice_cream"],
+        is_sushi=c["is_sushi"], is_sushi_set=c["is_sushi_set"], sushi_tags=c["sushi_tags"],
+        has_fast_food_size=c["has_fast_food_size"], has_sauce_variant=c["has_sauce_variant"],
+        has_ice_cream_scoop=c["has_ice_cream_scoop"], ff_small_price=c["ff_small_price"],
+        ff_large_price=c["ff_large_price"], ff_size_str=c["ff_size_str"], has_size=c["has_size"],
+        price_large=c["price_large"], sauce_type=str(getattr(c["sauce_type"], "value", c["sauce_type"]) or ""),
+        is_spicy=c["is_spicy"], tags=c["tags_arr"], price_per_kg=c["price_per_kg"], min_weight=c["min_weight"],
+        variant_options=c["variant_options"],
+    )
+
+
+def _sections(all_items: dict[str, list[dict]]) -> dict[str, list[MenuCard]]:
+    """One list of cards per tab, in display order; `order` is a global
+    running index the client's "default" sort restores."""
+    sections: dict[str, list[MenuCard]] = {}
+    idx = 0
+    for tbl, label in TABLES.items():
+        cards = []
+        for item in all_items.get(tbl, []):
+            cards.append(_card(item, tbl, label, idx))
+            idx += 1
+        extra = {"pizza_items": ("mini_pizza_items", "Міні-піца"), "dessert_items": ("ice_cream_items", "Морозиво")}.get(tbl)
+        if extra:
+            for item in all_items[extra[0]]:
+                cards.append(_card(item, extra[0], extra[1], idx))
+                idx += 1
+        sections[tbl] = cards
+    return sections
+
+
+def resolve_current(category: str | None) -> str:
+    category = SUB_CATEGORY_PARENT.get(category or "", category)
+    return category if category in TABLES else next(iter(TABLES))
+
+
+@router.get("", response_model=MenuResponse)
+def menu(category: str | None = None, db: Session = Depends(get_db)):
+    """The whole menu. `category` only selects the initially active tab
+    (mini pizza/ice cream resolve to their parent tab)."""
+    current = resolve_current(category)
+    all_items = _load_all(db)
+    sections = _sections(all_items)
+
+    # Ingredient chips for the pizza filter
     all_ing_tags: list[str] = []
     for pi in all_items["pizza_items"] + all_items["mini_pizza_items"]:
         for t in parse_ing_tags(pi.get("ingredients_tags")):
@@ -109,66 +150,26 @@ def menu_page(request: Request, category: str | None = None, scroll_to: int = 0,
                 all_ing_tags.append(t)
     all_ing_tags.sort()
 
-    # Sauces (add-on modal + standalone menu section)
-    sauces = [dict(s) for s in db.execute(
-        select(Sauce.id, Sauce.name, Sauce.price, Sauce.image, Sauce.emoji)
-        .where(Sauce.active == True)  # noqa: E712
-        .order_by(Sauce.sort_order)
-    ).mappings().all()]
-    all_items["sauces"] = [{**s, "description": "", "popularity": 0} for s in sauces]
-    counts["sauces"] = len(all_items["sauces"])
+    current_group = next((gid for gid, g in GROUPS.items() if current in g["cats"]), "drinks")
 
-    cart = request.state.session.get("cart", [])
-    cart_keys = {f"{ci['category']}_{ci['id']}" for ci in cart if "category" in ci and "id" in ci}
-
-    current_group = "drinks"
-    for gid, g in GROUPS.items():
-        if current in g["cats"]:
-            current_group = gid
-            break
-
-    # Build render-ready card contexts per section
-    cards_by_tbl: dict[str, list[dict]] = {}
-    card_idx = 0
-    for tbl, label in TABLES.items():
-        cards = []
-        for item in all_items.get(tbl, []):
-            cards.append(build_card_context(item, tbl, label, cart_keys, card_idx))
-            card_idx += 1
-        cards_by_tbl[tbl] = cards
-        if tbl == "pizza_items":
-            mini_cards = []
-            for item in all_items["mini_pizza_items"]:
-                mini_cards.append(build_card_context(item, "mini_pizza_items", "Міні-піца", cart_keys, card_idx))
-                card_idx += 1
-            cards_by_tbl["pizza_items"] += mini_cards
-        if tbl == "dessert_items":
-            ic_cards = []
-            for item in all_items["ice_cream_items"]:
-                ic_cards.append(build_card_context(item, "ice_cream_items", "Морозиво", cart_keys, card_idx))
-                card_idx += 1
-            cards_by_tbl["dessert_items"] += ic_cards
-
-    sub_tab_counts = {
-        "pizza_items": counts["pizza_items"] + counts["mini_pizza_items"],
-        "dessert_items": counts["dessert_items"] + counts["ice_cream_items"],
-    }
-
-    return render(
-        request,
-        "public/menu.html",
-        page="menu",
-        page_title="Меню — Coffee Time",
-        tables=TABLES,
-        groups=GROUPS,
+    return MenuResponse(
         current=current,
         current_group=current_group,
-        counts=counts,
-        sub_tab_counts=sub_tab_counts,
-        all_ing_tags=all_ing_tags,
-        sauces=sauces,
-        cards_by_tbl=cards_by_tbl,
-        cart_keys_json=json.dumps(sorted(cart_keys), ensure_ascii=False),
-        current_json=json.dumps(current, ensure_ascii=False),
-        scroll_to=scroll_to,
+        groups=[{"id": gid, "label": g["label"], "icon": g["icon"], "categories": g["cats"]} for gid, g in GROUPS.items()],
+        tabs=[{"key": tbl, "label": label, "count": len(sections[tbl])} for tbl, label in TABLES.items()],
+        sections=sections,
+        ingredient_tags=all_ing_tags,
+        sauces=[
+            {"id": s["id"], "name": s["name"], "price": float(s["price"] or 0), "emoji": s["emoji"] or "",
+             "image": item_img(s["image"])}
+            for s in all_items["sauces"]
+        ],
     )
+
+
+@router.get("/{category}", response_model=list[MenuCard])
+def menu_category(category: str, db: Session = Depends(get_db)):
+    """Cards of one menu tab (e.g. `pizza_items` includes mini pizzas)."""
+    if SUB_CATEGORY_PARENT.get(category, category) not in TABLES:
+        raise not_found("Невідома категорія.")
+    return _sections(_load_all(db))[resolve_current(category)]

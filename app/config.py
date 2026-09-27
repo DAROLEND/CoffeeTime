@@ -17,7 +17,12 @@ class Settings(BaseSettings):
 
     # --- App / site ---
     APP_ENV: str = "production"
-    APP_URL: str = ""  # if unset, SITE_URL is derived from the request host (see dependencies.get_site_url)
+    # Public origin of the site, i.e. where the SPA is served (it proxies
+    # /api to this backend). Used in LiqPay return URLs and email links.
+    # If unset, it's derived from the request host.
+    APP_URL: str = ""
+    # Where GET / on the API host redirects to (the SPA). Optional.
+    FRONTEND_URL: str = ""
     SESSION_LIFETIME: int = 3600  # seconds
 
     # --- Database ---

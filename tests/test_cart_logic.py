@@ -1,11 +1,33 @@
-"""Unit tests for app/services/cart.py. Subtle dedup-key mistakes are the
-easiest way to silently break "same pizza different size" vs "duplicate
-line" behavior."""
+"""Unit tests for app/services/cart.py and app/services/pricing.py.
+Subtle dedup-key mistakes are the easiest way to silently break "same
+pizza different size" vs "duplicate line" behavior, and every price must
+come from the DB, never from the client."""
 from __future__ import annotations
 
+import json
+
 from app.middleware.session import SessionData
-from app.models.catalog import CakeItem, CoffeeItem, IceCreamItem, PizzaItem, Sauce
+from app.models.catalog import CakeItem, CoffeeItem, FastFoodItem, IceCreamItem, PizzaItem, Sauce
 from app.services import cart as cart_service
+
+SCOOPS = json.dumps({
+    "type": "scoops", "label": "Кількість кульок",
+    "options": [
+        {"id": "1", "label": "1 кулька", "price_diff": 0},
+        {"id": "2", "label": "2 кульки", "price_diff": 15},
+        {"id": "3", "label": "3 кульки", "price_diff": 30},
+    ],
+}, ensure_ascii=False)
+
+FILLINGS = json.dumps({
+    "type": "filling", "label": "Начинка",
+    "options": [
+        {"id": "meat", "label": "М'ясна", "price_diff": 10, "sizes": [
+            {"label": "Мала", "price_diff": 0}, {"label": "Велика", "price_diff": 25},
+        ]},
+        {"id": "veg", "label": "Овочева", "price_diff": 0},
+    ],
+}, ensure_ascii=False)
 
 
 def _session(cart=None) -> SessionData:
@@ -108,25 +130,102 @@ def test_add_cake_below_min_weight_is_clamped(db_session):
     assert session["cart"][0]["price_override"] == 1800
 
 
-def test_ice_cream_dedups_by_variant_json_equality(db_session):
-    ic = IceCreamItem(name="Пломбір", description="", image="", price=40)
+def test_ice_cream_dedups_by_selected_option(db_session):
+    ic = IceCreamItem(name="Пломбір", description="", image="", price=40, variant_options=SCOOPS)
     db_session.add(ic)
     db_session.commit()
 
     session = _session()
-    v1 = '{"scoop_label":"2 кульки","price_diff":15}'
-    v2 = '{"scoop_label":"3 кульки","price_diff":30}'
-    cart_service.add_to_cart(session, db_session, "ice_cream_items", ic.id, 1, {"selected_variant": v1})
+    v2 = json.dumps({"type": "scoops", "scoop_id": "2"})
+    v3 = json.dumps({"type": "scoops", "scoop_id": "3"})
     cart_service.add_to_cart(session, db_session, "ice_cream_items", ic.id, 1, {"selected_variant": v2})
-    cart_service.add_to_cart(session, db_session, "ice_cream_items", ic.id, 2, {"selected_variant": v1})
+    cart_service.add_to_cart(session, db_session, "ice_cream_items", ic.id, 1, {"selected_variant": v3})
+    cart_service.add_to_cart(session, db_session, "ice_cream_items", ic.id, 2, {"selected_variant": v2})
 
     cart = session["cart"]
     assert len(cart) == 2
-    line1 = next(c for c in cart if c["selected_variant"] == v1)
+    line1 = next(c for c in cart if json.loads(c["selected_variant"])["scoop_id"] == "2")
     assert line1["quantity"] == 3
     assert line1["price_override"] == 55  # 40 + 15
-    line2 = next(c for c in cart if c["selected_variant"] == v2)
+    assert json.loads(line1["selected_variant"])["scoop_label"] == "2 кульки"  # label copied from the DB
+    line2 = next(c for c in cart if json.loads(c["selected_variant"])["scoop_id"] == "3")
     assert line2["price_override"] == 70  # 40 + 30
+
+
+def test_client_supplied_prices_are_ignored(db_session):
+    """A tampered `price_diff` inside the variant JSON, or a
+    `price_override` form field, has no effect on the price."""
+    ic = IceCreamItem(name="Пломбір", description="", image="", price=40, variant_options=SCOOPS)
+    coffee = CoffeeItem(name="Латте", description="", image="", price=60)
+    db_session.add_all([ic, coffee])
+    db_session.commit()
+
+    session = _session()
+    cart_service.add_to_cart(session, db_session, "ice_cream_items", ic.id, 1, {
+        "selected_variant": json.dumps({"type": "scoops", "scoop_id": "3", "price_diff": -39}),
+        "price_override": "1",
+    })
+    cart_service.add_to_cart(session, db_session, "coffee_items", coffee.id, 1, {"price_override": "1"})
+
+    ice, latte = session["cart"]
+    assert ice["price_override"] == 70
+    assert json.loads(ice["selected_variant"])["price_diff"] == 30
+    assert latte["price_override"] == 60
+    preview = cart_service.get_cart_preview(session, db_session)
+    assert preview["total"] == 130
+
+
+def test_unknown_variant_option_is_rejected(db_session):
+    ic = IceCreamItem(name="Пломбір", description="", image="", price=40, variant_options=SCOOPS)
+    db_session.add(ic)
+    db_session.commit()
+    session = _session()
+    result = cart_service.add_to_cart(session, db_session, "ice_cream_items", ic.id, 1, {
+        "selected_variant": json.dumps({"type": "scoops", "scoop_id": "99"}),
+    })
+    assert result == {"ok": False, "error": "invalid_variant"}
+    assert session["cart"] == []
+
+
+def test_fast_food_filling_with_nested_size_is_priced_from_db(db_session):
+    ff = FastFoodItem(name="Шаурма", description="", image="", price=100, variant_options=FILLINGS)
+    db_session.add(ff)
+    db_session.commit()
+    session = _session()
+
+    cart_service.add_to_cart(session, db_session, "fast_food_items", ff.id, 1, {
+        "selected_variant": json.dumps({"type": "filling", "filling_id": "meat", "size_label": "Велика"}),
+    })
+    # No selection at all defaults to the first option (first size), like the menu UI.
+    cart_service.add_to_cart(session, db_session, "fast_food_items", ff.id, 1, {})
+
+    big, default = session["cart"]
+    assert big["price_override"] == 135  # 100 + 10 + 25
+    assert json.loads(big["selected_variant"])["size_label"] == "Велика"
+    assert default["price_override"] == 110  # 100 + 10 + 0
+    assert json.loads(default["selected_variant"])["size_label"] == "Мала"
+
+
+def test_large_pizza_without_client_price_is_charged_large_price(db_session):
+    """Previously the server only priced a size when the client also sent
+    a price_override; without one a large pizza cost the small price."""
+    pizza = PizzaItem(name="Маргарита", description="", image="", price=180, price_large=260, has_size_choice=True)
+    db_session.add(pizza)
+    db_session.commit()
+    session = _session()
+    cart_service.add_to_cart(session, db_session, "pizza_items", pizza.id, 1, {"selected_size": "large"})
+    assert session["cart"][0]["price_override"] == 260
+    assert cart_service.get_cart_preview(session, db_session)["total"] == 260
+
+
+def test_pizza_without_size_choice_is_always_small(db_session):
+    pizza = PizzaItem(name="Кальцоне", description="", image="", price=150, price_large=0, has_size_choice=False)
+    db_session.add(pizza)
+    db_session.commit()
+    session = _session()
+    cart_service.add_to_cart(session, db_session, "pizza_items", pizza.id, 1, {"selected_size": "large"})
+    assert session["cart"][0]["selected_size"] == "small"
+    assert session["cart"][0]["price_override"] == 150
 
 
 def test_sauce_requires_active_flag(db_session):
@@ -159,34 +258,68 @@ def test_remove_from_cart_by_session_index(db_session):
     assert session["cart"][0]["id"] == 2
 
 
-def test_update_qty_stepper_removes_at_zero(db_session):
-    coffee = CoffeeItem(name="Еспресо", description="", image="", price=40)
-    db_session.add(coffee)
+def test_update_quantity_by_index_targets_the_right_pizza_line(db_session):
+    """Two lines share category+id (small and large); editing by index
+    must only touch the one that was clicked."""
+    pizza = PizzaItem(name="Маргарита", description="", image="", price=180, price_large=260, has_size_choice=True)
+    db_session.add(pizza)
     db_session.commit()
-    session = _session([{"category": "coffee_items", "id": coffee.id, "quantity": 1}])
+    session = _session()
+    cart_service.add_to_cart(session, db_session, "pizza_items", pizza.id, 1, {"selected_size": "small"})
+    cart_service.add_to_cart(session, db_session, "pizza_items", pizza.id, 1, {"selected_size": "large"})
 
-    result = cart_service.update_qty_stepper(session, db_session, "coffee_items", coffee.id, "decrease", None)
+    result = cart_service.update_cart_item(session, db_session, 1, {"quantity": 3})
     assert result["ok"] is True
-    assert result["removed"] is True
-    assert session["cart"] == []
+    assert result["new_subtotal"] == 780
+    assert [c["quantity"] for c in session["cart"]] == [1, 3]
 
 
-def test_update_qty_stepper_rejects_cake_category(db_session):
-    """cake_items is deliberately excluded from the qty-stepper whitelist."""
-    session = _session([{"category": "cake_items", "id": 1, "quantity": 1}])
-    result = cart_service.update_qty_stepper(session, db_session, "cake_items", 1, "increase", None)
-    assert result == {"ok": False}
+def test_update_cart_item_cake_stays_single(db_session):
+    cake = CakeItem(name="Медовик", description="", image="", price=1000, price_per_kg=1000, min_weight=1.0)
+    db_session.add(cake)
+    db_session.commit()
+    session = _session()
+    cart_service.add_to_cart(session, db_session, "cake_items", cake.id, 1, {"weight": "1.5"})
+    result = cart_service.update_cart_item(session, db_session, 0, {"quantity": 5, "weight": 2.5})
+    assert result["new_qty"] == 1
+    assert result["new_price"] == 2500
 
 
-def test_update_cart_variant_updates_the_last_matching_line(db_session):
-    session = _session([
-        {"category": "fast_food_items", "id": 5, "quantity": 1},
-        {"category": "fast_food_items", "id": 5, "quantity": 2},
-    ])
-    result = cart_service.update_cart_variant(session, "fast_food_items", 5, '{"sauces":[]}')
-    assert result["ok"] is True
+def test_update_cart_item_changing_options_merges_duplicate_lines(db_session):
+    pizza = PizzaItem(name="Маргарита", description="", image="", price=180, price_large=260, has_size_choice=True)
+    db_session.add(pizza)
+    db_session.commit()
+    session = _session()
+    cart_service.add_to_cart(session, db_session, "pizza_items", pizza.id, 1, {"selected_size": "small"})
+    cart_service.add_to_cart(session, db_session, "pizza_items", pizza.id, 2, {"selected_size": "large"})
+
+    result = cart_service.update_cart_item(session, db_session, 0, {"selected_size": "large", "cheese_crust": "0"})
+    assert result["merged"] is True
+    assert len(session["cart"]) == 1
+    assert session["cart"][0]["quantity"] == 3
+
+
+def test_update_cart_item_rejects_bad_index(db_session):
+    session = _session([{"category": "coffee_items", "id": 1, "quantity": 1}])
+    assert cart_service.update_cart_item(session, db_session, 5, {"quantity": 2}) == {"ok": False, "error": "invalid_index"}
+
+
+def test_fast_food_free_sauce_choice_is_validated(db_session):
+    ff = FastFoodItem(name="Хот-дог", description="", image="", price=70, variant_options=json.dumps(
+        {"type": "sauce", "label": "Який соус?", "options": ["Кетчуп", "Гірчиця"]}, ensure_ascii=False))
+    db_session.add(ff)
+    db_session.commit()
+    session = _session()
+    added = cart_service.add_to_cart(session, db_session, "fast_food_items", ff.id, 1, {})
     assert "selected_variant" not in session["cart"][0]
-    assert session["cart"][1]["selected_variant"] == '{"sauces":[]}'
+
+    ok = cart_service.update_cart_item(session, db_session, added["index"], {"selected_variant": "Гірчиця"})
+    assert ok["ok"] is True
+    assert json.loads(session["cart"][0]["selected_variant"]) == {"type": "sauce", "label": "Гірчиця"}
+    assert ok["new_price"] == 70
+
+    bad = cart_service.update_cart_item(session, db_session, added["index"], {"selected_variant": "Майонез"})
+    assert bad == {"ok": False, "error": "invalid_variant"}
 
 
 def test_get_cart_preview_totals(db_session):

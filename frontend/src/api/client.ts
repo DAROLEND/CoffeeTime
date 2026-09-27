@@ -56,7 +56,9 @@ export async function csrfFetch(input: Request): Promise<Response> {
 }
 
 export const api = createClient<paths>({
-  baseUrl: '',
+  // Same origin as the page. Absolute so it also works where `Request`
+  // rejects relative URLs (Node/jsdom in tests).
+  baseUrl: typeof window === 'undefined' ? '' : window.location.origin,
   credentials: 'include',
   fetch: csrfFetch,
 });

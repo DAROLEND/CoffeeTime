@@ -2,7 +2,7 @@
 import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
-import scopePages from './postcss-scope-pages';
+import scopePages from './postcss-scope-pages.ts';
 
 // In dev, the SPA and the API share one origin through this proxy, exactly
 // like production does through Render's rewrite rules (see render.yaml).

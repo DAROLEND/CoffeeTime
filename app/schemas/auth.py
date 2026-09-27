@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from app.schemas.base import Schema
 
 
-class LoginInfo(BaseModel):
+class LoginInfo(Schema):
     is_locked: bool
     lock_minutes: int
     remembered_email: str
 
 
-class LoginRequest(BaseModel):
+class LoginRequest(Schema):
     # One field for both: customers may use their email or their login,
     # admins their username.
     login: str = ""
@@ -19,40 +19,40 @@ class LoginRequest(BaseModel):
     remember: bool = False
 
 
-class LoginResult(BaseModel):
+class LoginResult(Schema):
     kind: Literal["user", "admin"]
     redirect: str
 
 
-class RegisterRequest(BaseModel):
+class RegisterRequest(Schema):
     email: str = ""
     login: str = ""
     password: str = ""
     confirm: str = ""
 
 
-class ForgotRequest(BaseModel):
+class ForgotRequest(Schema):
     email: str = ""
 
 
-class ResetTokenInfo(BaseModel):
+class ResetTokenInfo(Schema):
     valid: bool
     email: str
     error: str
 
 
-class ResetRequest(BaseModel):
+class ResetRequest(Schema):
     token: str = ""
     password: str = ""
     confirm: str = ""
 
 
-class ChangePasswordRequest(BaseModel):
+class ChangePasswordRequest(Schema):
     current_password: str = ""
     new_password: str = ""
     confirm_password: str = ""
 
 
-class MessageResponse(BaseModel):
+class MessageResponse(Schema):
     ok: bool = True
     message: str = ""

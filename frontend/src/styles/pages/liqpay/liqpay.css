@@ -1,0 +1,16 @@
+/* Standalone LiqPay hand-off page (was liqpay_checkout.html). */
+/* ── liqpay_checkout ── */
+  body { min-height: 100vh; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fdf8f3; font-family: 'Lato', sans-serif; }
+  .pay-box { text-align: center; padding: 48px 40px; background: #fff; border-radius: 20px; border: 1px solid #f0e8df; box-shadow: 0 4px 28px rgba(139,69,19,0.08); max-width: 420px; width: 90%; }
+  .pay-icon { font-size: 48px; margin-bottom: 20px; }
+  h2 { font-size: 1.35rem; color: #2c1810; margin-bottom: 10px; }
+  .pay-sub { font-size: 14px; color: #999; line-height: 1.6; margin-bottom: 28px; }
+  .pay-amount { font-size: 2rem; font-weight: 700; color: #8B4513; margin-bottom: 28px; }
+  .pay-btn { display: block; width: 100%; padding: 16px 40px; background: #FFC107; color: #5a2d0c; border: none; border-radius: 50px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(255,193,7,0.4); opacity: 0; transform: translateY(12px); transition: background .2s, transform .35s ease, opacity .35s ease; pointer-events: none; }
+  .pay-btn.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .pay-btn:hover { background: #e6ac00; transform: translateY(-2px); }
+  .pay-back { display: inline-block; margin-top: 16px; font-size: 13px; color: #aaa; text-decoration: none; }
+  .pay-back:hover { color: #8B4513; }
+  .liqpay-badge { margin-top: 24px; font-size: 12px; color: #ccc; }
+  .liqpay-badge strong { color: #4ca800; }
+

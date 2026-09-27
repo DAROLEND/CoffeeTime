@@ -1,24 +1,26 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.schemas.base import Schema
 
 
-class ErrorResponse(BaseModel):
+class ErrorResponse(Schema):
     detail: str
     code: str | None = None
     errors: list[str] = Field(default_factory=list)
 
 
-class OkResponse(BaseModel):
+class OkResponse(Schema):
     ok: bool = True
 
 
-class SuccessResponse(BaseModel):
+class SuccessResponse(Schema):
     success: bool
     error: str | None = None
 
 
-class Pagination(BaseModel):
+class Pagination(Schema):
     page: int
     total_pages: int
     total: int

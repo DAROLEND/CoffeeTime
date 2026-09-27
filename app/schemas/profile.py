@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from app.schemas.base import Schema
 
 
-class ProfileUser(BaseModel):
+class ProfileUser(Schema):
     login: str
     email: str
     client_name: str
@@ -11,12 +11,12 @@ class ProfileUser(BaseModel):
     client_PhoneNumber: str  # noqa: N815
 
 
-class PayBadge(BaseModel):
+class PayBadge(Schema):
     cls: str
     label: str
 
 
-class ProfileOrder(BaseModel):
+class ProfileOrder(Schema):
     order_id: int
     items_count: int
     preview_names: list[str]
@@ -34,13 +34,13 @@ class ProfileOrder(BaseModel):
     comment: str
 
 
-class ProfileOrderGroup(BaseModel):
+class ProfileOrderGroup(Schema):
     key: str
     label: str
     orders: list[ProfileOrder]
 
 
-class ProfileView(BaseModel):
+class ProfileView(Schema):
     user: ProfileUser
     initials: str
     display_name: str
@@ -51,13 +51,13 @@ class ProfileView(BaseModel):
     has_orders: bool
 
 
-class ProfileUpdateRequest(BaseModel):
+class ProfileUpdateRequest(Schema):
     first_name: str = ""
     last_name: str = ""
     phone: str = ""
 
 
-class OrderLine(BaseModel):
+class OrderLine(Schema):
     name: str
     image: str
     category: str
@@ -66,13 +66,13 @@ class OrderLine(BaseModel):
     opts: list[str] = []
 
 
-class OrderLines(BaseModel):
+class OrderLines(Schema):
     items: list[OrderLine]
 
 
-class RateOrderRequest(BaseModel):
+class RateOrderRequest(Schema):
     rating: int
 
 
-class RepayResult(BaseModel):
+class RepayResult(Schema):
     redirect: str

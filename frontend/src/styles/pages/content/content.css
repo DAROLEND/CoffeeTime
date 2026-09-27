@@ -1,0 +1,27 @@
+/* About / contact / 404 — new pages built on the site's existing palette. */
+body { background: transparent; }
+.content-wrap { max-width: 1040px; margin: 0 auto; padding: 64px 24px 90px; width: 100%; }
+.content-hero { text-align: center; margin-bottom: 48px; }
+.content-hero h1 { font-size: clamp(2rem, 4.5vw, 3rem); color: #5a2d0c; margin-bottom: 12px; }
+.content-hero p { color: #8a6a55; font-size: 1.05rem; }
+.about-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; }
+.about-grid img { border-radius: 20px; box-shadow: 0 12px 40px rgba(90,45,12,.18); width: 100%; object-fit: cover; aspect-ratio: 4 / 3; }
+.about-grid .about-text { font-size: 1.05rem; line-height: 1.8; color: #4a3325; margin-bottom: 28px; }
+.about-grid h2 { text-align: left; font-size: clamp(1.6rem, 3vw, 2.2rem); color: #8B4513; margin-bottom: 18px; }
+.about-facts { display: flex; gap: 16px; flex-wrap: wrap; }
+.about-fact { background: #fff; border: 1px solid #f0e8df; border-radius: 16px; padding: 16px 22px; min-width: 130px; box-shadow: 0 4px 18px rgba(139,69,19,.06); }
+.about-fact strong { display: block; font-family: 'Playfair Display', Georgia, serif; font-size: 1.8rem; color: #8B4513; }
+.about-fact span { font-size: 13px; color: #8a6a55; }
+.contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 56px; }
+.contact-card { background: #fff; border: 1px solid #f0e8df; border-radius: 18px; padding: 26px 24px; box-shadow: 0 4px 18px rgba(139,69,19,.06); }
+.contact-card h3 { font-size: 1.15rem; color: #5a2d0c; margin-bottom: 12px; }
+.contact-card p, .contact-card li { color: #4a3325; font-size: 15px; line-height: 1.8; list-style: none; }
+.contact-card a { color: #8B4513; font-weight: 700; text-decoration: none; }
+.contact-card a:hover { text-decoration: underline; }
+.content-cta { display: inline-block; margin-top: 8px; padding: 13px 30px; background: #FFC107; color: #5a2d00; border-radius: 50px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 12px rgba(255,193,7,.35); }
+.content-cta:hover { background: #e6ac00; }
+.nf-code { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(5rem, 14vw, 9rem); color: #FFC107; line-height: 1; }
+@media (max-width: 860px) {
+  .about-grid { grid-template-columns: 1fr; }
+  .contact-grid { grid-template-columns: 1fr; }
+}

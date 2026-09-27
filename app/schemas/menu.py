@@ -2,29 +2,29 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from app.schemas.base import Schema
 
 
-class VariantSize(BaseModel):
+class VariantSize(Schema):
     label: str
     price_diff: float
 
 
-class VariantOption(BaseModel):
+class VariantOption(Schema):
     id: str
     label: str
     price_diff: float
     sizes: list[VariantSize] = []
 
 
-class VariantOptions(BaseModel):
+class VariantOptions(Schema):
     """Normalized `variant_options` (see app/services/pricing.py)."""
     type: Literal["size", "filling", "sauce", "scoops"]
     label: str
     options: list[VariantOption]
 
 
-class MenuCard(BaseModel):
+class MenuCard(Schema):
     id: int
     category: str
     label: str
@@ -59,20 +59,20 @@ class MenuCard(BaseModel):
     variant_options: VariantOptions | None = None
 
 
-class MenuGroup(BaseModel):
+class MenuGroup(Schema):
     id: str
     label: str
     icon: str
     categories: list[str]
 
 
-class MenuTab(BaseModel):
+class MenuTab(Schema):
     key: str
     label: str
     count: int
 
 
-class MenuSauce(BaseModel):
+class MenuSauce(Schema):
     id: int
     name: str
     price: float
@@ -80,7 +80,7 @@ class MenuSauce(BaseModel):
     emoji: str
 
 
-class MenuResponse(BaseModel):
+class MenuResponse(Schema):
     current: str
     current_group: str
     groups: list[MenuGroup]

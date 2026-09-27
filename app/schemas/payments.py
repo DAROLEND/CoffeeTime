@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from app.schemas.base import Schema
 
 
-class LiqpayCheckout(BaseModel):
+class LiqpayCheckout(Schema):
     """Either a signed LiqPay form to auto-submit, or `dev_bypass` when
     LiqPay isn't configured (the SPA then goes straight to success)."""
     dev_bypass: bool = False
@@ -19,11 +19,11 @@ class LiqpayCheckout(BaseModel):
     back_label: str = ""
 
 
-class PaymentStatus(BaseModel):
+class PaymentStatus(Schema):
     status: Literal["pending", "paid", "failed", "cash", "unknown"]
 
 
-class OrderSummary(BaseModel):
+class OrderSummary(Schema):
     order_id: int
     total: float
     customer_name: str
@@ -33,16 +33,16 @@ class OrderSummary(BaseModel):
     order_type: str
 
 
-class PaymentComplete(BaseModel):
+class PaymentComplete(Schema):
     order: OrderSummary | None
     is_dev_bypass: bool
 
 
-class PaymentPendingInfo(BaseModel):
+class PaymentPendingInfo(Schema):
     order_id: int
     liqpay_data: str
     liqpay_signature: str
 
 
-class PaymentFailureInfo(BaseModel):
+class PaymentFailureInfo(Schema):
     order_id: int

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from app.schemas.base import Schema
 
 
-class HeroSlideOut(BaseModel):
+class HeroSlideOut(Schema):
     image: str
     label: str
     text: str
     sub: str
 
 
-class HomeProduct(BaseModel):
+class HomeProduct(Schema):
     id: int
     table: str
     name: str
@@ -19,7 +19,7 @@ class HomeProduct(BaseModel):
     price: float
 
 
-class AboutBlock(BaseModel):
+class AboutBlock(Schema):
     title: str
     text: str
     founded_year: str
@@ -29,7 +29,7 @@ class AboutBlock(BaseModel):
     years_open: int
 
 
-class DessertBanner(BaseModel):
+class DessertBanner(Schema):
     label: str
     title: str
     desc: str
@@ -37,14 +37,14 @@ class DessertBanner(BaseModel):
     image: str | None
 
 
-class HomeReview(BaseModel):
+class HomeReview(Schema):
     name: str
     text: str
     rating: int
     avatar_color: str
 
 
-class HomePage(BaseModel):
+class HomePage(Schema):
     hero_slides: list[HeroSlideOut]
     food_items: list[HomeProduct]
     drink_items: list[HomeProduct]
@@ -55,14 +55,14 @@ class HomePage(BaseModel):
     total_reviews: int
 
 
-class GalleryPhoto(BaseModel):
+class GalleryPhoto(Schema):
     id: int
     url: str
     alt: str
     category: str
 
 
-class GalleryPage(BaseModel):
+class GalleryPage(Schema):
     photos: list[GalleryPhoto]
     food_count: int
     interior_count: int

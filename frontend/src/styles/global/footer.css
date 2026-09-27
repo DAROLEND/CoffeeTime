@@ -1,0 +1,261 @@
+/* =====================================================
+   Coffee Time — Footer
+===================================================== */
+
+html { height: 100%; }
+body { min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+main { flex: 1; }
+
+:root {
+  --footer-bg:      #3d1f07;
+  --footer-text:    rgba(255,255,255,0.70);
+  --footer-accent:  #FFC107;
+  --footer-border:  rgba(255,255,255,0.10);
+  --ease:           0.2s ease;
+}
+
+/* ── SHELL ─────────────────────────────────────── */
+.site-footer {
+  background: var(--footer-bg);
+  color: var(--footer-text);
+  margin-top: auto;
+}
+
+/* ── INNER GRID ─────────────────────────────────── */
+.footer__inner {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 52px 80px 40px;
+}
+
+/* ── COL 1: brand ───────────────────────────────── */
+.footer__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.footer-logo-link {
+  display: inline-block;
+  line-height: 0;
+}
+
+.footer-logo-img {
+  height: 52px;
+  width: auto;
+  /* іконка має кольорові paths (#DFA26C, #EBD5B9) — добре читається на темному фоні */
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45));
+  transition: transform var(--ease), filter var(--ease);
+}
+
+.footer-logo-link:hover .footer-logo-img {
+  transform: scale(1.08);
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,0.55)) brightness(1.1);
+}
+
+.footer-tagline {
+  font-size: 13px;
+  color: rgba(255,255,255,0.50);
+  line-height: 1.55;
+  margin: 10px 0 20px;
+  max-width: 200px;
+}
+
+/* Social icons */
+.footer-socials {
+  display: flex;
+  gap: 10px;
+}
+
+.social-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  overflow: hidden;
+  transition:
+    background 0.35s ease,
+    transform   0.35s cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow  0.35s ease;
+}
+
+/* Gradient overlay for Instagram/Facebook — fades in smoothly */
+.social-btn[aria-label="Instagram"]::before,
+.social-btn[aria-label="Facebook"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.social-btn[aria-label="Instagram"]::before {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+}
+.social-btn[aria-label="Facebook"]::before {
+  background: #1877F2;
+}
+.social-btn[aria-label="Instagram"]:hover::before,
+.social-btn[aria-label="Facebook"]:hover::before {
+  opacity: 1;
+}
+
+.social-btn:hover {
+  background: var(--footer-accent);
+  transform: translateY(-3px) scale(1.12);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+
+.social-btn[aria-label="Instagram"]:hover {
+  background: rgba(255,255,255,0.10);
+  box-shadow: 0 6px 16px rgba(220,39,67,0.35);
+}
+.social-btn[aria-label="Facebook"]:hover {
+  background: rgba(255,255,255,0.10);
+  box-shadow: 0 6px 16px rgba(24,119,242,0.35);
+}
+
+.social-btn img {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  display: block;
+  filter: brightness(0) invert(1);
+  transition: filter 0.35s ease;
+}
+
+.social-btn:hover img {
+  filter: brightness(0) invert(0);
+}
+.social-btn[aria-label="Instagram"]:hover img,
+.social-btn[aria-label="Facebook"]:hover img {
+  filter: brightness(0) invert(1);
+}
+
+/* ── COLUMN HEADINGS ────────────────────────────── */
+.footer__col h4 {
+  font-family: 'Lato', 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--footer-accent);
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+/* ── LISTS ──────────────────────────────────────── */
+.footer__col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.footer__col li {
+  font-size: 13px;
+  color: var(--footer-text);
+  line-height: 1.8;
+}
+
+.footer-day {
+  display: inline-block;
+  width: 54px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
+
+.footer__col a {
+  color: var(--footer-text);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color var(--ease);
+  position: relative;
+}
+
+.footer__col a::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0;
+  width: 0; height: 1px;
+  background: var(--footer-accent);
+  transition: width 0.25s ease;
+}
+
+.footer__col a:hover { color: var(--footer-accent); }
+.footer__col a:hover::after { width: 100%; }
+
+/* ── BOTTOM BAR ─────────────────────────────────── */
+.footer__bottom {
+  border-top: 1px solid var(--footer-border);
+  padding: 16px 80px;
+  max-width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.footer__bottom span {
+  font-size: 12px;
+  color: rgba(255,255,255,0.38);
+}
+
+/* ── RESPONSIVE ─────────────────────────────────── */
+@media (max-width: 1024px) {
+  .footer__inner {
+    grid-template-columns: 1fr 1fr;
+    padding: 40px 40px 32px;
+    gap: 32px;
+  }
+  .footer__bottom { padding: 16px 40px; }
+}
+
+@media (max-width: 640px) {
+  .footer__inner {
+    grid-template-columns: 1fr;
+    padding: 32px 24px 24px;
+    gap: 28px;
+  }
+
+  .footer__brand { align-items: center; text-align: center; }
+  .footer__brand .footer-tagline { max-width: 100%; }
+  .footer-socials { justify-content: center; }
+
+  .footer__col { text-align: center; }
+  .footer__col ul { align-items: center; }
+
+  .footer__col + .footer__col {
+    border-top: 1px solid var(--footer-border);
+    padding-top: 24px;
+  }
+
+  .footer__bottom {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 24px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .footer__inner { padding: 24px 16px 20px; gap: 22px; }
+  .footer__bottom { padding: 12px 16px; }
+  .footer-logo-img { height: 44px; }
+  .social-btn { width: 40px; height: 40px; }
+}

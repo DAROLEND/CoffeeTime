@@ -3,11 +3,13 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.schemas.base import Schema
 
 # ── Layout ──
 
-class AdminPerms(BaseModel):
+class AdminPerms(Schema):
     orders_view: bool
     orders_edit: bool
     products: bool
@@ -15,14 +17,14 @@ class AdminPerms(BaseModel):
     reviews: bool
 
 
-class NotifOrder(BaseModel):
+class NotifOrder(Schema):
     order_id: int
     name: str
     total: float
     time_label: str
 
 
-class AdminLayout(BaseModel):
+class AdminLayout(Schema):
     username: str
     initial: str
     display_name: str
@@ -37,18 +39,18 @@ class AdminLayout(BaseModel):
 
 # ── Dashboard ──
 
-class StatCompare(BaseModel):
+class StatCompare(Schema):
     direction: Literal["up", "down", "eq"]
     text: str
 
 
-class PayBadge(BaseModel):
+class PayBadge(Schema):
     cls: str
     icon: str
     label: str
 
 
-class RecentOrder(BaseModel):
+class RecentOrder(Schema):
     order_id: int
     full_name: str
     phone: str
@@ -60,7 +62,7 @@ class RecentOrder(BaseModel):
     created_at: str
 
 
-class TopProduct(BaseModel):
+class TopProduct(Schema):
     name: str
     image: str
     deleted: bool
@@ -70,13 +72,13 @@ class TopProduct(BaseModel):
     unit_price: str
 
 
-class CategoryCount(BaseModel):
+class CategoryCount(Schema):
     key: str
     label: str
     count: int
 
 
-class StaffStats(BaseModel):
+class StaffStats(Schema):
     """Only the blocks the admin has permissions for are filled in."""
     products_total: int | None = None
     sauces_total: int | None = None
@@ -92,7 +94,7 @@ class StaffStats(BaseModel):
     about_photo: str | None = None
 
 
-class DashboardCompare(BaseModel):
+class DashboardCompare(Schema):
     orders: StatCompare
     revenue: StatCompare
     avg_check: StatCompare
@@ -100,7 +102,7 @@ class DashboardCompare(BaseModel):
     reviews: StatCompare
 
 
-class FullDashboard(BaseModel):
+class FullDashboard(Schema):
     today_orders: int
     today_revenue: float
     avg_check: int
@@ -118,7 +120,7 @@ class FullDashboard(BaseModel):
     today_iso: str
 
 
-class DashboardResponse(BaseModel):
+class DashboardResponse(Schema):
     # "staff": a staff member without orders access gets a welcome page
     # with their own sections' stats instead of the sales dashboard.
     mode: Literal["staff", "full"]
@@ -130,21 +132,21 @@ class DashboardResponse(BaseModel):
     role_label: str
 
 
-class CountResponse(BaseModel):
+class CountResponse(Schema):
     count: int
 
 
-class ChartData(BaseModel):
+class ChartData(Schema):
     success: bool
     data: list[int] = []
 
 
-class TopProductsResponse(BaseModel):
+class TopProductsResponse(Schema):
     success: bool
     products: list[TopProduct]
 
 
-class OrderCounts(BaseModel):
+class OrderCounts(Schema):
     all: int
     new: int
     processing: int = 0
@@ -158,7 +160,7 @@ class OrderCounts(BaseModel):
 
 # ── Orders ──
 
-class AdminOrderItem(BaseModel):
+class AdminOrderItem(Schema):
     product_name: str
     product_image: str
     category: str
@@ -167,7 +169,7 @@ class AdminOrderItem(BaseModel):
     opts: list[str]
 
 
-class AdminOrderRow(BaseModel):
+class AdminOrderRow(Schema):
     order_id: int
     items_count: int
     full_name: str
@@ -185,7 +187,7 @@ class AdminOrderRow(BaseModel):
     line_items: list[AdminOrderItem]
 
 
-class AdminOrdersPage(BaseModel):
+class AdminOrdersPage(Schema):
     orders: list[AdminOrderRow]
     total: int
     page: int
@@ -204,11 +206,11 @@ class AdminOrderDetail(AdminOrderRow):
     rating: int | None
 
 
-class StatusChangeRequest(BaseModel):
+class StatusChangeRequest(Schema):
     status: str
 
 
-class StatusChangeResult(BaseModel):
+class StatusChangeResult(Schema):
     success: bool
     error: str | None = None
     label: str | None = None
@@ -217,12 +219,12 @@ class StatusChangeResult(BaseModel):
     new_count: int = 0
 
 
-class BulkStatusRequest(BaseModel):
+class BulkStatusRequest(Schema):
     order_ids: list[int]
     status: str
 
 
-class BulkStatusResult(BaseModel):
+class BulkStatusResult(Schema):
     success: bool
     error: str | None = None
     updated: int = 0
@@ -233,7 +235,7 @@ class BulkStatusResult(BaseModel):
 
 # ── Products ──
 
-class AdminProduct(BaseModel):
+class AdminProduct(Schema):
     id: int
     category: str
     category_label: str
@@ -251,7 +253,7 @@ class AdminProduct(BaseModel):
     scoop_diff_3: float | None = None
 
 
-class AdminProductsPage(BaseModel):
+class AdminProductsPage(Schema):
     is_all: bool
     category: str
     title: str
@@ -260,13 +262,13 @@ class AdminProductsPage(BaseModel):
     products: list[AdminProduct]
 
 
-class ProductSaved(BaseModel):
+class ProductSaved(Schema):
     product: AdminProduct
 
 
 # ── Sauces ──
 
-class AdminSauce(BaseModel):
+class AdminSauce(Schema):
     id: int
     name: str
     price: float
@@ -276,18 +278,18 @@ class AdminSauce(BaseModel):
     sort_order: int
 
 
-class SauceActiveRequest(BaseModel):
+class SauceActiveRequest(Schema):
     active: bool
 
 
-class SauceSaved(BaseModel):
+class SauceSaved(Schema):
     success: bool = True
     sauce: AdminSauce
 
 
 # ── Gallery ──
 
-class AdminGalleryImage(BaseModel):
+class AdminGalleryImage(Schema):
     id: int
     url: str
     alt: str
@@ -295,31 +297,31 @@ class AdminGalleryImage(BaseModel):
     created_at: str
 
 
-class GalleryCounts(BaseModel):
+class GalleryCounts(Schema):
     all: int
     food: int
     interior: int
 
 
-class AdminGalleryPage(BaseModel):
+class AdminGalleryPage(Schema):
     images: list[AdminGalleryImage]
     counts: GalleryCounts
     filter: str
 
 
-class GalleryUploadResult(BaseModel):
+class GalleryUploadResult(Schema):
     uploaded: int
     errors: list[str]
 
 
-class GalleryPatch(BaseModel):
+class GalleryPatch(Schema):
     category: Literal["food", "interior"] | None = None
     alt: str | None = None
 
 
 # ── Reviews ──
 
-class AdminReview(BaseModel):
+class AdminReview(Schema):
     id: int
     author: str
     initial: str
@@ -330,12 +332,12 @@ class AdminReview(BaseModel):
     status: Literal["approved", "declined", "pending"]
 
 
-class RatingCount(BaseModel):
+class RatingCount(Schema):
     stars: int
     count: int
 
 
-class AdminReviewsPage(BaseModel):
+class AdminReviewsPage(Schema):
     reviews: list[AdminReview]
     total_rows: int
     page: int
@@ -348,7 +350,7 @@ class AdminReviewsPage(BaseModel):
     this_week: int
 
 
-class AdminOrderRating(BaseModel):
+class AdminOrderRating(Schema):
     order_id: int
     uname: str
     email: str
@@ -356,7 +358,7 @@ class AdminOrderRating(BaseModel):
     created_at: str
 
 
-class AdminOrderRatingsPage(BaseModel):
+class AdminOrderRatingsPage(Schema):
     order_ratings: list[AdminOrderRating]
     total: int
     avg: float
@@ -365,13 +367,13 @@ class AdminOrderRatingsPage(BaseModel):
     total_pages: int
 
 
-class ReviewStatusRequest(BaseModel):
+class ReviewStatusRequest(Schema):
     status: Literal["approved", "declined", "pending"]
 
 
 # ── Hero slides ──
 
-class AdminHeroSlide(BaseModel):
+class AdminHeroSlide(Schema):
     id: int
     image: str
     label: str
@@ -381,18 +383,18 @@ class AdminHeroSlide(BaseModel):
     active: bool
 
 
-class SlideMoveRequest(BaseModel):
+class SlideMoveRequest(Schema):
     dir: Literal["up", "down"]
 
 
-class SlideToggleResult(BaseModel):
+class SlideToggleResult(Schema):
     ok: bool = True
     active: bool
 
 
 # ── About section / dessert banner ──
 
-class AboutSettings(BaseModel):
+class AboutSettings(Schema):
     about_title: str
     about_text: str
     about_founded_year: str
@@ -402,7 +404,7 @@ class AboutSettings(BaseModel):
     years_open: int
 
 
-class DessertBannerSettings(BaseModel):
+class DessertBannerSettings(Schema):
     dessert_banner_label: str
     dessert_banner_title: str
     dessert_banner_desc: str
@@ -415,12 +417,12 @@ class DessertBannerSettings(BaseModel):
 
 # ── Staff ──
 
-class PermOption(BaseModel):
+class PermOption(Schema):
     key: str
     label: str
 
 
-class AdminAccount(BaseModel):
+class AdminAccount(Schema):
     id: int
     username: str
     display_name: str
@@ -429,30 +431,30 @@ class AdminAccount(BaseModel):
     is_me: bool
 
 
-class AdminUsersPage(BaseModel):
+class AdminUsersPage(Schema):
     users: list[AdminAccount]
     all_perms: list[PermOption]
 
 
-class AdminUserCreate(BaseModel):
+class AdminUserCreate(Schema):
     username: str = ""
     display_name: str = ""
     password: str = ""
     perms: list[str] = Field(default_factory=list)
 
 
-class AdminUserUpdate(BaseModel):
+class AdminUserUpdate(Schema):
     display_name: str = ""
     perms: list[str] = Field(default_factory=list)
     new_password: str = ""
 
 
-class MyAccountUpdate(BaseModel):
+class MyAccountUpdate(Schema):
     display_name: str = ""
     current_password: str = ""
     new_password: str = ""
 
 
-class MessageResult(BaseModel):
+class MessageResult(Schema):
     ok: bool = True
     message: str

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from app.schemas.base import Schema
 
 
-class PublicReview(BaseModel):
+class PublicReview(Schema):
     name: str
     initial: str
     avatar_color: str
@@ -14,13 +14,13 @@ class PublicReview(BaseModel):
     created_at: str
 
 
-class RatingBucket(BaseModel):
+class RatingBucket(Schema):
     stars: int
     count: int
     pct: int
 
 
-class ReviewsPage(BaseModel):
+class ReviewsPage(Schema):
     sort: Literal["newest", "oldest", "best", "worst"]
     filter: int
     page: int
@@ -33,7 +33,7 @@ class ReviewsPage(BaseModel):
     reviewed_already: bool
 
 
-class ReviewCreate(BaseModel):
+class ReviewCreate(Schema):
     name: str = ""
     text: str = ""
     rating: int = 0

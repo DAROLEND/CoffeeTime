@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from app.schemas.base import Schema
 
 
-class CheckoutItem(BaseModel):
+class CheckoutItem(Schema):
     id: int
     category: str
     name: str
@@ -15,18 +15,18 @@ class CheckoutItem(BaseModel):
     subtotal: float
 
 
-class DaySchedule(BaseModel):
+class DaySchedule(Schema):
     open: str
     close: str
 
 
-class NextAvailable(BaseModel):
+class NextAvailable(Schema):
     time: str
     label: str
     is_today: bool
 
 
-class CheckoutPrefill(BaseModel):
+class CheckoutPrefill(Schema):
     first_name: str
     last_name: str
     phone: str
@@ -37,7 +37,7 @@ class CheckoutPrefill(BaseModel):
     order_type: Literal["dine_in", "takeaway"]
 
 
-class CheckoutView(BaseModel):
+class CheckoutView(Schema):
     items: list[CheckoutItem]
     total: float
     has_cakes: bool
@@ -54,7 +54,7 @@ class CheckoutView(BaseModel):
     has_pending_order: bool
 
 
-class CheckoutRequest(BaseModel):
+class CheckoutRequest(Schema):
     first_name: str = ""
     last_name: str = ""
     phone: str = ""
@@ -66,7 +66,7 @@ class CheckoutRequest(BaseModel):
     travel_minutes: int = 15
 
 
-class CheckoutResult(BaseModel):
+class CheckoutResult(Schema):
     order_id: int
     # "success": order placed (cash) -> /payment-success
     # "liqpay": go to /liqpay-checkout to pay online

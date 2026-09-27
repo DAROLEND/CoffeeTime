@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.schemas.base import Schema
+from app.schemas.menu import VariantOptions
 
 
-class AddToCartRequest(BaseModel):
+class AddToCartRequest(Schema):
     """Line *parameters* only. There is deliberately no price field: the
     server computes every price (app/services/pricing.py)."""
     category: str
@@ -18,14 +21,14 @@ class AddToCartRequest(BaseModel):
     selected_variant: str | None = None
 
 
-class AddToCartResponse(BaseModel):
+class AddToCartResponse(Schema):
     ok: bool
     count: int = 0
     index: int | None = None
     error: str | None = None
 
 
-class UpdateCartItemRequest(BaseModel):
+class UpdateCartItemRequest(Schema):
     """Only the fields that are sent are changed."""
     quantity: int | None = Field(None, ge=1, le=99)
     selected_size: Literal["small", "large"] | None = None
@@ -34,7 +37,7 @@ class UpdateCartItemRequest(BaseModel):
     selected_variant: str | None = None
 
 
-class UpdateCartItemResponse(BaseModel):
+class UpdateCartItemResponse(Schema):
     ok: bool
     merged: bool = False
     index: int | None = None
@@ -47,13 +50,13 @@ class UpdateCartItemResponse(BaseModel):
     error: str | None = None
 
 
-class RemoveFromCartResponse(BaseModel):
+class RemoveFromCartResponse(Schema):
     ok: bool
     cart_total: float = 0
     cart_count: int = 0
 
 
-class CartPreviewItem(BaseModel):
+class CartPreviewItem(Schema):
     session_index: int
     category: str
     id: int
@@ -63,14 +66,14 @@ class CartPreviewItem(BaseModel):
     qty: int
 
 
-class CartPreview(BaseModel):
+class CartPreview(Schema):
     ok: bool = True
     items: list[CartPreviewItem]
     total: float
     count: int
 
 
-class CartLine(BaseModel):
+class CartLine(Schema):
     session_index: int
     category: str
     id: int
@@ -85,13 +88,13 @@ class CartLine(BaseModel):
     weight: float | None = None
 
 
-class CartGroup(BaseModel):
+class CartGroup(Schema):
     key: str
     label: str
     items: list[CartLine]
 
 
-class CartView(BaseModel):
+class CartView(Schema):
     items: list[CartLine]
     groups: list[CartGroup]
     total: float
@@ -101,7 +104,7 @@ class CartView(BaseModel):
     back_category: str
 
 
-class CartItemDetail(BaseModel):
+class CartItemDetail(Schema):
     """Everything the cart's "edit options" modal needs for one line."""
     cart_index: int
     category: str
@@ -118,6 +121,6 @@ class CartItemDetail(BaseModel):
     weight: float | None = None
     price_large: float | None = None
     has_size_choice: bool | None = None
-    variant_options: str | None = None
+    variant_options: VariantOptions | None = None
     price_per_kg: float | None = None
     min_weight: float | None = None

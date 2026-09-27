@@ -28,7 +28,7 @@ from app.middleware.session import SessionData
 from app.models.catalog import Sauce
 from app.services.media import item_img
 from app.services.pricing import (
-    InvalidVariant, clamp_cake_weight, pizza_size, resolve_variant, unit_price,
+    InvalidVariant, clamp_cake_weight, parse_variant_options, pizza_size, resolve_variant, unit_price,
 )
 
 ALL_CATEGORIES = {c.value for c in ProductCategory}  # 12
@@ -294,7 +294,7 @@ def get_cart_preview(session: SessionData, db: Session) -> dict:
         row = line["row"]
         items.append({
             "session_index": line["session_index"], "category": line["category"], "id": row.id,
-            "name": row.name, "image": item_img(row.image, prefix=""),
+            "name": row.name, "image": item_img(row.image),
             "price": line["price"], "qty": line["quantity"],
         })
         total += line["subtotal"]
@@ -333,7 +333,7 @@ def get_cart_item(session: SessionData, db: Session, index: int) -> dict:
         result["price_large"] = float(row.price_large or 0)
         result["has_size_choice"] = bool(row.has_size_choice)
     if category in ("fast_food_items", "ice_cream_items"):
-        result["variant_options"] = row.variant_options
+        result["variant_options"] = parse_variant_options(row.variant_options)
     if category == "cake_items":
         result["price_per_kg"] = float(row.price_per_kg or 0)
         result["min_weight"] = float(row.min_weight or 1)

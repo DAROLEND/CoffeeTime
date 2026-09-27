@@ -14,8 +14,8 @@ _DATA_URI_RE = re.compile(r"^data:image/(jpeg|png|webp);base64,(.+)$", re.DOTALL
 def item_img(raw: str | None, prefix: str = "/") -> str:
     """Resolve a DB-stored image path/URL for use in an <img src>.
 
-    Empty/default-placeholder paths return '' so templates can do
-    `{% if item.image_url %}`.
+    Empty/default-placeholder paths return '' so the client can show its
+    "no photo" placeholder.
     Absolute http(s) URLs (Supabase-hosted images) pass through unchanged.
     Everything else is treated as root-relative to the app's static tree.
     """

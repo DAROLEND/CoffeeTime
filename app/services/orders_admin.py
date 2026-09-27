@@ -147,11 +147,14 @@ def build_orders_where(filters: dict):
         clauses.append(Order.payment_method == "card_online")
     elif method == "card_pickup":
         clauses.append(Order.payment_method == "card_on_pickup")
+    # Filter on order_type: delivery_address is never filled in (pickup
+    # only), so the old delivery_address-based filter matched everything
+    # as "takeout".
     order_type = filters.get("type")
     if order_type == "takeout":
-        clauses.append((Order.delivery_address.is_(None)) | (Order.delivery_address == ""))
+        clauses.append(Order.order_type == "takeaway")
     elif order_type == "hall":
-        clauses.append((Order.delivery_address.isnot(None)) & (Order.delivery_address != ""))
+        clauses.append(Order.order_type == "dine_in")
     search = (filters.get("search") or "").strip()
     if search:
         like = f"%{search}%"
@@ -172,3 +175,20 @@ def build_orders_where(filters: dict):
     if filters.get("time_to") not in (None, ""):
         clauses.append(func.extract("hour", Order.created_at) <= int(filters["time_to"]))
     return clauses
+
+
+def order_counts(db: Session) -> dict:
+    """Per-status and per-payment counts for the orders page filter tabs."""
+    def count(*where):
+        return db.execute(select(func.count()).select_from(Order).where(*where)).scalar_one()
+
+    by_status = {getattr(k, "value", k): v for k, v in db.execute(select(Order.status, func.count()).group_by(Order.status)).all()}
+    return {
+        "all": sum(by_status.values()),
+        "new": by_status.get("new", 0), "processing": by_status.get("processing", 0),
+        "ready": by_status.get("ready", 0), "done": by_status.get("done", 0),
+        "cancelled": by_status.get("cancelled", 0),
+        "paid": count(Order.payment_status == "paid"),
+        "cash": count(Order.payment_method.like("%cash%")),
+        "unpaid": count(Order.payment_status.notin_(["paid", "cash"]), Order.payment_method.notlike("%cash%")),
+    }

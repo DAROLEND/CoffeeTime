@@ -1,27 +1,32 @@
-"""Admin product management: listing, add, edit, and delete across all
-menu categories. `require_perm('products')` is applied to every route in
-this router."""
+"""Admin product management across the 11 menu categories: list, read,
+create, update, delete. `require_perm('products')` guards every route.
+
+Create/update take multipart/form-data: either a raw `image` file or an
+`image_b64` data-URI produced by the in-browser cropper."""
 from __future__ import annotations
 
 import json
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.api.errors import bad_request, not_found
 from app.constants.categories import CATEGORY_MODEL_MAP, ProductCategory
 from app.db.session import get_db
 from app.dependencies import get_current_admin
 from app.models.orders import OrderItem
+from app.schemas.admin import AdminProduct, AdminProductsPage, ProductSaved
+from app.schemas.common import SuccessResponse
+from app.services.media import item_img
 from app.services.permissions import require_perm
 from app.services.storage import delete_stored_image, unique_filename, upload_image, upload_image_b64
-from app.templating import admin_render
 
 router = APIRouter(
-    prefix="/admin/manage-items",
+    prefix="/admin/products",
+    tags=["admin"],
     dependencies=[Depends(get_current_admin), Depends(require_perm("products"))],
 )
 
@@ -65,306 +70,232 @@ def _floatval(raw) -> float:
 
 
 def _has_photo(image: str | None) -> bool:
-    """Checks for a local file at `image`'s path. A Supabase-hosted photo
-    (an http(s) URL) never counts as "has photo" here and falls back to
-    the placeholder icon — an existing display quirk, not in scope to
-    fix."""
+    """A remote (Supabase) URL, or a local file that still exists."""
     if not image or "default.jpg" in image:
         return False
+    if image.startswith("http"):
+        return True
     return (PROJECT_ROOT / image).exists()
 
 
-def _item_js_payload(item, has_photo: bool) -> str:
-    """The inline JSON the "Редагувати" button embeds for the edit modal
-    to prefill from, without an extra round trip to the server."""
-    data = {
-        "id": item.id, "name": item.name, "description": item.description or "",
-        "price": float(item.price) if hasattr(item, "price") else None,
-        "image": item.image if has_photo else "",
-    }
-    if hasattr(item, "variant_options"):
-        data["variant_options"] = item.variant_options
-    if hasattr(item, "pieces_count"):
-        data["pieces_count"] = item.pieces_count
-    return json.dumps(data, ensure_ascii=False)
-
-
-def _parse_category(raw: str) -> ProductCategory | None:
+def _parse_category(raw: str) -> ProductCategory:
     try:
         cat = ProductCategory(raw)
     except ValueError:
-        return None
-    return cat if cat in ALLOWED else None
+        cat = None
+    if cat not in ALLOWED:
+        raise not_found("Невідома категорія.")
+    return cat
 
 
-def _variant_options_json(form) -> str:
-    diff2 = _floatval(form.get("scoop_diff_2"))
-    diff3 = _floatval(form.get("scoop_diff_3"))
+def _scoop_diffs(raw: str | None) -> tuple[float | None, float | None]:
+    try:
+        opts = json.loads(raw or "")["options"]
+        return float(opts[1]["price_diff"]), float(opts[2]["price_diff"])
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None, None
+
+
+def _product_out(row, cat: ProductCategory, sold: int = 0) -> dict:
+    has_photo = _has_photo(row.image)
+    diff2 = diff3 = None
+    if cat == ProductCategory.ICE_CREAM:
+        diff2, diff3 = _scoop_diffs(row.variant_options)
+    return {
+        "id": row.id, "category": cat.value, "category_label": CATEGORY_NAMES[cat],
+        "name": row.name or "", "description": row.description or "",
+        "price": float(row.price_per_kg if cat == ProductCategory.CAKE else row.price or 0),
+        "image": item_img(row.image) if has_photo else "", "has_photo": has_photo, "sold": sold,
+        "variant_options": getattr(row, "variant_options", None),
+        "pieces_count": getattr(row, "pieces_count", None),
+        "price_per_kg": float(row.price_per_kg) if cat == ProductCategory.CAKE else None,
+        "min_weight": float(row.min_weight) if cat == ProductCategory.CAKE else None,
+        "scoop_diff_2": diff2, "scoop_diff_3": diff3,
+    }
+
+
+def _variant_options_json(diff2: str, diff3: str) -> str:
     return json.dumps({
         "type": "scoops", "label": "Кількість кульок",
         "options": [
             {"id": "1", "label": "1 кулька", "price_diff": 0},
-            {"id": "2", "label": "2 кульки", "price_diff": diff2},
-            {"id": "3", "label": "3 кульки", "price_diff": diff3},
+            {"id": "2", "label": "2 кульки", "price_diff": _floatval(diff2)},
+            {"id": "3", "label": "3 кульки", "price_diff": _floatval(diff3)},
         ],
     }, ensure_ascii=False)
 
 
-async def _handle_image_upload(form, category: ProductCategory) -> tuple[str, list[str]]:
-    """Shared upload_image_b64/upload_image branch for add and edit.
-    Returns (image_path, errors) — image_path is '' if nothing new was
-    uploaded or an error occurred."""
-    errors: list[str] = []
+async def _store_image(category: ProductCategory, image_b64: str, upload: UploadFile | None) -> str:
+    """Save a new photo; returns its stored path/URL, '' when none was sent.
+    Raises a 400 on a bad file."""
     subfolder = CATEGORY_FOLDERS.get(category, "other")
     upload_dir = PROJECT_ROOT / "static" / "images" / "menu_items" / subfolder
     upload_dir.mkdir(parents=True, exist_ok=True)
     remote_base = f"menu_items/{subfolder}"
 
-    image_b64 = form.get("image_b64") or ""
-    upload = form.get("image")
-    has_upload_file = bool(getattr(upload, "filename", None))
-
-    image_path = ""
     if image_b64:
         fname = unique_filename()
         saved = upload_image_b64(image_b64, upload_dir / fname, f"{remote_base}/{fname}")
-        if saved:
-            image_path = saved if saved.startswith("http") else f"static/images/menu_items/{subfolder}/{saved}"
-        else:
-            errors.append("Помилка збереження зображення.")
-    elif has_upload_file:
+        if not saved:
+            raise bad_request("Помилка збереження зображення.")
+        return saved if saved.startswith("http") else f"static/images/menu_items/{subfolder}/{saved}"
+
+    if upload is not None and upload.filename:
         ext = upload.filename.rsplit(".", 1)[-1].lower() if "." in upload.filename else ""
         if ext not in ALLOWED_EXT:
-            errors.append("Дозволені формати: JPG, PNG, WebP, GIF.")
-        else:
-            file_name = f"{unique_filename()}.{ext}"
-            mime = "image/png" if ext == "png" else ("image/webp" if ext == "webp" else "image/jpeg")
-            data = await upload.read()
-            saved = upload_image(data, upload_dir / file_name, f"{remote_base}/{file_name}", mime)
-            if saved:
-                image_path = saved if saved.startswith("http") else f"static/images/menu_items/{subfolder}/{file_name}"
-            else:
-                errors.append("Не вдалося зберегти зображення.")
-    return image_path, errors
+            raise bad_request("Дозволені формати: JPG, PNG, WebP, GIF.")
+        file_name = f"{unique_filename()}.{ext}"
+        mime = "image/png" if ext == "png" else ("image/webp" if ext == "webp" else "image/jpeg")
+        saved = upload_image(await upload.read(), upload_dir / file_name, f"{remote_base}/{file_name}", mime)
+        if not saved:
+            raise bad_request("Не вдалося зберегти зображення.")
+        return saved if saved.startswith("http") else f"static/images/menu_items/{subfolder}/{file_name}"
+    return ""
 
 
-@router.get("")
-def manage_items_page(request: Request, db: Session = Depends(get_db), category: str = "all", saved: int | None = None):
+def _sales(db: Session, cat: ProductCategory) -> dict[int, int]:
+    rows = db.execute(
+        select(OrderItem.product_id, func.sum(OrderItem.quantity)).where(OrderItem.category == cat.value).group_by(OrderItem.product_id)
+    ).all()
+    return {int(pid): int(qty) for pid, qty in rows}
+
+
+@router.get("", response_model=AdminProductsPage)
+def list_products(category: str = "all", db: Session = Depends(get_db)):
     is_all = category == "all"
     cat_enum = None if is_all else _parse_category(category)
-    if not is_all and cat_enum is None:
-        is_all = True
-    cat_title = "Всі товари" if is_all else CATEGORY_NAMES.get(cat_enum, category)
-
-    popularity: dict[int, int] = {}
-    if not is_all:
-        rows = db.execute(
-            select(OrderItem.product_id, func.sum(OrderItem.quantity))
-            .where(OrderItem.category == cat_enum.value)
-            .group_by(OrderItem.product_id)
-        ).all()
-        popularity = {int(pid): int(qty) for pid, qty in rows}
-
-    def _entry(row, table: ProductCategory) -> dict:
-        has_photo = _has_photo(row.image)
-        return {
-            "row": row, "table": table, "has_photo": has_photo,
-            "item_json": _item_js_payload(row, has_photo),
-        }
 
     products = []
+    for cat in (ALLOWED if is_all else [cat_enum]):
+        model = CATEGORY_MODEL_MAP[cat]
+        sales = _sales(db, cat)
+        for row in db.execute(select(model).order_by(model.id.desc())).scalars().all():
+            products.append(_product_out(row, cat, sales.get(row.id, 0)))
     if is_all:
-        for cat in ALLOWED:
-            model = CATEGORY_MODEL_MAP[cat]
-            rows = db.execute(select(model).order_by(model.id.desc())).scalars().all()
-            for row in rows:
-                products.append(_entry(row, cat))
-        products.sort(key=lambda it: it["row"].name)
-    else:
-        model = CATEGORY_MODEL_MAP[cat_enum]
-        rows = db.execute(select(model).order_by(model.id.desc())).scalars().all()
-        products = [_entry(row, cat_enum) for row in rows]
+        products.sort(key=lambda p: p["name"])
 
-    tab_counts = {}
+    counts = []
     for cat in ALLOWED:
         model = CATEGORY_MODEL_MAP[cat]
-        tab_counts[cat.value] = db.execute(select(func.count()).select_from(model)).scalar_one()
-    tab_counts["all"] = sum(tab_counts.values())
+        counts.append({"key": cat.value, "label": CATEGORY_NAMES[cat], "count": db.execute(select(func.count()).select_from(model)).scalar_one()})
 
-    return admin_render(
-        request, db, "admin/manage_items.html", page_title="Товари", active_page="products",
-        is_all=is_all, category=(cat_enum.value if cat_enum else "all"), cat_title=cat_title,
-        allowed=ALLOWED, category_names=CATEGORY_NAMES, tab_counts=tab_counts,
-        products=products, popularity=popularity, saved=saved is not None,
-    )
+    return {
+        "is_all": is_all, "category": cat_enum.value if cat_enum else "all",
+        "title": "Всі товари" if is_all else CATEGORY_NAMES[cat_enum],
+        "categories": counts, "total_count": sum(c["count"] for c in counts), "products": products,
+    }
 
 
-@router.get("/add")
-def add_item_form(request: Request, db: Session = Depends(get_db), category: str = ""):
-    cat_enum = _parse_category(category)
-    if cat_enum is None:
-        return RedirectResponse("/admin/manage-items", status_code=303)
-    return admin_render(
-        request, db, "admin/product_add.html", page_title="Додати товар", active_page="products",
-        category=cat_enum.value, cat_title=CATEGORY_NAMES[cat_enum], errors=[], form_data={},
-    )
+@router.get("/{category}/{item_id}", response_model=AdminProduct)
+def get_product(category: str, item_id: int, db: Session = Depends(get_db)):
+    cat = _parse_category(category)
+    row = db.get(CATEGORY_MODEL_MAP[cat], item_id)
+    if row is None:
+        raise not_found("Товар не знайдено.")
+    return _product_out(row, cat, _sales(db, cat).get(row.id, 0))
 
 
-@router.post("/add")
-async def add_item_submit(request: Request, db: Session = Depends(get_db), category: str = ""):
-    cat_enum = _parse_category(category)
-    if cat_enum is None:
-        return RedirectResponse("/admin/manage-items", status_code=303)
+@router.post("/{category}", response_model=ProductSaved, status_code=201)
+async def create_product(
+    category: str,
+    name: str = Form(""), description: str = Form(""), price: str = Form(""),
+    price_per_kg: str = Form(""), min_weight: str = Form(""),
+    scoop_diff_2: str = Form(""), scoop_diff_3: str = Form(""), pieces_count: str = Form(""),
+    image_b64: str = Form(""), image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+):
+    cat = _parse_category(category)
+    name, description = name.strip(), description.strip()
+    is_cake = cat == ProductCategory.CAKE
+    price_value, per_kg = _floatval(price), _floatval(price_per_kg)
+    weight = _floatval(min_weight) or 1.0
 
-    form = await request.form()
-    name = (form.get("name") or "").strip()
-    desc = (form.get("description") or "").strip()
-    price = _floatval(form.get("price"))
-    price_per_kg = _floatval(form.get("price_per_kg"))
-    min_weight = _floatval(form.get("min_weight")) or 1.0
-    is_cake = cat_enum == ProductCategory.CAKE
-
-    errors: list[str] = []
+    errors = []
     if not name:
         errors.append("Введіть назву товару.")
-    if is_cake:
-        if price_per_kg <= 0:
-            errors.append("Ціна за кг має бути більша за 0.")
-        if min_weight <= 0:
-            min_weight = 1.0
-    else:
-        if price <= 0:
-            errors.append("Ціна має бути більша за 0.")
-
-    image_b64 = form.get("image_b64") or ""
-    upload = form.get("image")
-    has_upload_file = bool(getattr(upload, "filename", None))
-    if not image_b64 and not has_upload_file:
-        errors.append("Оберіть зображення для завантаження.")
-
-    image_path = ""
-    if not errors:
-        image_path, upload_errors = await _handle_image_upload(form, cat_enum)
-        errors.extend(upload_errors)
-
-    if not errors and image_path:
-        model = CATEGORY_MODEL_MAP[cat_enum]
-        if is_cake:
-            db.add(model(name=name, description=desc, price_per_kg=price_per_kg, min_weight=min_weight, image=image_path))
-        elif cat_enum == ProductCategory.ICE_CREAM:
-            db.add(model(name=name, description=desc, price=price, variant_options=_variant_options_json(form), image=image_path))
-        else:
-            db.add(model(name=name, description=desc, price=price, image=image_path))
-        db.commit()
-        return RedirectResponse(f"/admin/manage-items?category={cat_enum.value}&saved=1", status_code=303)
-
-    return admin_render(
-        request, db, "admin/product_add.html", page_title="Додати товар", active_page="products",
-        category=cat_enum.value, cat_title=CATEGORY_NAMES[cat_enum], errors=errors, form_data=form,
-        status_code=200,
-    )
-
-
-@router.get("/edit")
-def edit_item_form(request: Request, db: Session = Depends(get_db), category: str = "", id: int = 0):
-    cat_enum = _parse_category(category)
-    if cat_enum is None or id <= 0:
-        return RedirectResponse("/admin/manage-items", status_code=303)
-
-    model = CATEGORY_MODEL_MAP[cat_enum]
-    product = db.get(model, id)
-    if not product:
-        return RedirectResponse(f"/admin/manage-items?category={cat_enum.value}", status_code=303)
-
-    return admin_render(
-        request, db, "admin/product_edit.html", page_title="Редагувати товар", active_page="products",
-        category=cat_enum.value, cat_title=CATEGORY_NAMES[cat_enum], product=product, errors=[],
-    )
-
-
-@router.post("/edit")
-async def edit_item_submit(request: Request, db: Session = Depends(get_db), category: str = "", id: int = 0):
-    cat_enum = _parse_category(category)
-    if cat_enum is None or id <= 0:
-        return RedirectResponse("/admin/manage-items", status_code=303)
-
-    model = CATEGORY_MODEL_MAP[cat_enum]
-    product = db.get(model, id)
-    if not product:
-        return RedirectResponse(f"/admin/manage-items?category={cat_enum.value}", status_code=303)
-
-    form = await request.form()
-    name = (form.get("name") or "").strip()
-    desc = (form.get("description") or "").strip()
-    price = _floatval(form.get("price"))
-    image_path = product.image
-
-    errors: list[str] = []
-    if not name:
-        errors.append("Введіть назву товару.")
-    if price <= 0:
+    if is_cake and per_kg <= 0:
+        errors.append("Ціна за кг має бути більша за 0.")
+    if not is_cake and price_value <= 0:
         errors.append("Ціна має бути більша за 0.")
+    if not image_b64 and not (image is not None and image.filename):
+        errors.append("Оберіть зображення для завантаження.")
+    if errors:
+        raise bad_request(errors[0], code="validation", errors=errors)
 
-    image_b64 = form.get("image_b64") or ""
-    upload = form.get("image")
-    has_upload_file = bool(getattr(upload, "filename", None))
-    remove_image = (form.get("remove_image") or "") == "1"
-
-    if remove_image and not image_b64 and not has_upload_file:
-        delete_stored_image(image_path, PROJECT_ROOT)
-        image_path = ""
-    elif image_b64 or has_upload_file:
-        new_path, upload_errors = await _handle_image_upload(form, cat_enum)
-        errors.extend(upload_errors)
-        if new_path:
-            delete_stored_image(product.image, PROJECT_ROOT)
-            image_path = new_path
-
-    if not errors:
-        product.name = name
-        product.description = desc
-        product.price = price
-        product.image = image_path
-        if cat_enum == ProductCategory.ICE_CREAM:
-            product.variant_options = _variant_options_json(form)
-        elif cat_enum == ProductCategory.SUSHI_SET:
-            product.pieces_count = max(0, int(_floatval(form.get("pieces_count"))))
-        db.commit()
-        return RedirectResponse(f"/admin/manage-items?category={cat_enum.value}&saved=1", status_code=303)
-
-    return admin_render(
-        request, db, "admin/product_edit.html", page_title="Редагувати товар", active_page="products",
-        category=cat_enum.value, cat_title=CATEGORY_NAMES[cat_enum], product=product, errors=errors,
-        status_code=200,
-    )
-
-
-@router.post("/delete")
-async def ajax_delete_item(request: Request, db: Session = Depends(get_db)):
-    try:
-        data = await request.json()
-    except ValueError:
-        data = {}
-    item_id = int(data.get("id") or 0)
-    cat_enum = _parse_category(str(data.get("category") or ""))
-
-    if not item_id or cat_enum is None:
-        return JSONResponse({"success": False, "error": "Invalid input"})
-
-    model = CATEGORY_MODEL_MAP[cat_enum]
-    product = db.get(model, item_id)
-    if not product:
-        return JSONResponse({"success": True})
-
-    image_path = product.image
-    db.delete(product)
+    image_path = await _store_image(cat, image_b64, image)
+    model = CATEGORY_MODEL_MAP[cat]
+    if is_cake:
+        row = model(name=name, description=description, price_per_kg=per_kg, price=per_kg, min_weight=weight, image=image_path)
+    elif cat == ProductCategory.ICE_CREAM:
+        row = model(name=name, description=description, price=price_value, variant_options=_variant_options_json(scoop_diff_2, scoop_diff_3), image=image_path)
+    elif cat == ProductCategory.SUSHI_SET:
+        row = model(name=name, description=description, price=price_value, pieces_count=max(0, int(_floatval(pieces_count))), image=image_path)
+    else:
+        row = model(name=name, description=description, price=price_value, image=image_path)
+    db.add(row)
     db.commit()
-    if image_path:
-        local = PROJECT_ROOT / image_path
-        if local.exists():
-            try:
-                local.unlink()
-            except OSError:
-                pass
+    return {"product": _product_out(row, cat)}
 
-    return JSONResponse({"success": True})
+
+@router.post("/{category}/{item_id}", response_model=ProductSaved)
+async def update_product(
+    category: str, item_id: int,
+    name: str = Form(""), description: str = Form(""), price: str = Form(""),
+    price_per_kg: str = Form(""), min_weight: str = Form(""),
+    scoop_diff_2: str = Form(""), scoop_diff_3: str = Form(""), pieces_count: str = Form(""),
+    image_b64: str = Form(""), image: UploadFile | None = File(None), remove_image: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Multipart update (POST, since browsers' FormData uploads are POST).
+    Cakes are priced per kg: `price_per_kg`/`min_weight` apply to them."""
+    cat = _parse_category(category)
+    row = db.get(CATEGORY_MODEL_MAP[cat], item_id)
+    if row is None:
+        raise not_found("Товар не знайдено.")
+
+    is_cake = cat == ProductCategory.CAKE
+    name = name.strip()
+    price_value = _floatval(price_per_kg) if is_cake and price_per_kg else _floatval(price)
+    errors = []
+    if not name:
+        errors.append("Введіть назву товару.")
+    if price_value <= 0:
+        errors.append("Ціна має бути більша за 0.")
+    if errors:
+        raise bad_request(errors[0], code="validation", errors=errors)
+
+    has_new = bool(image_b64) or (image is not None and bool(image.filename))
+    if has_new:
+        new_path = await _store_image(cat, image_b64, image)
+        delete_stored_image(row.image, PROJECT_ROOT)
+        row.image = new_path
+    elif remove_image == "1":
+        delete_stored_image(row.image, PROJECT_ROOT)
+        row.image = ""
+
+    row.name = name
+    row.description = description.strip()
+    row.price = price_value
+    if is_cake:
+        row.price_per_kg = price_value
+        if min_weight:
+            row.min_weight = _floatval(min_weight) or 1.0
+    elif cat == ProductCategory.ICE_CREAM:
+        row.variant_options = _variant_options_json(scoop_diff_2, scoop_diff_3)
+    elif cat == ProductCategory.SUSHI_SET and pieces_count != "":
+        row.pieces_count = max(0, int(_floatval(pieces_count)))
+    db.commit()
+    return {"product": _product_out(row, cat, _sales(db, cat).get(row.id, 0))}
+
+
+@router.delete("/{category}/{item_id}", response_model=SuccessResponse)
+def delete_product(category: str, item_id: int, db: Session = Depends(get_db)):
+    cat = _parse_category(category)
+    row = db.get(CATEGORY_MODEL_MAP[cat], item_id)
+    if row is None:
+        return {"success": True}
+    image_path = row.image
+    db.delete(row)
+    db.commit()
+    delete_stored_image(image_path, PROJECT_ROOT)
+    return {"success": True}

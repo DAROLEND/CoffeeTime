@@ -1,25 +1,25 @@
-"""Admin editor for the homepage "dessert of the day" banner. Seeds
-default site_settings rows on first access, same as about_section.py."""
+"""Admin editor for the homepage "dessert of the day" banner
+(site_settings `dessert_banner_*`). Without a custom photo the site shows
+a random dessert from the menu."""
 from __future__ import annotations
 
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.dependencies import get_current_admin
-from app.models.catalog import DessertItem
-from app.services.media import save_cropped_image
+from app.routers.public.pages import random_dessert_image
+from app.schemas.admin import DessertBannerSettings
+from app.services.media import item_img, save_cropped_image
 from app.services.permissions import require_perm
 from app.services.settings import get_settings_by_prefix, set_setting
-from app.templating import admin_render
 
 router = APIRouter(
     prefix="/admin/dessert-banner",
+    tags=["admin"],
     dependencies=[Depends(get_current_admin), Depends(require_perm("content"))],
 )
 
@@ -44,72 +44,62 @@ def _ensure_defaults(db: Session) -> None:
             set_setting(db, key, value)
 
 
-@router.get("")
-def dessert_banner_page(request: Request, db: Session = Depends(get_db)):
-    _ensure_defaults(db)
+def _view(db: Session) -> dict:
     settings = {**DEFAULTS, **get_settings_by_prefix(db, "dessert_banner_")}
-
-    random_img = None
-    if not (settings.get("dessert_banner_image") or ""):
-        # ORDER BY RANDOM() LIMIT 1 — func.random() maps to Postgres's
-        # RANDOM(), same as app/routers/public/pages.py's identical query.
-        random_row = db.execute(select(DessertItem.image).order_by(func.random()).limit(1)).first()
-        random_img = "/" + random_row[0].lstrip("/") if random_row else None
-
-    has_custom_image = bool(settings.get("dessert_banner_image"))
-    photo_version = ""
-    if has_custom_image:
-        # ?v=filemtime(...) cache-bust — without it the browser can keep
-        # showing the old photo after a re-upload, since the filename
-        # ("dessert-banner.<ext>") doesn't change.
-        image_path = PROJECT_ROOT / settings["dessert_banner_image"]
+    image = settings.get("dessert_banner_image") or ""
+    url = None
+    if image:
+        # Cache-bust: the file name ("dessert-banner.<ext>") never changes,
+        # so without ?v= the browser keeps showing the previous photo.
         try:
-            photo_version = int(image_path.stat().st_mtime)
+            version = int((PROJECT_ROOT / image).stat().st_mtime)
         except OSError:
-            photo_version = int(time.time())
+            version = int(time.time())
+        url = f"{item_img(image)}?v={version}"
+    return {
+        **{k: settings[k] for k in EDITABLE_FIELDS}, "image": url, "has_custom_image": bool(image),
+        "random_image": None if image else random_dessert_image(db),
+    }
 
-    return admin_render(
-        request, db, "admin/dessert_banner.html", page_title="Банер «Десерт дня»", active_page="dessert_banner",
-        settings=settings, has_custom_image=has_custom_image, random_img=random_img, photo_version=photo_version,
-    )
 
-
-@router.post("")
-async def dessert_banner_submit(request: Request, db: Session = Depends(get_db)):
+@router.get("", response_model=DessertBannerSettings)
+def dessert_banner(db: Session = Depends(get_db)):
     _ensure_defaults(db)
-    form = await request.form()
+    return _view(db)
 
+
+@router.post("", response_model=DessertBannerSettings)
+async def save_dessert_banner(
+    dessert_banner_label: str = Form(""), dessert_banner_title: str = Form(""),
+    dessert_banner_desc: str = Form(""), dessert_banner_btn: str = Form(""),
+    dessert_banner_image_b64: str = Form(""), dessert_banner_image: UploadFile | None = File(None),
+    clear_image: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    _ensure_defaults(db)
+    values = dict(dessert_banner_label=dessert_banner_label, dessert_banner_title=dessert_banner_title,
+                  dessert_banner_desc=dessert_banner_desc, dessert_banner_btn=dessert_banner_btn)
     for field in EDITABLE_FIELDS:
-        set_setting(db, field, (form.get(field) or "").strip())
+        set_setting(db, field, values[field].strip())
 
     upload_dir = PROJECT_ROOT / "static" / "images" / "main"
     upload_dir.mkdir(parents=True, exist_ok=True)
     saved_path = ""
-
-    b64 = form.get("dessert_banner_image_b64") or ""
-    if b64:
-        ext = save_cropped_image(b64, upload_dir / "dessert-banner.jpg")
+    if dessert_banner_image_b64:
+        ext = save_cropped_image(dessert_banner_image_b64, upload_dir / "dessert-banner.jpg")
         if ext:
             saved_path = f"static/images/main/dessert-banner.{ext}"
-    else:
-        upload = form.get("dessert_banner_image")
-        filename = getattr(upload, "filename", None)
-        if filename:
-            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-            data = await upload.read()
-            if ext in ALLOWED_EXT and len(data) <= MAX_UPLOAD_SIZE:
-                fname = f"dessert-banner.{ext}"
-                (upload_dir / fname).write_bytes(data)
-                saved_path = f"static/images/main/{fname}"
+    elif dessert_banner_image is not None and dessert_banner_image.filename:
+        filename = dessert_banner_image.filename
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        data = await dessert_banner_image.read()
+        if ext in ALLOWED_EXT and len(data) <= MAX_UPLOAD_SIZE:
+            (upload_dir / f"dessert-banner.{ext}").write_bytes(data)
+            saved_path = f"static/images/main/dessert-banner.{ext}"
 
     if saved_path:
         set_setting(db, "dessert_banner_image", saved_path)
-
-    # Remove custom image (falls back to a random dessert on the site)
-    if form.get("clear_image") is not None:
+    elif clear_image:
+        # Back to a random dessert on the site.
         set_setting(db, "dessert_banner_image", "")
-
-    session = request.state.session
-    session["admin_flash"] = "Збережено."
-    session["admin_flash_type"] = "success"
-    return RedirectResponse("/admin/dessert-banner", status_code=303)
+    return _view(db)

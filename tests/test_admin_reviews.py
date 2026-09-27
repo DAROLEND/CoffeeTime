@@ -1,119 +1,90 @@
-"""Tests for the admin reviews management endpoints."""
+"""Admin reviews management endpoints."""
 from __future__ import annotations
 
-import re
-
-from app.models.auth import AdminUser, User
+from app.models.auth import User
 from app.models.cms import SiteReview
 from app.models.orders import OrderRating
 from app.services.auth import hash_password
+from tests.helpers import login_admin
 
 
-def _login_admin(client, db_session, username="boss", role="super", perms="[]"):
-    admin = AdminUser(username=username, password=hash_password("adminpass1"), role=role, permissions=perms)
-    db_session.add(admin)
-    db_session.commit()
-    resp = client.get("/login")
-    token = re.search(r'name="csrf_token" value="([a-f0-9]+)"', resp.text).group(1)
-    client.post("/login", data={"csrf_token": token, "email": username, "password": "adminpass1"}, follow_redirects=False)
-    return admin
+def test_reviews_require_reviews_permission(api, db_session):
+    login_admin(api, db_session, role="staff", perms='["products"]')
+    assert api.get("/api/admin/reviews").status_code == 403
 
 
-def test_reviews_requires_reviews_permission(client, db_session):
-    _login_admin(client, db_session, role="staff", perms='["products"]')
-    resp = client.get("/admin/reviews", follow_redirects=False)
-    assert resp.status_code == 303
-    assert resp.headers["location"] == "/admin/dashboard"
-
-
-def test_reviews_default_tab_lists_site_reviews(client, db_session):
-    _login_admin(client, db_session)
+def test_reviews_list(api, db_session):
+    login_admin(api, db_session)
     db_session.add(SiteReview(name="Іван", text="Дуже смачно, дякую!", rating=5, status="approved"))
     db_session.commit()
+    data = api.get("/api/admin/reviews").json()
+    assert data["reviews"][0]["author"] == "Іван"
+    assert data["reviews"][0]["text"] == "Дуже смачно, дякую!"
+    assert data["avg_rating"] == 5.0
+    assert data["rating_dist"][0] == {"stars": 5, "count": 1}
 
-    resp = client.get("/admin/reviews")
-    assert resp.status_code == 200
-    assert "Іван" in resp.text
-    assert "Дуже смачно" in resp.text
 
-
-def test_reviews_filter_by_rating_and_status(client, db_session):
-    _login_admin(client, db_session)
+def test_reviews_filter_by_rating_and_status(api, db_session):
+    login_admin(api, db_session)
     db_session.add(SiteReview(name="Оксана Топ", text="ReviewFiveText", rating=5, status="approved"))
     db_session.add(SiteReview(name="Марко Другий", text="ReviewTwoText", rating=2, status="pending"))
     db_session.commit()
-
-    resp = client.get("/admin/reviews?rating=5")
-    assert "ReviewFiveText" in resp.text and "ReviewTwoText" not in resp.text
-
-    resp = client.get("/admin/reviews?status=pending")
-    assert "ReviewTwoText" in resp.text and "ReviewFiveText" not in resp.text
+    texts = lambda url: [r["text"] for r in api.get(url).json()["reviews"]]  # noqa: E731
+    assert texts("/api/admin/reviews?rating=5") == ["ReviewFiveText"]
+    assert texts("/api/admin/reviews?status=pending") == ["ReviewTwoText"]
 
 
-def test_reviews_order_ratings_tab(client, db_session):
-    _login_admin(client, db_session)
+def test_order_ratings(api, db_session):
+    login_admin(api, db_session)
     user = User(login="u1", email="u1@example.com", password=hash_password("x"), client_name="Петро", client_surname="Іваненко")
     db_session.add(user)
     db_session.flush()
     db_session.add(OrderRating(order_id=42, user_id=user.client_id, rating=4))
     db_session.commit()
+    data = api.get("/api/admin/reviews/order-ratings").json()
+    assert data["order_ratings"][0]["order_id"] == 42
+    assert data["order_ratings"][0]["uname"] == "Петро Іваненко"
+    assert data["avg"] == 4.0
 
-    resp = client.get("/admin/reviews?tab=order_ratings")
-    assert resp.status_code == 200
-    assert "#42" in resp.text
-    assert "Петро" in resp.text
 
-
-def test_review_approve(client, db_session):
-    _login_admin(client, db_session)
+def test_review_approve(api, db_session):
+    login_admin(api, db_session)
     review = SiteReview(name="X", text="text", rating=3, status="pending")
     db_session.add(review)
     db_session.commit()
-    review_id = review.id
-
-    resp = client.post("/admin/reviews", headers={"X-Requested-With": "XMLHttpRequest"}, data={"action": "approved", "id": review_id})
-    assert resp.json() == {"success": True}
+    assert api.patch(f"/api/admin/reviews/{review.id}", json={"status": "approved"}).json()["success"] is True
     db_session.expire_all()
-    assert db_session.get(SiteReview, review_id).status.value == "approved"
+    assert db_session.get(SiteReview, review.id).status.value == "approved"
 
 
-def test_review_decline(client, db_session):
-    _login_admin(client, db_session)
+def test_review_decline(api, db_session):
+    login_admin(api, db_session)
+    review = SiteReview(name="X", text="text", rating=3, status="approved")
+    db_session.add(review)
+    db_session.commit()
+    api.patch(f"/api/admin/reviews/{review.id}", json={"status": "declined"})
+    db_session.expire_all()
+    assert db_session.get(SiteReview, review.id).status.value == "declined"
+
+
+def test_review_delete(api, db_session):
+    login_admin(api, db_session)
     review = SiteReview(name="X", text="text", rating=3, status="approved")
     db_session.add(review)
     db_session.commit()
     review_id = review.id
-
-    client.post("/admin/reviews", headers={"X-Requested-With": "XMLHttpRequest"}, data={"action": "declined", "id": review_id})
-    db_session.expire_all()
-    assert db_session.get(SiteReview, review_id).status.value == "declined"
-
-
-def test_review_delete(client, db_session):
-    _login_admin(client, db_session)
-    review = SiteReview(name="X", text="text", rating=3, status="approved")
-    db_session.add(review)
-    db_session.commit()
-    review_id = review.id
-
-    resp = client.post("/admin/reviews", headers={"X-Requested-With": "XMLHttpRequest"}, data={"action": "delete", "id": review_id})
-    assert resp.json() == {"success": True}
+    assert api.delete(f"/api/admin/reviews/{review_id}").json()["success"] is True
     assert db_session.get(SiteReview, review_id) is None
 
 
-def test_review_action_requires_reviews_permission(client, db_session):
-    _login_admin(client, db_session, role="staff", perms='["products"]')
-    resp = client.post(
-        "/admin/reviews", headers={"X-Requested-With": "XMLHttpRequest"},
-        data={"action": "delete", "id": 1}, follow_redirects=False,
-    )
-    assert resp.status_code == 303
+def test_review_action_requires_reviews_permission(api, db_session):
+    login_admin(api, db_session, role="staff", perms='["products"]')
+    assert api.delete("/api/admin/reviews/1").status_code == 403
 
 
-def test_review_action_rejects_unknown_action(client, db_session):
-    _login_admin(client, db_session)
+def test_review_rejects_unknown_status(api, db_session):
+    login_admin(api, db_session)
     review = SiteReview(name="X", text="text", rating=3, status="approved")
     db_session.add(review)
     db_session.commit()
-    resp = client.post("/admin/reviews", headers={"X-Requested-With": "XMLHttpRequest"}, data={"action": "bogus", "id": review.id})
-    assert resp.json() == {"success": False}
+    assert api.patch(f"/api/admin/reviews/{review.id}", json={"status": "bogus"}).status_code == 422

@@ -1,29 +1,31 @@
-"""Admin sauce management: add/update/toggle/delete.
+"""Admin sauce management: list/add/update/toggle/delete.
 
-Note: unlike the product-item upload pipeline (app/services/storage.py),
-sauce photos are saved to local disk only, not mirrored to Supabase."""
+Sauce photos are saved to local disk only (not mirrored to Supabase like
+product photos). A rejected or oversized upload is ignored and the
+existing image kept, rather than failing the whole save."""
 from __future__ import annotations
 
-import json
 import random
 import re
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.errors import bad_request, not_found
 from app.db.session import get_db
 from app.dependencies import get_current_admin
 from app.models.catalog import Sauce
-from app.services.media import save_cropped_image
+from app.schemas.admin import AdminSauce, SauceActiveRequest, SauceSaved
+from app.schemas.common import SuccessResponse
+from app.services.media import item_img, save_cropped_image
 from app.services.permissions import require_perm
-from app.templating import admin_render
 
 router = APIRouter(
     prefix="/admin/sauces",
+    tags=["admin"],
     dependencies=[Depends(get_current_admin), Depends(require_perm("products"))],
 )
 
@@ -49,27 +51,28 @@ def _unique_name() -> str:
 def _has_photo(image: str | None) -> bool:
     if not image or "default.jpg" in image:
         return False
-    return (PROJECT_ROOT / image).exists()
+    return image.startswith("http") or (PROJECT_ROOT / image).exists()
 
 
-async def _handle_sauce_image(form) -> str:
-    """Shared add/update image branch. Returns the new image path, or ''
-    if nothing valid was supplied — callers then leave the existing image
-    untouched (a rejected/missing upload here is silently ignored, not
-    surfaced as a form error)."""
+def _sauce_out(s: Sauce) -> dict:
+    has_photo = _has_photo(s.image)
+    return {
+        "id": s.id, "name": s.name, "price": float(s.price or 0), "image": item_img(s.image) if has_photo else "",
+        "has_photo": has_photo, "active": bool(s.active), "sort_order": s.sort_order or 0,
+    }
+
+
+async def _store_image(image_b64: str, upload: UploadFile | None) -> str:
     upload_dir = PROJECT_ROOT / "static" / "images" / "menu_items" / "sauces"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    b64 = form.get("sauce_image_b64") or ""
-    if b64:
+    if image_b64:
         fname = _unique_name()
-        ext = save_cropped_image(b64, upload_dir / f"{fname}.jpg")
+        ext = save_cropped_image(image_b64, upload_dir / f"{fname}.jpg")
         return f"static/images/menu_items/sauces/{fname}.{ext}" if ext else ""
 
-    upload = form.get("sauce_image")
-    filename = getattr(upload, "filename", None)
-    if filename:
-        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if upload is not None and upload.filename:
+        ext = upload.filename.rsplit(".", 1)[-1].lower() if "." in upload.filename else ""
         data = await upload.read()
         if ext in ALLOWED_EXT and len(data) <= MAX_UPLOAD_SIZE:
             fname = f"{_unique_name()}.{ext}"
@@ -78,78 +81,67 @@ async def _handle_sauce_image(form) -> str:
     return ""
 
 
-def _sauce_json(s: Sauce) -> str:
-    # The *raw* row, not filtered by has_photo — the edit form's JS
-    # preview trusts `image` unconditionally, unlike the listing page.
-    return json.dumps({
-        "id": s.id, "name": s.name, "price": float(s.price) if s.price is not None else 0,
-        "image": s.image or "", "active": 1 if s.active else 0, "sort_order": s.sort_order or 0,
-    }, ensure_ascii=False)
+@router.get("", response_model=list[AdminSauce])
+def list_sauces(db: Session = Depends(get_db)):
+    return [_sauce_out(s) for s in db.execute(select(Sauce).order_by(Sauce.sort_order, Sauce.id)).scalars().all()]
 
 
-@router.get("")
-def sauces_page(request: Request, db: Session = Depends(get_db)):
-    rows = db.execute(select(Sauce).order_by(Sauce.sort_order, Sauce.id)).scalars().all()
-    sauces = [{"row": s, "has_photo": _has_photo(s.image), "json": _sauce_json(s)} for s in rows]
-    return admin_render(request, db, "admin/admin_sauces.html", page_title="Соуси", active_page="sauces", sauces=sauces)
+@router.post("", response_model=SauceSaved, status_code=201)
+async def add_sauce(
+    name: str = Form(""), price: str = Form(""), sort_order: str = Form(""), active: bool = Form(False),
+    image_b64: str = Form(""), image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+):
+    name = name.strip()
+    if not name:
+        raise bad_request("Назва обовʼязкова")
+    sauce = Sauce(
+        name=name, price=_numval(price), image=await _store_image(image_b64, image), emoji="",
+        active=active, sort_order=int(_numval(sort_order)),
+    )
+    db.add(sauce)
+    db.commit()
+    return {"success": True, "sauce": _sauce_out(sauce)}
 
 
-@router.post("")
-async def sauces_action(request: Request, db: Session = Depends(get_db)):
-    form = await request.form()
-    action = (form.get("action") or "").strip()
+@router.post("/{sauce_id}", response_model=SauceSaved)
+async def update_sauce(
+    sauce_id: int,
+    name: str = Form(""), price: str = Form(""), sort_order: str = Form(""), active: bool = Form(False),
+    image_b64: str = Form(""), image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+):
+    sauce = db.get(Sauce, sauce_id)
+    if sauce is None:
+        raise not_found("Соус не знайдено.")
+    name = name.strip()
+    if not name:
+        raise bad_request("Назва обовʼязкова")
+    new_image = await _store_image(image_b64, image)
+    if new_image:
+        sauce.image = new_image
+    sauce.name = name
+    sauce.price = _numval(price)
+    sauce.active = active
+    sauce.sort_order = int(_numval(sort_order))
+    db.commit()
+    return {"success": True, "sauce": _sauce_out(sauce)}
 
-    if action == "add":
-        name = (form.get("name") or "").strip()
-        price = _numval(form.get("price"))
-        sort_order = int(_numval(form.get("sort_order")))
-        active = form.get("active") is not None
-        if not name:
-            return JSONResponse({"success": False, "error": "Назва обовʼязкова"})
 
-        image_path = await _handle_sauce_image(form)
-        sauce = Sauce(name=name, price=price, image=image_path, emoji="", active=active, sort_order=sort_order)
-        db.add(sauce)
+@router.patch("/{sauce_id}/active", response_model=SuccessResponse)
+def toggle_sauce(sauce_id: int, body: SauceActiveRequest, db: Session = Depends(get_db)):
+    sauce = db.get(Sauce, sauce_id)
+    if sauce is None:
+        raise not_found("Соус не знайдено.")
+    sauce.active = body.active
+    db.commit()
+    return {"success": True}
+
+
+@router.delete("/{sauce_id}", response_model=SuccessResponse)
+def delete_sauce(sauce_id: int, db: Session = Depends(get_db)):
+    sauce = db.get(Sauce, sauce_id)
+    if sauce is not None:
+        db.delete(sauce)
         db.commit()
-        return JSONResponse({"success": True, "id": sauce.id, "image": image_path})
-
-    if action == "update":
-        sauce_id = int(_numval(form.get("id")))
-        name = (form.get("name") or "").strip()
-        if not sauce_id or not name:
-            return JSONResponse({"success": False, "error": "Невірні дані"})
-        sauce = db.get(Sauce, sauce_id)
-        if not sauce:
-            return JSONResponse({"success": False, "error": "Невірні дані"})
-
-        new_image = await _handle_sauce_image(form)
-        if new_image:
-            sauce.image = new_image
-        sauce.name = name
-        sauce.price = _numval(form.get("price"))
-        sauce.active = form.get("active") is not None
-        sauce.sort_order = int(_numval(form.get("sort_order")))
-        db.commit()
-        return JSONResponse({"success": True})
-
-    if action == "toggle":
-        sauce_id = int(_numval(form.get("id")))
-        if not sauce_id:
-            return JSONResponse({"success": False})
-        sauce = db.get(Sauce, sauce_id)
-        if sauce:
-            sauce.active = bool(int(_numval(form.get("active"))))
-            db.commit()
-        return JSONResponse({"success": True})
-
-    if action == "delete":
-        sauce_id = int(_numval(form.get("id")))
-        if not sauce_id:
-            return JSONResponse({"success": False})
-        sauce = db.get(Sauce, sauce_id)
-        if sauce:
-            db.delete(sauce)
-            db.commit()
-        return JSONResponse({"success": True})
-
-    return JSONResponse({"success": False, "error": "Unknown action"})
+    return {"success": True}

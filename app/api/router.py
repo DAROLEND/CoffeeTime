@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
+from app.routers.admin import (
+    about_section, admin_users, backup, dashboard, dessert_banner, gallery, hero_slides, orders,
+    products, reviews as admin_reviews, sauces,
+)
 from app.routers.public import auth, cart, checkout, menu, pages, payments, profile, reviews, session
 from app.schemas.common import ErrorResponse
 from app.services.csrf import verify_csrf
@@ -20,7 +24,11 @@ ERROR_RESPONSES = {
 }
 
 api_router = APIRouter(prefix="/api", dependencies=[Depends(verify_csrf)], responses=ERROR_RESPONSES)
-for module in (session, pages, menu, cart, checkout, payments, auth, profile, reviews):
+for module in (
+    session, pages, menu, cart, checkout, payments, auth, profile, reviews,
+    dashboard, orders, products, sauces, gallery, admin_reviews, hero_slides,
+    about_section, dessert_banner, admin_users, backup,
+):
     api_router.include_router(module.router)
 
 webhook_router = APIRouter(prefix="/api")

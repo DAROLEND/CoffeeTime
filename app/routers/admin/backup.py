@@ -14,19 +14,22 @@ import subprocess
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import PlainTextResponse, Response
+from fastapi.responses import JSONResponse, Response
 
+from app.api.errors import error_body
 from app.config import get_settings
 from app.dependencies import get_current_admin
 from app.services.permissions import require_super
 
-router = APIRouter(prefix="/admin/backup", dependencies=[Depends(get_current_admin), Depends(require_super)])
+router = APIRouter(prefix="/admin/backup", tags=["admin"], dependencies=[Depends(get_current_admin), Depends(require_super)])
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-@router.get("")
+@router.get("", response_class=Response, responses={200: {"content": {"application/octet-stream": {}}}})
 def download_backup():
+    """Streams a pg_dump SQL file. The SPA links to it directly (a plain
+    GET download that carries the session cookie)."""
     settings = get_settings()
     filename = f"coffeetime_backup_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.sql"
     backup_dir = PROJECT_ROOT / "backups"
@@ -47,15 +50,15 @@ def download_backup():
         with open(tmp_file, "wb") as out:
             result = subprocess.run(cmd, stdout=out, stderr=subprocess.PIPE, timeout=300, env=env)
     except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
-        return PlainTextResponse(
-            f"<p>Помилка створення резервної копії. Перевірте, чи встановлено pg_dump.</p><pre>{exc}</pre>",
+        return JSONResponse(
+            error_body("Помилка створення резервної копії. Перевірте, чи встановлено pg_dump.", "backup_failed", [str(exc)]),
             status_code=500,
         )
 
     if result.returncode != 0 or not tmp_file.exists():
         error_output = result.stderr.decode(errors="replace") if result.stderr else ""
-        return PlainTextResponse(
-            f"<p>Помилка створення резервної копії. Перевірте, чи встановлено pg_dump.</p><pre>{error_output}</pre>",
+        return JSONResponse(
+            error_body("Помилка створення резервної копії. Перевірте, чи встановлено pg_dump.", "backup_failed", [error_output]),
             status_code=500,
         )
 

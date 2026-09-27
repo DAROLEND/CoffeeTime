@@ -1,4 +1,6 @@
-"""Shared context for every admin page: sidebar badges and notification bell."""
+"""Shared data for the admin shell: sidebar badges, the new-orders bell,
+and the admin's effective permissions (for showing/hiding UI only — every
+endpoint enforces its own permission server-side)."""
 from __future__ import annotations
 
 import datetime
@@ -7,23 +9,19 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 
+from app.models.auth import AdminUser
 from app.models.cms import SiteReview
 from app.models.orders import Order
-from app.services.permissions import admin_role, has_perm, is_super
+from app.services.enum_utils import enum_value
+from app.services.permissions import ALL_PERMS, has_perm, is_super
 
 
-def admin_layout_context(request: Request, db: Session) -> dict:
-    session = request.state.session
-    admin_username = session.get("admin") or "Admin"
-    admin_initial = admin_username[:1].upper()
-
-    can_see_orders = has_perm(request, "orders_view") or admin_role(request) == "super"
+def admin_layout_context(request: Request, db: Session, admin: AdminUser) -> dict:
+    can_see_orders = has_perm(request, "orders_view")
     new_orders_count = 0
     notif_orders = []
     if can_see_orders:
-        new_orders_count = db.execute(
-            select(func.count()).select_from(Order).where(Order.status == "new")
-        ).scalar_one()
+        new_orders_count = db.execute(select(func.count()).select_from(Order).where(Order.status == "new")).scalar_one()
         rows = db.execute(
             select(Order).where(Order.status == "new").order_by(Order.created_at.desc()).limit(5)
         ).scalars().all()
@@ -37,19 +35,16 @@ def admin_layout_context(request: Request, db: Session) -> dict:
         select(func.count()).select_from(SiteReview).where(SiteReview.created_at > datetime.datetime.utcnow() - datetime.timedelta(days=7))
     ).scalar_one()
 
+    display = admin.display_name or admin.username
     return {
-        "admin_username": admin_username,
-        "admin_initial": admin_initial,
-        "admin_display": session.get("admin_display") or admin_username,
+        "username": admin.username,
+        "initial": (admin.username[:1] or "A").upper(),
+        "display_name": display,
+        "role": enum_value(admin.role) or "staff",
+        "is_super": is_super(request),
+        "perms": {key: has_perm(request, key) for key in ALL_PERMS},
         "can_see_orders": can_see_orders,
         "new_orders_count": new_orders_count,
         "notif_orders": notif_orders,
         "pending_reviews": pending_reviews,
-        "is_super": is_super(request),
-        "has_perm_orders_view": has_perm(request, "orders_view"),
-        "has_perm_products": has_perm(request, "products"),
-        "has_perm_content": has_perm(request, "content"),
-        "has_perm_reviews": has_perm(request, "reviews"),
-        "admin_flash": session.pop("admin_flash", None),
-        "admin_flash_type": session.pop("admin_flash_type", None),
     }

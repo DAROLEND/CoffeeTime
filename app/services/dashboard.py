@@ -237,3 +237,71 @@ def get_chart_data_for_date(db: Session, date: datetime.date) -> list[int]:
     ).all():
         hours[int(h)] = c
     return hours
+
+
+_WEEKDAYS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
+
+
+def top_product_out(p: dict) -> dict:
+    from app.services.media import item_img
+
+    return {**p, "image": item_img(p["image"])}
+
+
+def _staff_stats_out(staff_stats: dict) -> dict:
+    gallery_cats = staff_stats.get("gallery_cats") or {}
+    out = {k: v for k, v in staff_stats.items() if k != "gallery_cats"}
+    if out.get("about_photo"):
+        from app.services.media import item_img
+
+        out["about_photo"] = item_img(out["about_photo"])
+    if "gallery_total" in staff_stats:
+        out["gallery_food"] = int(gallery_cats.get("food", 0))
+        out["gallery_interior"] = int(gallery_cats.get("interior", 0))
+    return out
+
+
+def dashboard_payload(request, db: Session) -> dict:
+    """Everything the admin home page shows. Staff without orders access
+    get the "staff" welcome view with only their own sections' stats."""
+    staff_stats, cat_counts = get_staff_home_stats(db, request)
+    role_labels = [label for perm, label in (("products", "Товари"), ("reviews", "Відгуки"), ("content", "Контент")) if has_perm(request, perm)]
+    payload = {
+        "mode": "full" if has_perm(request, "orders_view") else "staff",
+        "staff_stats": _staff_stats_out(staff_stats),
+        "categories": [{"key": k, "label": v["label"], "count": v["count"]} for k, v in cat_counts.items()],
+        "full": None,
+        "weekday": _WEEKDAYS[int(datetime.date.today().strftime("%w"))],
+        "today_str": datetime.date.today().strftime("%d.%m.%Y"),
+        "role_label": " · ".join(role_labels) or "Адмін",
+    }
+    if payload["mode"] == "staff":
+        return payload
+
+    s = get_full_dashboard_stats(db)
+    payload["full"] = {
+        "today_orders": s["today_orders"], "today_revenue": s["today_revenue"], "avg_check": s["avg_check"],
+        "total_clients": s["total_clients"], "week_reviews": s["week_reviews"],
+        "compare": {
+            "orders": stat_compare(s["today_orders"], s["yest_orders"]),
+            "revenue": stat_compare(s["today_revenue"], s["yest_revenue"], " ₴"),
+            "avg_check": stat_compare(s["avg_check"], s["avg_check_yest"], " ₴") if s["avg_check_yest"] > 0 else {"direction": "eq", "text": "за сьогодні"},
+            "clients": stat_compare(s["today_clients"], s["yest_clients"], " сьогодні"),
+            "reviews": stat_compare(s["week_reviews"], s["prev_reviews"], " vs тиждень тому"),
+        },
+        "show_reviews_stat": has_perm(request, "reviews"),
+        "hours_data": s["hours_data"], "week_data": s["week_data"], "week_labels": s["week_labels"],
+        "month_data": s["month_data"], "month_labels": s["month_labels"],
+        "recent_orders": [
+            {
+                "order_id": o["order_id"], "full_name": o["full_name"], "phone": o["phone"], "total": o["total"],
+                "status": o["status"] or "new", "status_label": status_info(o["status"])[0], "status_class": status_info(o["status"])[1],
+                "pay_badge": dict(zip(("cls", "icon", "label"), payment_badge(o))),
+                "created_at": o["created_at"].isoformat(timespec="seconds"),
+            }
+            for o in s["recent_orders"]
+        ],
+        "top_products": [top_product_out(p) for p in s["top_products"]],
+        "today_iso": datetime.date.today().isoformat(),
+    }
+    return payload

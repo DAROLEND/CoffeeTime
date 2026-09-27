@@ -179,6 +179,8 @@ canvas { max-width: 100%; display: block; }
 .sidebar-logout-inline {
   font-size: 11px; color: rgba(255,255,255,0.3);
   text-decoration: none; margin-top: 1px; transition: color 0.15s;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: inherit; text-align: left;
 }
 .sidebar-logout-inline:hover { color: #e74c3c; }
 .sidebar-logout-icon { display: none; }

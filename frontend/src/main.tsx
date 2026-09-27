@@ -4,12 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 import { ApiError } from './api/errors';
 import { PageLoader } from './components/Spinner';
-import { ToastProvider } from './components/Toast';
 import { router } from './router';
-import './styles/global/style.css';
-import './styles/global/footer.css';
-import './styles/global/animations.css';
-import './styles/global/layout.css';
+import './styles/global/app.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,11 +22,9 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <Suspense fallback={<PageLoader />}>
-          <RouterProvider router={router} />
-        </Suspense>
-      </ToastProvider>
+      <Suspense fallback={<PageLoader />}>
+        <RouterProvider router={router} />
+      </Suspense>
     </QueryClientProvider>
   </StrictMode>,
 );

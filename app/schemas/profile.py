@@ -11,7 +11,7 @@ class ProfileUser(Schema):
     client_PhoneNumber: str  # noqa: N815
 
 
-class PayBadge(Schema):
+class ProfilePayBadge(Schema):
     cls: str
     label: str
 
@@ -27,7 +27,7 @@ class ProfileOrder(Schema):
     status: str
     status_label: str | None
     payment_status: str
-    pay_badge: PayBadge
+    pay_badge: ProfilePayBadge
     total: float
     created_at: str
     ready_time: str

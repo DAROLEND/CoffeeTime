@@ -44,7 +44,7 @@ class StatCompare(Schema):
     text: str
 
 
-class PayBadge(Schema):
+class AdminPayBadge(Schema):
     cls: str
     icon: str
     label: str
@@ -58,7 +58,7 @@ class RecentOrder(Schema):
     status: str
     status_label: str
     status_class: str
-    pay_badge: PayBadge
+    pay_badge: AdminPayBadge
     created_at: str
 
 
@@ -182,7 +182,7 @@ class AdminOrderRow(Schema):
     ready_time: str
     comment: str
     created_at: str
-    pay_badge: PayBadge
+    pay_badge: AdminPayBadge
     next_allowed: list[str]
     line_items: list[AdminOrderItem]
 

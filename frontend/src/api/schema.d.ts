@@ -1337,7 +1337,7 @@ export interface components {
             comment: string;
             /** Created At */
             created_at: string;
-            pay_badge: components["schemas"]["app__schemas__admin__PayBadge"];
+            pay_badge: components["schemas"]["AdminPayBadge"];
             /** Next Allowed */
             next_allowed: string[];
             /** Line Items */
@@ -1424,7 +1424,7 @@ export interface components {
             comment: string;
             /** Created At */
             created_at: string;
-            pay_badge: components["schemas"]["app__schemas__admin__PayBadge"];
+            pay_badge: components["schemas"]["AdminPayBadge"];
             /** Next Allowed */
             next_allowed: string[];
             /** Line Items */
@@ -1449,6 +1449,15 @@ export interface components {
             next_labels: {
                 [key: string]: string;
             };
+        };
+        /** AdminPayBadge */
+        AdminPayBadge: {
+            /** Cls */
+            cls: string;
+            /** Icon */
+            icon: string;
+            /** Label */
+            label: string;
         };
         /** AdminPerms */
         AdminPerms: {
@@ -2861,7 +2870,7 @@ export interface components {
             status_label: string | null;
             /** Payment Status */
             payment_status: string;
-            pay_badge: components["schemas"]["app__schemas__profile__PayBadge"];
+            pay_badge: components["schemas"]["ProfilePayBadge"];
             /** Total */
             total: number;
             /** Created At */
@@ -2879,6 +2888,13 @@ export interface components {
             label: string;
             /** Orders */
             orders: components["schemas"]["ProfileOrder"][];
+        };
+        /** ProfilePayBadge */
+        ProfilePayBadge: {
+            /** Cls */
+            cls: string;
+            /** Label */
+            label: string;
         };
         /** ProfileUpdateRequest */
         ProfileUpdateRequest: {
@@ -2981,7 +2997,7 @@ export interface components {
             status_label: string;
             /** Status Class */
             status_class: string;
-            pay_badge: components["schemas"]["app__schemas__admin__PayBadge"];
+            pay_badge: components["schemas"]["AdminPayBadge"];
             /** Created At */
             created_at: string;
         };
@@ -3377,22 +3393,6 @@ export interface components {
             label: string;
             /** Price Diff */
             price_diff: number;
-        };
-        /** PayBadge */
-        app__schemas__admin__PayBadge: {
-            /** Cls */
-            cls: string;
-            /** Icon */
-            icon: string;
-            /** Label */
-            label: string;
-        };
-        /** PayBadge */
-        app__schemas__profile__PayBadge: {
-            /** Cls */
-            cls: string;
-            /** Label */
-            label: string;
         };
     };
     responses: never;

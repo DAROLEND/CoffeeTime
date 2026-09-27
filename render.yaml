@@ -7,7 +7,12 @@
 # "Deploy latest commit" in the Render dashboard.
 #
 # What this deploys:
-#   - a free Web Service running the existing Dockerfile (uvicorn)
+#   - a free Web Service running the existing Dockerfile (uvicorn) — the
+#     JSON API under /api plus /static uploads
+#   - a free Static Site with the React SPA (frontend/), which proxies
+#     /api/* and /static/* to the API through rewrite rules, so the
+#     browser only ever talks to one origin: the session cookie stays
+#     first-party (SameSite=Lax) and there is no CORS to configure
 #   - a Cron Job running cron/send_reminders.py every 15 minutes
 # What it does NOT deploy:
 #   - the database — bring your own free Postgres (Supabase, Neon, ...).
@@ -24,12 +29,14 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_URL
-        sync: false # set to the *.onrender.com URL Render gives this service (or a custom domain)
+        sync: false # the SPA's public origin (the static site below, or its custom domain): LiqPay return/callback URLs and password-reset links are built from it
+      - key: FRONTEND_URL
+        sync: false # optional: where GET / on the API redirects to (usually the same as APP_URL)
       - key: DB_HOST
         sync: false # e.g. Supabase's db.<project-ref>.supabase.co, or Neon's host
       - key: DB_PORT
@@ -80,6 +87,36 @@ services:
         sync: false
       - key: GA_ID
         sync: false
+
+  # The React SPA. Rewrites run only when no built file matches the path,
+  # and in order: API and uploads go to the backend, everything else
+  # falls back to index.html for client-side routing.
+  - type: web
+    name: coffeetime-web
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://coffeetime.onrender.com/api/* # the API service's URL
+      - type: rewrite
+        source: /static/*
+        destination: https://coffeetime.onrender.com/static/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
 
   # NOTE: as of writing, Render's free tier covers Web Services; Cron
   # Jobs may require a paid plan on your account — check Render's

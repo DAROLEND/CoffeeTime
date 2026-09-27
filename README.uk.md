@@ -7,6 +7,10 @@
 Повноцінний сайт для кафе **Coffee Time** (м. Гусятин) з меню, онлайн-замовленнями,
 оплатою через LiqPay та адмін-панеллю з розмежуванням прав.
 
+Проєкт складається з **JSON API на FastAPI** і **SPA на React + TypeScript**, яка
+з ним працює. Контракт між ними — OpenAPI-схема API: типи запитів і відповідей
+на фронтенді генеруються з неї.
+
 > Хостинг на безкоштовному плані Render — сервіс засинає після 15 хв
 > бездіяльності, тож перше відкриття може зайняти до хвилини.
 
@@ -25,42 +29,66 @@
 
 | Шар | Технології |
 |-----|-----------|
-| Frontend | HTML, CSS, Vanilla JS |
-| Backend | Python 3.12, FastAPI, Jinja2 |
+| Frontend | React 19, TypeScript, Vite, React Router 7, TanStack Query 5, openapi-fetch + openapi-typescript |
+| Backend | Python 3.12, FastAPI (JSON API під `/api`), Pydantic v2 |
 | БД | PostgreSQL, SQLAlchemy 2.0, Alembic |
-| Оплата | LiqPay SDK |
+| Оплата | LiqPay |
 | Сповіщення | Telegram Bot API, smtplib (Gmail SMTP) |
-| Інфраструктура | Docker, uvicorn |
-| Тести | pytest, SQLite fixtures |
+| Інфраструктура | Docker, uvicorn, Render (API web service + static site) |
+| Тести | pytest (API, SQLite fixtures), Vitest + Testing Library (фронтенд) |
+
+## Структура
+
+```
+app/                    бекенд на FastAPI
+  main.py               застосунок, обробники помилок → {detail, code, errors}
+  api/                  роутер /api (залежність CSRF), хелпери помилок
+  routers/public/       сесія, меню, кошик, оформлення, оплата, авторизація, профіль, відгуки, сторінки
+  routers/admin/        дашборд, замовлення, товари, соуси, галерея, відгуки, hero-слайди, …
+  schemas/              Pydantic-моделі запитів і відповідей → /openapi.json
+  services/             бізнес-логіка (ціни, кошик, оформлення, LiqPay, нагадування, …)
+  models/               моделі SQLAlchemy
+alembic/                міграції
+cron/send_reminders.py  email-нагадування (кожні 15 хв)
+frontend/               SPA на React
+  src/api/              типізований клієнт (schema.d.ts генерується), CSRF, query-хуки
+  src/features/         сторінки сайту: головна, меню, кошик, оформлення, оплата, авторизація, профіль, …
+  src/admin/            адмін-панель (окремий lazy-чанк)
+  src/styles/           CSS сайту, ізольований по сторінках (див. postcss-scope-pages.ts)
+tests/                  тести бекенду
+```
 
 ## Функціонал
 
 - Каталог меню з фільтрацією, пошуком і категоріями
-- Кошик із варіантами: розмір піци, борти, соуси, вага торту, морозиво на вагу
-- Оформлення замовлення з вибором часу (барабанний picker) та типом оплати
-- Онлайн-оплата через LiqPay (з sandbox-режимом)
+- Кошик із варіантами: розмір піци, сирний борт, соуси, вага торту, кульки морозива, начинки фаст-фуду
+- **Кожна ціна рахується на сервері** з бази — клієнт надсилає тільки вибір
+- Оформлення замовлення з вибором часу (барабанний picker у часовому поясі кафе) та типом оплати
+- Онлайн-оплата через LiqPay (з sandbox-режимом), сторінка очікування опитує статус платежу
 - Telegram-сповіщення адміністратору при новому замовленні
 - Email-нагадування клієнту перед готовністю замовлення (cron-джоба)
 - Авторизація, реєстрація, відновлення паролю
-- Профіль користувача з історією замовлень
-- Відгуки клієнтів
+- Профіль користувача з історією замовлень та оцінками
+- Відгуки клієнтів з модерацією
 - Адмін-панель з розмежуванням прав (super/staff): товари, замовлення,
   соуси, галерея, hero-слайдер, контент сторінки "Про нас"/банер дня,
   персонал, резервна копія БД
 
-## Запуск через Docker
+## Правила API
 
-```bash
-git clone https://github.com/DAROLEND/CoffeeTime.git && cd CoffeeTime
-cp .env.example .env
-# відредагувати .env (DB_NAME, DB_USER, DB_PASS, APP_URL, TELEGRAM_*, LIQPAY_*, MAIL_* тощо)
-
-docker compose up -d --build
-# сайт на http://localhost:8000
-# схема БД створюється автоматично через Alembic при першому запуску
-```
+- Усі маршрути — під `/api`; інтерактивна документація — на `/docs`.
+- Авторизація — серверна сесія в httponly-cookie (`coffeetime_session`,
+  `Secure` у продакшені, `SameSite=Lax`). Без JWT.
+- CSRF: `GET /api/csrf-token`, далі заголовок `X-CSRF-Token` на кожному
+  POST/PUT/PATCH/DELETE. Фронтенд-клієнт робить це сам і один раз повторює
+  запит, якщо токен застарів.
+- Помилки завжди мають вигляд `{"detail": "...", "code": "...", "errors": [...]}`.
+- У продакшені SPA і API на одному origin (static site проксує `/api/*`),
+  тому CORS не потрібен.
 
 ## Локальний запуск
+
+Бекенд:
 
 ```bash
 python3 -m venv .venv
@@ -70,32 +98,73 @@ pip install -r requirements.txt
 cp .env.example .env   # налаштувати DB_* під локальний PostgreSQL
 
 alembic upgrade head
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload          # API на http://localhost:8000/api, документація на /docs
 
 # reminders cron-джоба (окремим процесом, кожні 15 хв):
 python cron/send_reminders.py
 ```
 
+Фронтенд (Node 20.19+ або 22):
+
+```bash
+cd frontend
+npm install
+npm run dev            # http://localhost:5173 — проксує /api і /static на :8000
+```
+
+`API_URL` перенаправляє dev-проксі на інший бекенд (`API_URL=https://… npm run dev`).
+
+Після зміни схем API перегенеруйте TypeScript-типи:
+
+```bash
+npm run gen:api            # з /openapi.json запущеного бекенду
+npm run gen:api:offline    # або прямо з коду, без сервера
+```
+
+## Запуск через Docker
+
+```bash
+git clone https://github.com/DAROLEND/CoffeeTime.git && cd CoffeeTime
+cp .env.example .env
+# відредагувати .env (DB_NAME, DB_USER, DB_PASS, APP_URL, TELEGRAM_*, LIQPAY_*, MAIL_* тощо)
+
+docker compose up -d --build   # API + Postgres на http://localhost:8000
+cd frontend && npm install && npm run dev   # SPA на http://localhost:5173
+```
+
+Схема БД створюється автоматично через Alembic при першому запуску.
+
 ## Деплой
 
-Конфіг для безкоштовного хостингу на [Render](https://render.com) — `render.yaml`
-(web-сервіс + cron-джоба нагадувань, БД — окремий безкоштовний Postgres,
-напр. [Supabase](https://supabase.com) чи [Neon](https://neon.tech)).
+`render.yaml` — Blueprint для [Render](https://render.com) з трьома сервісами:
+
+- **coffeetime-fastapi** — API (Docker web service, health check `/api/health`);
+- **coffeetime-web** — SPA як static site: `cd frontend && npm ci && npm run build`,
+  публікується з `frontend/dist`, rewrites `/api/*` і `/static/*` → API,
+  `/*` → `/index.html`;
+- **coffeetime-reminders** — cron-джоба нагадувань.
+
+БД — окремий безкоштовний Postgres (напр. [Supabase](https://supabase.com) чи
+[Neon](https://neon.tech)). `APP_URL` на API — це публічний origin SPA:
+з нього будуються URL повернення/колбеку LiqPay і посилання для скидання паролю.
 
 ## Тести
 
 ```bash
-pytest tests/ -v
+pytest tests/ -v               # бекенд: 236 тестів
+cd frontend && npm test        # фронтенд: Vitest + Testing Library
+cd frontend && npm run build   # перевірка типів (tsc -b) + продакшен-збірка
 ```
 
-187 тестів: логіка кошика, оформлення замовлення, платіжні колбеки,
-аутентифікація, CSRF, права адмінів і рендеринг усіх сторінок.
-Ганяються проти SQLite в пам'яті — швидко і без зовнішніх залежностей.
+Тести бекенду ганяються проти SQLite в пам'яті й покривають ціноутворення
+кошика, оформлення, платіжні колбеки, авторизацію, CSRF, права адмінів і всі
+маршрути API. Тести фронтенду покривають логіку цін і слотів часу,
+CSRF-клієнт і ключові екрани (вхід, кошик) проти заглушки API.
 
 ## Адмін-панель
 
 ```
-/admin/login
+/admin   (вхід на /login з адмін-акаунтом)
 ```
 
 ## Змінні середовища
@@ -103,7 +172,8 @@ pytest tests/ -v
 Всі секрети зберігаються в `.env` (не комітиться). Дивись `.env.example`.
 
 ```
-APP_URL=https://yourdomain.com
+APP_URL=https://yourdomain.com     # публічний origin SPA
+FRONTEND_URL=                      # необов'язково: GET / на API редіректить сюди
 DB_NAME=coffeetime
 DB_USER=coffeetime
 DB_PASS=secret

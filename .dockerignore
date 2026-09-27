@@ -11,3 +11,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 tests/
+
+# The SPA is deployed separately as a static site.
+frontend/

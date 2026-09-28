@@ -5,4 +5,4 @@
 .im-free-sauce .im-scoop-btn { min-height: 44px; }
 .im-size-btn:disabled { opacity: .45; cursor: not-allowed; }
 .im-add-btn:disabled { opacity: .7; cursor: progress; }
-.filter-dropdown-menu { display: block; animation: dropIn 0.18s ease both; }
+.filter-dropdown-menu { display: block; animation: menuDropIn 0.18s ease both; }

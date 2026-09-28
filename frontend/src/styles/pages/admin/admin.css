@@ -1384,7 +1384,7 @@ tr[data-status="cancelled"]:hover  { background: #FDECEA; }
   padding: 14px 18px;
   box-shadow: 0 8px 32px rgba(0,0,0,.18);
   min-width: 220px;
-  animation: toastIn .15s ease;
+  animation: adminToastIn .15s ease;
 }
 .scp-text {
   font-size: 13px; font-weight: 600; color: #2c2c2a;
@@ -1478,12 +1478,12 @@ tr[data-status="cancelled"]:hover  { background: #FDECEA; }
 .admin-table tbody tr.order-row:nth-child(odd)  { animation-delay: 0.03s; }
 .admin-table tbody tr.order-row:nth-child(even) { animation-delay: 0.06s; }
 
-@keyframes badgePop {
+@keyframes adminBadgePop {
   0%   { transform: scale(1); }
   40%  { transform: scale(1.25); }
   100% { transform: scale(1); }
 }
-.badge-pop { animation: badgePop 0.35s ease; }
+.badge-pop { animation: adminBadgePop 0.35s ease; }
 
 @keyframes rowFlash {
   0%   { filter: brightness(1); }
@@ -1495,8 +1495,8 @@ tr[data-status="cancelled"]:hover  { background: #FDECEA; }
 /* =====================================================
    ADMIN TOAST
 ===================================================== */
-@keyframes toastIn  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-@keyframes toastOut { from { opacity:1; transform:translateY(0); }    to { opacity:0; transform:translateY(14px); } }
+@keyframes adminToastIn  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+@keyframes adminToastOut { from { opacity:1; transform:translateY(0); }    to { opacity:0; transform:translateY(14px); } }
 
 
 /* =====================================================

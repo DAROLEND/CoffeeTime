@@ -33,9 +33,9 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  animation: slideInLeft .5s ease both;
+  animation: authSlideInLeft .5s ease both;
 }
-@keyframes slideInLeft {
+@keyframes authSlideInLeft {
   from { opacity: 0; transform: translateX(-30px); }
   to   { opacity: 1; transform: translateX(0); }
 }
@@ -98,15 +98,15 @@
   justify-content: center;
   position: relative;
   overflow: hidden;
-  animation: slideInRight .5s ease .1s both;
+  animation: authSlideInRight .5s ease .1s both;
 }
-@keyframes slideInRight {
+@keyframes authSlideInRight {
   from { opacity: 0; transform: translateX(30px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
 /* Shake on error */
-@keyframes shake {
+@keyframes authShake {
   0%,100% { transform: translateX(0); }
   15%      { transform: translateX(-8px); }
   30%      { transform: translateX(8px); }
@@ -115,7 +115,7 @@
   75%      { transform: translateX(-3px); }
   90%      { transform: translateX(3px); }
 }
-.auth-right.shake { animation: shake .4s ease; }
+.auth-right.shake { animation: authShake .4s ease; }
 
 /* ── Form title ── */
 .auth-form-title {
@@ -351,9 +351,9 @@
   border: 2.5px solid rgba(255,255,255,.3);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: spin .7s linear infinite;
+  animation: authSpin .7s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes authSpin { to { transform: rotate(360deg); } }
 
 /* ── Switch link ── */
 .auth-switch {

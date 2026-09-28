@@ -330,14 +330,14 @@
   align-items: center;
   padding: 28px 0 8px;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes menuSpin { to { transform: rotate(360deg); } }
 .lazy-loader {
   width: 28px;
   height: 28px;
   border: 3px solid #f0ebe4;
   border-top-color: #8B4513;
   border-radius: 50%;
-  animation: spin .75s linear infinite;
+  animation: menuSpin .75s linear infinite;
 }
 
 /* ── Глобальний пошук ── */
@@ -876,13 +876,13 @@
 }
 
 /* Cart badge bounce */
-@keyframes cartBounce {
+@keyframes menuCartBounce {
   0%   { transform: scale(1) translate(-50%, -50%); }
   40%  { transform: scale(1.4) translate(-36%, -36%); }
   70%  { transform: scale(.9) translate(-56%, -56%); }
   100% { transform: scale(1) translate(-50%, -50%); }
 }
-.cart-badge-bounce { animation: cartBounce .45s ease; }
+.cart-badge-bounce { animation: menuCartBounce .45s ease; }
 
 /* ==============================================
    PIZZA FILTER PANEL
@@ -1579,7 +1579,7 @@
 /* ==============================================
    MENU FILTER BAR
 =============================================== */
-@keyframes dropIn {
+@keyframes menuDropIn {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }

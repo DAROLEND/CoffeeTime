@@ -341,14 +341,14 @@
 }
 
 /* Price flash animation */
-@keyframes priceFlash {
+@keyframes cartPriceFlash {
   0%   { transform: scale(1.14); color: #FFC107; }
   55%  { transform: scale(1.06); color: #e6ac00; }
   100% { transform: scale(1);    color: #8B4513; }
 }
 .cart-total.flash,
 .item-subtotal.flash {
-  animation: priceFlash 0.38s cubic-bezier(.4,0,.2,1) forwards;
+  animation: cartPriceFlash 0.38s cubic-bezier(.4,0,.2,1) forwards;
 }
 
 /* Checkout button */
@@ -387,9 +387,9 @@
   border: 2.5px solid rgba(255,255,255,0.35);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+  animation: cartSpin 0.7s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes cartSpin { to { transform: rotate(360deg); } }
 
 /* Back to menu */
 .back-to-menu-btn {

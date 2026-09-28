@@ -17,7 +17,7 @@ from app.schemas.common import OkResponse
 from app.schemas.profile import (
     OrderLines, ProfileUpdateRequest, ProfileView, RateOrderRequest, RepayResult,
 )
-from app.services.auth import hash_password, verify_password
+from app.services.auth import set_password, verify_password
 from app.services.orders_admin import resolve_order_items_for_display
 from app.services.profile import get_order_stats, get_orders_with_previews, group_by_recency
 
@@ -96,7 +96,7 @@ def change_password(body: ChangePasswordRequest, db: Session = Depends(get_db), 
     db_user = db.get(User, user["client_id"])
     if db_user is None or not verify_password(body.current_password, db_user.password):
         raise bad_request("Неправильний поточний пароль.", code="invalid_credentials")
-    db_user.password = hash_password(body.new_password)
+    set_password(db, db_user.login, body.new_password)
     db.commit()
     return {"ok": True, "message": "Пароль успішно змінено"}
 

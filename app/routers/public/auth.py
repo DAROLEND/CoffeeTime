@@ -1,11 +1,12 @@
 """
 Login, registration, password reset/change, and logout.
 
-Login checks the `users` table first (by email OR login) and verifies
-the password, then checks whether that login also has an admin_users row
-(a customer account that's also staff); if no `users` row matched at
-all, it falls back to checking `admin_users` directly (an admin-only
-account with no customer-side `users` row). Both admin paths return
+Login checks the `users` table first (by email OR login). When that login
+also has an admin_users row (a customer account that's also staff), the
+password is checked against the admin row and the session is an admin
+one; otherwise against the `users` row. If no `users` row matched at all,
+it falls back to `admin_users` directly (an admin-only account with no
+customer-side `users` row). Both admin paths return
 `kind: "admin"` and the SPA goes to /admin/dashboard.
 
 A successful login rotates the session id (see
@@ -33,7 +34,7 @@ from app.schemas.auth import (
     MessageResponse, RegisterRequest, ResetRequest, ResetTokenInfo,
 )
 from app.schemas.common import OkResponse
-from app.services.auth import hash_password, is_locked_out, record_failed_attempt, verify_password
+from app.services.auth import hash_password, is_locked_out, record_failed_attempt, set_password, verify_password
 from app.services.mail import send_html_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -91,10 +92,12 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
     ).scalars().first()
 
     if user is not None:
-        if not verify_password(password, user.password):
+        admin_row = db.execute(select(AdminUser).where(AdminUser.username == user.login)).scalar_one_or_none()
+        # This login opens the admin panel, so the admin account's password
+        # (the one changed under "Мій акаунт") is the one that counts.
+        if not verify_password(password, admin_row.password if admin_row else user.password):
             record_failed_attempt(db, ip)
             raise bad_request("Невірний пароль.", code="invalid_credentials")
-        admin_row = db.execute(select(AdminUser).where(AdminUser.username == user.login)).scalar_one_or_none()
         if admin_row:
             _set_admin_session(request, admin_row)
             return {"kind": "admin", "redirect": "/admin/dashboard"}
@@ -203,7 +206,8 @@ def reset_password(body: ResetRequest, db: Session = Depends(get_db)):
         raise bad_request("Пароль повинен містити щонайменше 6 символів.")
     if body.password != body.confirm:
         raise bad_request("Паролі не співпадають.")
-    db.execute(User.__table__.update().where(User.email == row.email).values(password=hash_password(body.password)))
+    for login in db.execute(select(User.login).where(User.email == row.email)).scalars().all():
+        set_password(db, login, body.password)
     db.execute(PasswordReset.__table__.delete().where(PasswordReset.token == row.token))
     db.commit()
     return {"ok": True, "message": "Пароль змінено"}
@@ -222,7 +226,7 @@ def change_password(body: ChangePasswordRequest, db: Session = Depends(get_db), 
         raise bad_request("Користувача не знайдено.")
     if not verify_password(body.current_password, db_user.password):
         raise bad_request("Неправильний поточний пароль.", code="invalid_credentials")
-    db_user.password = hash_password(body.new_password)
+    set_password(db, db_user.login, body.new_password)
     db.commit()
     return {"ok": True, "message": "Пароль успішно змінено."}
 

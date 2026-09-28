@@ -153,7 +153,7 @@ so **Blueprints → New Blueprint Instance** is all it takes.
 ## Tests
 
 ```bash
-pytest tests/ -v            # backend: 242 tests
+pytest tests/ -v            # backend: 244 tests
 cd frontend && npm test     # frontend: Vitest + Testing Library
 cd frontend && npm run build   # type-check (tsc -b) + production build
 ```

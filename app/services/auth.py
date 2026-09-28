@@ -10,10 +10,10 @@ from __future__ import annotations
 import datetime
 
 from passlib.context import CryptContext
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from app.models.auth import LoginAttempt
+from app.models.auth import AdminUser, LoginAttempt, User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -32,6 +32,16 @@ def verify_password(plain: str, hashed: str) -> bool:
         # Unrecognized hash format — treat as a failed verification rather
         # than raising.
         return False
+
+
+def set_password(db: Session, login: str, plain: str) -> None:
+    """Set the password of the customer account and the admin account that
+    share this login. Logging in with that login opens the admin panel, so
+    both rows must hold the same password; otherwise a change made on one
+    side leaves the old password working on the other."""
+    hashed = hash_password(plain)
+    db.execute(update(User).where(User.login == login).values(password=hashed))
+    db.execute(update(AdminUser).where(AdminUser.username == login).values(password=hashed))
 
 
 def is_bcrypt_hash(hashed: str) -> bool:

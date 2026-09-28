@@ -74,9 +74,8 @@ def test_login_lockout_after_five_failed_attempts(api, db_session):
 
 
 def test_login_customer_account_that_is_also_admin(api, db_session):
-    """Login matches `users` by login/email first, verifies the password
-    there, and ONLY THEN checks whether that same login also has an
-    admin_users row."""
+    """Login matches `users` by login/email first; when that login also has
+    an admin_users row, the session is an admin one."""
     db_session.add(User(login="staffmember", email="staff@example.com", password=hash_password("adminpass")))
     db_session.add(AdminUser(username="staffmember", password=hash_password("adminpass"), role="staff", permissions='["products"]'))
     db_session.commit()
@@ -229,3 +228,12 @@ def test_logout_clears_session(api, db_session):
     assert api.get("/api/session").json()["user"] is None
     resp = api.post("/api/auth/change-password", json={"current_password": "pass123", "new_password": "x" * 8, "confirm_password": "x" * 8})
     assert resp.status_code == 401  # no longer logged in
+
+
+def test_login_shared_account_checks_the_admin_password(api, db_session):
+    """If the two rows' passwords differ, the admin one is what signs in."""
+    db_session.add(User(login="mixed", email="mixed@example.com", password=hash_password("customerpass")))
+    db_session.add(AdminUser(username="mixed", password=hash_password("adminpass"), role="super", permissions="[]"))
+    db_session.commit()
+    assert api.post("/api/auth/login", json={"login": "mixed", "password": "customerpass"}).status_code == 400
+    assert api.post("/api/auth/login", json={"login": "mixed", "password": "adminpass"}).json()["kind"] == "admin"

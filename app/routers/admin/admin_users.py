@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.dependencies import get_current_admin
 from app.models.auth import AdminUser
 from app.schemas.admin import AdminUserCreate, AdminUsersPage, AdminUserUpdate, MessageResult, MyAccountUpdate
-from app.services.auth import hash_password, verify_password
+from app.services.auth import hash_password, set_password, verify_password
 from app.services.enum_utils import enum_value
 from app.services.permissions import ALL_PERMS, require_super
 
@@ -83,7 +83,7 @@ def update_my_account(body: MyAccountUpdate, request: Request, db: Session = Dep
         raise bad_request("Новий пароль мінімум 6 символів.")
     me.display_name = body.display_name.strip()
     if body.new_password:
-        me.password = hash_password(body.new_password)
+        set_password(db, me.username, body.new_password)
     db.commit()
     if me.display_name:
         session["admin_display"] = me.display_name
@@ -103,7 +103,7 @@ def update_admin(user_id: int, body: AdminUserUpdate, request: Request, db: Sess
     if body.new_password:
         if len(body.new_password) < 6:
             raise bad_request("Новий пароль мінімум 6 символів.")
-        target.password = hash_password(body.new_password)
+        set_password(db, target.username, body.new_password)
     db.commit()
     return {"ok": True, "message": "Збережено."}
 

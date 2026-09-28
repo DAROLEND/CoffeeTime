@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 
-from app.models.auth import AdminUser
+from app.models.auth import AdminUser, User
 from app.services.auth import hash_password, verify_password
 from tests.helpers import login_admin
 
@@ -113,3 +113,22 @@ def test_my_account_requires_correct_current_password(api, db_session):
     ok = api.post("/api/admin/users/me", json={"display_name": "Me", "current_password": "adminpass1", "new_password": ""})
     assert ok.json()["message"] == "Акаунт оновлено."
     assert api.get("/api/admin/layout").json()["display_name"] == "Me"
+
+
+def test_my_account_new_password_works_for_login_shared_with_a_customer(api, db_session):
+    """The admin login also has a customer row. After "Мій акаунт" changes
+    the password, the new one signs in and the old one no longer does."""
+    db_session.add(User(login="boss", email="boss@example.com", password=hash_password("adminpass1")))
+    db_session.commit()
+    login_admin(api, db_session)
+    resp = api.post("/api/admin/users/me", json={"display_name": "Boss", "current_password": "adminpass1", "new_password": "brandnew1"})
+    assert resp.json()["message"] == "Акаунт оновлено."
+    api.post("/api/auth/logout")
+
+    old = api.post("/api/auth/login", json={"login": "boss", "password": "adminpass1"})
+    assert old.status_code == 400
+    new = api.post("/api/auth/login", json={"login": "boss", "password": "brandnew1"})
+    assert new.json()["kind"] == "admin"
+    db_session.expire_all()
+    customer = db_session.query(User).filter_by(login="boss").one()
+    assert verify_password("brandnew1", customer.password)

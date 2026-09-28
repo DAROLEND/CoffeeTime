@@ -153,7 +153,7 @@ Blueprint уже виставляє його (і `FRONTEND_URL`) у `https://cof
 ## Тести
 
 ```bash
-pytest tests/ -v               # бекенд: 242 тести
+pytest tests/ -v               # бекенд: 244 тести
 cd frontend && npm test        # фронтенд: Vitest + Testing Library
 cd frontend && npm run build   # перевірка типів (tsc -b) + продакшен-збірка
 ```

@@ -1,0 +1,16 @@
+/* Masonry layout via CSS multi-column: no JS layout pass, no re-layout on
+   filter/resize. Items flow top-to-bottom within each column. */
+.gallery-masonry { columns: 3; column-gap: 21px; }
+.g-sizer { display: none; }
+.g-item { width: 100%; display: inline-block; break-inside: avoid; vertical-align: top; }
+.g-item:focus-visible { outline: 3px solid #FFC107; outline-offset: 3px; }
+.g-inner img { width: 100%; height: auto; display: block; }
+@media (max-width: 900px) {
+  .gallery-masonry { columns: 2; column-gap: 18px; }
+  .g-item { width: 100%; }
+}
+@media (max-width: 560px) {
+  .gallery-masonry { display: block; columns: 2; column-gap: 10px; }
+  .g-item { width: 100%; margin-bottom: 10px; }
+}
+.lb-nav, .lb-close { cursor: pointer; }

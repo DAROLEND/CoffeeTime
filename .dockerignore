@@ -1,0 +1,16 @@
+.env
+.git
+.gitignore
+.DS_Store
+*.DS_Store
+logs/
+backups/
+
+.venv-fastapi/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+
+# The SPA is deployed separately as a static site.
+frontend/

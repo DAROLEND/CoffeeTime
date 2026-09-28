@@ -1,0 +1,531 @@
+/* ===================================================
+   Coffee Time — Global Styles
+=================================================== */
+
+:root {
+  --header-bg:   rgba(80, 30, 5, 0.93);
+  --accent:      #ffa500;
+  --accent-dark: #e07b00;
+  --text-light:  #fff;
+  --text-dark:   #2c1810;
+  --bg:          #fdf6ee;
+  --bg-alt:      #f5ede0;
+  --brown:       #B5651D;
+  --brown-dark:  #8b4513;
+  --ease:        0.3s ease;
+  --max-width:   1200px;
+  --shadow-sm:   0 2px 8px  rgba(139,69,19,.08);
+  --shadow-md:   0 4px 20px rgba(139,69,19,.12);
+  --shadow-lg:   0 8px 32px rgba(139,69,19,.18);
+  --radius:      16px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* html-level rules live in global/app.css */
+html, body { max-width: 100%; }
+
+/* pageFadeIn removed — transform on body breaks position:fixed
+   for modal overlays (creates new containing block) */
+
+body {
+  font-family: 'Lato', 'Segoe UI', Arial, sans-serif;
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%238B4513' fill-opacity='0.055'/%3E%3C/svg%3E");
+  color: var(--text-dark);
+  line-height: 1.65;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+img { max-width: 100%; display: block; }
+
+/* ===== TYPOGRAPHY ===== */
+h1, h2, h3, h4 {
+  font-family: 'Playfair Display', Georgia, serif;
+  line-height: 1.2;
+}
+
+h2 {
+  text-align: center;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  color: var(--brown);
+  margin-bottom: 48px;
+}
+/* Декоративна підлінія під заголовками секцій */
+.home-section h2 {
+  position: relative;
+  padding-bottom: 18px;
+}
+.home-section h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 56px; height: 3px;
+  background: #FFC107;
+  border-radius: 2px;
+}
+
+/* ===== LAYOUT ===== */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ===== HOMEPAGE SECTIONS ===== */
+.home-section {
+  padding: 80px 24px;
+  background: transparent;
+}
+
+/* Section divider — прибрано, залишено лише відстань */
+.section-divider { display: none; }
+
+/* ===== WAVE DIVIDER (hero → content only) ===== */
+.wave-divider {
+  display: block;
+  line-height: 0;
+  margin-bottom: -2px;
+  pointer-events: none;
+}
+.wave-divider svg {
+  display: block;
+  width: 100%;
+  height: 64px;
+}
+
+/* ===== HEADER ===== */
+.site-header {
+  position: sticky;
+  top: 0; left: 0; right: 0;
+  /* без backdrop-filter — він змушує браузер рендерити хедер у GPU-шарі,
+     що розмиває SVG-логотип. Натомість непрозорий фон. */
+  background: rgb(72, 27, 5);
+  z-index: 1000;
+  box-shadow: 0 2px 20px rgba(0,0,0,.25);
+}
+.site-header.scrolled {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.32);
+  background: rgba(56, 22, 4, 0.97);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.header__inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  height: 76px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo img {
+  height: 54px;
+  /* тінь через CSS — застосовується після рендеру SVG, не розмиває вектор */
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.35));
+  transition: transform var(--ease);
+}
+.logo img:hover { transform: scale(1.06); }
+
+/* Hamburger */
+.menu-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+.menu-toggle .bar {
+  width: 26px; height: 2px;
+  background: var(--text-light);
+  border-radius: 2px;
+  transition: background var(--ease);
+}
+
+/* Navigation */
+.site-nav { display: flex; }
+.nav-list {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+.nav-list a {
+  position: relative;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 4px 0;
+  transition: color var(--ease);
+}
+.nav-list a::after { display: none; content: none; }
+.nav-list a::before { content: none; display: none; }
+.nav-list a:hover  { color: #fff; }
+.nav-list a.active {
+  color: #FFC107;
+  font-weight: 600;
+}
+/* Desktop-only underline for active link */
+@media (min-width: 993px) {
+  .nav-list a {
+    border-bottom: 2px solid transparent;
+    transition: color var(--ease), border-color var(--ease);
+  }
+  .nav-list a.active {
+    border-bottom-color: #FFC107;
+  }
+}
+
+/* Auth & Cart */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cart-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+}
+.cart-wrapper > a > img {
+  width: 28px;
+  filter: brightness(0) invert(1);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cart-wrapper:hover > a > img {
+  transform: scale(1.22) translateY(-2px);
+}
+@keyframes cartBounce {
+  0%   { transform: scale(1)    translateY(0); }
+  40%  { transform: scale(1.25) translateY(-4px); }
+  70%  { transform: scale(1.1)  translateY(-1px); }
+  100% { transform: scale(1.22) translateY(-2px); }
+}
+.cart-count {
+  position: absolute;
+  top: 1px; right: 1px;
+  min-width: 18px; height: 18px;
+  background: #e63946;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-link {
+  display: inline-block;
+  padding: 8px 18px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  transition: background var(--ease), transform var(--ease);
+}
+.auth-link:hover {
+  background: var(--brown-dark);
+  transform: translateY(-1px);
+}
+/* Ghost variant — outlined */
+.auth-link--ghost {
+  background: transparent;
+  color: rgba(255,255,255,.9);
+  border: 1.5px solid rgba(255,255,255,.55);
+}
+.auth-link--ghost:hover {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border-color: rgba(255,255,255,.8);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 992px) {
+  .menu-toggle { display: flex; }
+  .site-nav {
+    position: absolute;
+    top: 76px; left: 0; right: 0;
+    width: 100%;
+    background: rgb(72, 27, 5);
+    flex-direction: column;
+    align-items: center;
+    transform: translateY(-200%);
+    transition: transform 0.35s ease;
+    z-index: 998;
+    overflow: hidden;
+  }
+  .site-header { overflow: visible; }
+  .site-header.open .site-nav { transform: translateY(0); }
+  .nav-list {
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 0 16px;
+    text-align: center;
+    width: 100%;
+  }
+  .nav-list li { width: 100%; }
+  .nav-list a {
+    display: block;
+    padding: 14px 24px;
+    font-size: 0.9rem;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    text-decoration: none;
+    transition: none;
+    position: relative;
+  }
+  .nav-list a::before {
+    content: none;
+  }
+  .nav-list a:hover,
+  .nav-list a:active,
+  .nav-list a:focus {
+    border: none;
+    outline: none;
+    box-shadow: none;
+    color: rgba(255, 255, 255, 0.85);
+    background: transparent;
+    text-decoration: none;
+  }
+  .nav-list a.active,
+  .nav-list a.active:hover,
+  .nav-list a.active:active {
+    border: none;
+    outline: none;
+    box-shadow: none;
+    text-decoration: none;
+    background: rgba(255,193,7,0.10);
+    color: #FFC107;
+    font-weight: 700;
+  }
+  .nav-list a.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #FFC107;
+    border-radius: 0 2px 2px 0;
+  }
+}
+
+/* ===== HOMEPAGE PRODUCT CARDS ===== */
+.food-item,
+.drink-item,
+.dessert-item {
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity   .5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform .5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow .3s ease;
+}
+.food-item.visible,
+.drink-item.visible,
+.dessert-item.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Картки у горизонтальному слайдері в'їжджають збоку, не знизу */
+.category-slider .drink-item {
+  transform: translateX(24px);
+}
+.category-slider .drink-item.visible {
+  transform: translateX(0);
+}
+.food-item:hover,
+.drink-item:hover,
+.dessert-item:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: var(--shadow-lg);
+  transition: transform .25s ease, box-shadow .25s ease, opacity .25s ease;
+}
+
+.item-card {
+  position: relative; /* для .card-badge */
+  width: 100%;
+  height: 380px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 24px rgba(139,69,19,.10), 0 1px 4px rgba(0,0,0,.06);
+  overflow: hidden;
+  transition:
+    opacity   .5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform .5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow .25s ease;
+}
+.item-card:hover {
+  box-shadow: 0 8px 36px rgba(139,69,19,.18), 0 2px 8px rgba(0,0,0,.10);
+}
+.item-card img {
+  width: 100%;
+  flex: 0 0 220px;
+  height: 220px;
+  object-fit: cover;
+  object-position: center;
+  transition: transform .35s ease;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.item-no-img {
+  width: 100%;
+  flex: 0 0 220px;
+  height: 220px;
+  background: #f5ede0
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%23d4b896' stroke-width='1.2' stroke-linecap='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='3'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpath d='M21 15l-5-5L5 21'/%3E%3C/svg%3E")
+    center/48px no-repeat;
+}
+.food-item:hover .item-card img,
+.drink-item:hover .item-card img,
+.dessert-item:hover .item-card img {
+  transform: scale(1.06);
+}
+
+/* Назва + ціна + кнопка під зображенням */
+.card-info {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-top: 1px solid rgba(181,101,29,.08);
+}
+.card-name {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.35;
+  margin: 0 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-footer {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.card-price {
+  font-family: 'Lato', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--brown);
+  white-space: nowrap;
+}
+.btn-add-cart {
+  flex: 1;
+  padding: 8px 20px;
+  background: #FFC107;
+  color: #5c3a00;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s ease, transform .15s ease, box-shadow .2s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+.btn-add-cart:hover {
+  background: #e6ac00;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255,193,7,.35);
+}
+.btn-add-cart.added {
+  background: #4caf50;
+  color: #fff;
+}
+
+/* ===== EXPAND GRID (non-slider layouts) ===== */
+.expand-grid {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 0;
+}
+.expand-grid > * { flex: 0 1 300px; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .expand-grid { flex-direction: column; align-items: center; }
+  .home-section { padding: 64px 16px; }
+  h2 { margin-bottom: 32px; }
+}
+
+@media (max-width: 700px) {
+  .header__inner { padding: 0 16px; }
+  .auth-buttons { gap: 8px; }
+  .auth-link { padding: 7px 13px; font-size: 0.8rem; }
+  .cart-wrapper { width: 40px; height: 40px; }
+  .cart-wrapper > a > img { width: 24px; }
+}
+
+@media (max-width: 480px) {
+  .header__inner { height: 60px; }
+  .site-nav { top: 60px; }
+  .logo img { height: 44px; }
+
+  .home-section { padding: 48px 12px; }
+  h2 { font-size: clamp(1.6rem, 5vw, 2.2rem); }
+
+  /* Product cards on homepage — smaller on mobile */
+  .item-card { height: 300px; }
+  .item-card img,
+  .item-no-img { flex: 0 0 160px; height: 160px; }
+
+  /* Remove hover lift on touch — use active instead */
+  .food-item:hover,
+  .drink-item:hover,
+  .dessert-item:hover { transform: none; box-shadow: none; }
+  .food-item:active,
+  .drink-item:active,
+  .dessert-item:active { transform: scale(0.97); }
+
+  /* Buttons — full touch targets */
+  .btn-add-cart { padding: 10px 16px; min-height: 44px; font-size: 0.82rem; }
+}
+
+@media (max-width: 360px) {
+  .header__inner { padding: 0 12px; }
+  .auth-link { padding: 7px 10px; font-size: 0.75rem; }
+  .home-section { padding: 40px 10px; }
+}
+
+/* ===== GLOBAL ANTI-ZOOM: inputs 16px on mobile ===== */
+@media (max-width: 480px) {
+  input, select, textarea { font-size: 16px !important; }
+}

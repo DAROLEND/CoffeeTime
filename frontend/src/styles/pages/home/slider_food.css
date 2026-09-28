@@ -1,0 +1,12 @@
+/* ===================================================
+   Coffee Time — Food/Drink/Dessert Card Sizing
+   (category slider items on homepage)
+=================================================== */
+
+/* Розмір карток задається через --card-width у slider.css;
+   висота — auto (визначається зображенням 200px + card-info) */
+.food-item,
+.drink-item,
+.dessert-item {
+  flex-shrink: 0;
+}

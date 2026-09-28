@@ -1,0 +1,8 @@
+/* Menu page additions (scoped like menu.css). */
+.mc-img-overlay { border: 0; padding: 0; font: inherit; width: 100%; }
+.mc-img-overlay:focus-visible { outline: 3px solid #FFC107; outline-offset: -3px; background: rgba(61,31,7,.45); }
+.im-free-sauce { margin-bottom: 14px; }
+.im-free-sauce .im-scoop-btn { min-height: 44px; }
+.im-size-btn:disabled { opacity: .45; cursor: not-allowed; }
+.im-add-btn:disabled { opacity: .7; cursor: progress; }
+.filter-dropdown-menu { display: block; animation: dropIn 0.18s ease both; }

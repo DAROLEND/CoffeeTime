@@ -25,6 +25,17 @@ request/response types are generated from it.
 | ![Profile](static/images/preview/profile.png) | ![Admin](static/images/preview/admin.png) |
 | **Profile** — order history with statuses and ratings | **Admin** — dashboard with stats, a chart, and top items |
 
+## History
+
+The first version was a PHP + MySQL site (2025–2026): server-rendered pages, vanilla JS, LiqPay, an admin panel. Its code and history are in **[CoffeeTime-release](https://github.com/DAROLEND/CoffeeTime-release)**.
+
+This repository is the rewrite on FastAPI + React/TypeScript:
+
+- **Database:** MySQL → PostgreSQL. `alembic/versions/0001_baseline.py` reproduces the original schema, and the next migration fixes what the old one got wrong: `orders.user_id` no longer cascades (deleting a user would wipe their order history), two drifting piece-count columns merged into one, `users.email` widened from 30 to 255 characters.
+- **Accounts carried over:** passwords hashed by PHP (`$2y$` bcrypt) still verify, so existing customers and staff log in without a reset.
+- **Server-side pricing:** the old frontend sent prices with the cart; now the client sends only the chosen options and every price is computed from the database.
+- **From pages to an API:** PHP templates became a JSON API with an OpenAPI contract, and the frontend's TypeScript types are generated from it.
+
 ## Stack
 
 | Layer | Technologies |

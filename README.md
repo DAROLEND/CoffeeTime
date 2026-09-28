@@ -2,7 +2,7 @@
 
 *Також доступно [українською](README.uk.md).*
 
-### 🔗 Live site: **[coffeetime.onrender.com](https://coffeetime.onrender.com)**
+### 🔗 Live site: **[https://coffeetime-web.onrender.com](https://coffeetime-web.onrender.com)**
 
 A complete website for the **Coffee Time** café (Husiatyn, Ukraine) with a menu, online ordering,
 payment via LiqPay, and an admin panel with role-based permissions.
